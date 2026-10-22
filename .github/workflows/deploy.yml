@@ -26,10 +26,16 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
-      - run: npm run build
+      - run: |
+          # Fail loudly instead of shipping a build that can't host online rooms.
+          if [ -z "$VITE_SUPABASE_URL" ] || [ -z "$VITE_SUPABASE_KEY" ]; then
+            echo "::error::VITE_SUPABASE_URL / VITE_SUPABASE_KEY are empty. Add them as repository Variables or Secrets (not environment-scoped)."
+            exit 1
+          fi
+          npm run build
         env:
-          VITE_SUPABASE_URL: ${{ vars.VITE_SUPABASE_URL }}
-          VITE_SUPABASE_KEY: ${{ vars.VITE_SUPABASE_KEY }}
+          VITE_SUPABASE_URL: ${{ vars.VITE_SUPABASE_URL || secrets.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_KEY: ${{ vars.VITE_SUPABASE_KEY || secrets.VITE_SUPABASE_KEY }}
       - uses: actions/upload-pages-artifact@v3
         with:
           path: dist
