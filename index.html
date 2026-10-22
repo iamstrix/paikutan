@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Paikutan: Trumpo Showdown</title>
+<meta name="description" content="A Filipino trumpo (spinning top) battle game. Draw circles on your phone to spin, flick to throw, tilt to steer.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bungee&family=Nunito:wght@400;700;800&display=swap">
+<link rel="stylesheet" href="css/style.css">
+<script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.js"></script>
+<script type="importmap">{ "imports": { "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js" } }</script>
+</head>
+<body data-mode="title">
+<canvas id="view"></canvas>
+
+<div id="hud">
+  <div class="pcard" id="card0" style="--pc:#e63946" hidden>
+    <div class="who"></div>
+    <div class="spin"><b></b><em></em></div>
+    <div class="row">wobble <span class="wob"><b></b></span> power <span class="pips"><i></i><i></i><i></i></span> <span class="wins"></span></div>
+  </div>
+  <div class="pcard" id="card1" style="--pc:#3a86ff" hidden>
+    <div class="who"></div>
+    <div class="spin"><b></b><em></em></div>
+    <div class="row">wobble <span class="wob"><b></b></span> power <span class="pips"><i></i><i></i><i></i></span> <span class="wins"></span></div>
+  </div>
+  <div id="banner" hidden></div>
+  <ul id="ticker"></ul>
+  <div id="end-bar" hidden>
+    <button class="btn" id="btn-rematch">Rematch</button>
+    <button class="btn ghost" id="btn-back">Back to menu</button>
+  </div>
+</div>
+
+<div id="title">
+  <h1 class="logo">PAIKUTAN</h1>
+  <div class="subtitle">Trumpo Showdown</div>
+  <p class="tagline">The Filipino street game of <b>trumpo</b>, now a head-to-head esport. Spin it with your finger, throw it with your phone, and be the last trumpo spinning in the chalk circle.</p>
+  <div class="menu">
+    <button class="btn big" id="btn-host">Host a match</button>
+    <button class="btn big blue" id="btn-practice">Practice vs CPU</button>
+    <button class="btn big ghost" id="btn-help">How to play</button>
+  </div>
+  <p class="muted small" style="margin-top:1.2em">Host on a laptop or TV. Two players join by scanning the QR code with their phones.</p>
+  <div class="foot">Made for DOST Level Up 3.0 · Philippine Games and Sports</div>
+</div>
+
+<div id="lobby" hidden>
+  <div class="muted small">Room code</div>
+  <div id="room-code">----</div>
+  <div id="qr"></div>
+  <a id="room-url" target="_blank" rel="noopener"></a>
+  <p class="small muted" id="net-status"></p>
+  <ul id="slots"></ul>
+  <button class="btn ghost small" id="btn-lobby-cancel">Cancel</button>
+</div>
+
+<div id="ctrl"></div>
+
+<div id="help" hidden>
+  <div class="panel">
+    <h2>How to play</h2>
+    <p><b>Trumpo</b> is the spinning top Filipino kids play on the street: wind the string, throw it into the chalk circle, and knock out your rivals. Paikutan turns it into a 1v1 match, best of 3 rounds.</p>
+    <ol class="howto">
+      <li><b>Pick</b> a player (sets your stats) and a trumpo (sets your mythic power).
+        <br><span class="muted small">Lakas = how hard you hit · Tagal = how long you spin · Tatag = how hard you are to topple.</span></li>
+      <li><b>Paikot!</b> Draw fast circles on the ring for 3 seconds. Faster circles give more spin. Staying on the ring, in one direction, makes your trumpo steadier.</li>
+      <li><b>Bitaw!</b> On the countdown, tilt your phone to aim and flick it forward like casting a fishing line. A harder throw hits harder but lands with more wobble.
+        <br><span class="muted small">On PC: drag the mouse upward and release. On phones without motion sensors: swipe up.</span></li>
+      <li><b>Laban!</b> Tilt (or drag the pad) to steer. Steering costs a little spin. When the power ring fills, tap it to use your trumpo's power.</li>
+      <li><b>Win</b> when your rival's trumpo topples (<i>natumba</i>) or leaves the circle (<i>labas</i>). First to 2 rounds is the <b>Kampeon</b>.</li>
+    </ol>
+    <h2>Trumpo powers</h2>
+    <ul class="howto">
+      <li><b>Kidlat</b>: lightning zaps the rival (knockback + spin loss).</li>
+      <li><b>Tikbalang</b>: dash at your rival with extra weight.</li>
+      <li><b>Agimat</b>: amulet shield, hits barely hurt for 5 s.</li>
+      <li><b>Diwata</b>: restores spin and steadies the wobble.</li>
+      <li><b>Bakunawa</b>: eclipse that reverses the rival's steering for 5 s.</li>
+    </ul>
+    <p class="muted small">Watch out for the <i>asong gala</i> (stray dog) that runs through the plaza once a round.</p>
+    <button class="btn" id="help-close">Got it</button>
+  </div>
+</div>
+
+<div id="corner">
+  <button id="btn-mute" title="Mute (M)">🔊</button>
+  <button id="btn-full" title="Fullscreen">⛶</button>
+</div>
+
+<script type="module" src="js/host.js"></script>
+</body>
+</html>

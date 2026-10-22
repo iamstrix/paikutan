@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<meta name="theme-color" content="#1b1430">
+<title>Paikutan Controller</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bungee&family=Nunito:wght@400;700;800&display=swap">
+<link rel="stylesheet" href="css/style.css">
+<script type="importmap">{ "imports": { "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js" } }</script>
+</head>
+<body class="phone-page">
+<canvas id="view"></canvas>
+<div id="ctrl"></div>
+<div id="lost" hidden>Lost connection to the host… retrying</div>
+
+<div id="join-screen">
+  <h1 class="logo">PAIKUTAN</h1>
+  <p class="muted">Your phone is your trumpo.</p>
+  <div id="room-row"><label>Room code<br><input id="room" maxlength="4" autocomplete="off" autocapitalize="characters" placeholder="ABCD"></label></div>
+  <label>Your name<br><input id="name" maxlength="14" autocomplete="nickname" placeholder="Juan"></label>
+  <button class="btn big" id="join">Join match</button>
+  <p class="small" id="join-msg"></p>
+  <p class="muted small">Tip: allow motion access when asked, and turn up the volume.</p>
+</div>
+
+<script type="module" src="js/play.js"></script>
+</body>
+</html>
