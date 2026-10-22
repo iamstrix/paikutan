@@ -1,0 +1,215 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Paikutan Setup</title>
+</head>
+<body>
+
+<h1>Paikutan: Trumpo Showdown - Setup Instructions</h1>
+<p>How to run, test, deploy and demo the game.</p>
+
+<hr>
+
+<h2>Contents</h2>
+<ol>
+  <li><a href="#need">What you need</a></li>
+  <li><a href="#local">Run on your PC</a></li>
+  <li><a href="#offline">Test without internet (one PC, three tabs)</a></li>
+  <li><a href="#deploy">Deploy to GitHub Pages</a></li>
+  <li><a href="#play">Play a real match (laptop + 2 phones)</a></li>
+  <li><a href="#links">Useful links and modes</a></li>
+  <li><a href="#event">Event-day checklist</a></li>
+  <li><a href="#trouble">Troubleshooting</a></li>
+  <li><a href="#files">File map</a></li>
+</ol>
+
+<hr>
+
+<h2 id="need">1. What you need</h2>
+<ul>
+  <li>A laptop or PC with Chrome or Edge (the host / spectator screen).</li>
+  <li>Two phones with a browser (Chrome on Android, Safari on iPhone).</li>
+  <li>Internet on all three devices (Wi-Fi or mobile data).</li>
+  <li>Python 3 (only for running on your own PC).</li>
+  <li>Git and a GitHub account (for deploying).</li>
+</ul>
+<p><b>Why GitHub Pages and not localhost:</b> phones only allow motion sensors (flick and tilt) on HTTPS pages. A laptop address like <code>http://192.168.x.x</code> is not HTTPS, so flick and tilt would be blocked. GitHub Pages gives HTTPS for free, and judges can open the link from anywhere.</p>
+
+<hr>
+
+<h2 id="local">2. Run on your PC</h2>
+<ol>
+  <li>Open a terminal in the project folder:
+    <pre>cd C:\dev\Antigravity\level-up-2</pre>
+  </li>
+  <li>Start a local web server:
+    <pre>python -m http.server 8000</pre>
+  </li>
+  <li>Open <code>http://localhost:8000/index.html</code> in Chrome.</li>
+  <li>Click <b>Practice vs CPU</b> to play with the mouse and keyboard.</li>
+</ol>
+<p>Note: opening <code>index.html</code> by double-clicking it will not work. The game must be served by a web server.</p>
+
+<h3>Practice controls (PC)</h3>
+<table border="1" cellpadding="6" cellspacing="0">
+  <tr><th>Step</th><th>Control</th></tr>
+  <tr><td>Paikot (spin)</td><td>Hold the mouse button and draw fast circles on the ring for 3 seconds</td></tr>
+  <tr><td>Bitaw (throw)</td><td>After "BITAW!", drag the mouse upward fast and let go</td></tr>
+  <tr><td>Steer</td><td>W A S D or arrow keys</td></tr>
+  <tr><td>Use power</td><td>Space (or E) when the power ring is full</td></tr>
+  <tr><td>Back to menu</td><td>Esc</td></tr>
+  <tr><td>Mute</td><td>M</td></tr>
+</table>
+
+<hr>
+
+<h2 id="offline">3. Test without internet (one PC, three tabs)</h2>
+<ol>
+  <li>Start the local server (step 2).</li>
+  <li>Open <code>http://localhost:8000/index.html?net=local</code> and click <b>Host a match</b>.</li>
+  <li>Click the join link under the QR code. It opens <code>play.html?room=XXXX&amp;net=local</code>.</li>
+  <li>Open that same join link in a second tab.</li>
+  <li>Join with a different name in each tab. The match starts when both players have joined.</li>
+</ol>
+<p>Each tab counts as a separate player. On a PC there are no motion sensors, so swipe up to throw and drag the round pad to steer.</p>
+
+<hr>
+
+<h2 id="deploy">4. Deploy to GitHub Pages</h2>
+<ol>
+  <li>Create a new <b>public</b> repository on GitHub (for example <code>paikutan</code>). Do not add a README.</li>
+  <li>In the project folder:
+<pre>git init
+git add .gitignore README.md setup.html package.json index.html play.html css/style.css js/
+git commit -m "Paikutan: trumpo battle game"
+git branch -M main
+git remote add origin https://github.com/YOUR-USERNAME/paikutan.git
+git push -u origin main</pre>
+  </li>
+  <li>On GitHub, open the repository and go to <b>Settings &gt; Pages</b>.</li>
+  <li>Under <b>Build and deployment</b>, set Source to <b>Deploy from a branch</b>, Branch to <b>main</b>, folder <b>/ (root)</b>, then click <b>Save</b>.</li>
+  <li>Wait 1 to 2 minutes. The game will be at:
+    <pre>https://YOUR-USERNAME.github.io/paikutan/</pre>
+  </li>
+</ol>
+<p>After later pushes, GitHub Pages can take up to about 10 minutes to update. Use Ctrl+Shift+R to hard-refresh.</p>
+<p>Do not commit screenshots (<code>image*.png</code>). They are already listed in <code>.gitignore</code>.</p>
+
+<h3>Supabase (online rooms)</h3>
+<ul>
+  <li>Online rooms use the existing Supabase project <code>ojtswbpzqyuqocdphirz</code>. The settings are in <code>js/config.js</code>.</li>
+  <li>No database tables or SQL migrations are needed. The game only uses Realtime broadcast.</li>
+  <li>Free Supabase projects <b>pause after about a week without use</b>. Before any demo or judging, log in to the Supabase dashboard and make sure the project is active. Restore it if it is paused.</li>
+</ul>
+
+<hr>
+
+<h2 id="play">5. Play a real match (laptop + 2 phones)</h2>
+<ol>
+  <li>On the laptop, open the GitHub Pages link and click <b>Host a match</b>. A 4-letter room code and a QR code appear.</li>
+  <li>Connect the laptop to a TV or projector if available. Press the fullscreen button (bottom right).</li>
+  <li>Each player scans the QR code with their phone camera, or opens <code>play.html</code> and types the room code.</li>
+  <li>Each player enters a name and taps <b>Join match</b>.</li>
+  <li>When the phone asks for <b>motion access</b>, tap <b>Allow</b>. This is required on iPhone.</li>
+  <li>Turn the phone volume up and keep the screen on.</li>
+  <li>Both players pick a character and a trumpo, then tap <b>Ready!</b>.</li>
+</ol>
+
+<h3>Phone controls</h3>
+<table border="1" cellpadding="6" cellspacing="0">
+  <tr><th>Step</th><th>What to do</th></tr>
+  <tr><td>Paikot (spin)</td><td>Draw fast circles on the ring with a finger for 3 seconds. Faster = more spin. Staying on the ring = steadier trumpo.</td></tr>
+  <tr><td>Countdown</td><td>Hold the phone like a trumpo. Tilt left or right to aim (the arrow shows the aim).</td></tr>
+  <tr><td>Bitaw (throw)</td><td>When "BITAW!" appears, flick the phone forward like casting a fishing line. Hold it tightly. If the flick does not register, swipe up fast on the screen.</td></tr>
+  <tr><td>Laban (fight)</td><td>Tilt the phone to steer, or drag the round pad at the bottom left. Tap "Re-center tilt" if steering drifts.</td></tr>
+  <tr><td>Power</td><td>Tap the round power button at the bottom right when it glows.</td></tr>
+</table>
+
+<h3>Win rules</h3>
+<ul>
+  <li>A trumpo loses the round if it topples over (<i>natumba</i>) or leaves the chalk circle (<i>labas</i>).</li>
+  <li>First to win 2 rounds is the <b>Kampeon</b>.</li>
+  <li>If both fall at the same time (<i>tabla</i>), the round is replayed.</li>
+</ul>
+
+<hr>
+
+<h2 id="links">6. Useful links and modes</h2>
+<p>Add these to the end of the game address:</p>
+<table border="1" cellpadding="6" cellspacing="0">
+  <tr><th>Address</th><th>What it does</th></tr>
+  <tr><td><code>index.html</code></td><td>Title screen: host a match, practice, how to play</td></tr>
+  <tr><td><code>index.html?practice</code></td><td>Go straight to practice vs CPU on a PC (good link for judges)</td></tr>
+  <tr><td><code>index.html?demo</code></td><td>CPU vs CPU match with the full HUD and commentary (use for trailer footage)</td></tr>
+  <tr><td><code>index.html?net=local</code></td><td>Host without internet, for tabs on the same PC</td></tr>
+  <tr><td><code>play.html?room=ABCD</code></td><td>Phone controller, joins room ABCD</td></tr>
+  <tr><td><code>play.html?solo=1</code></td><td>Play vs CPU on a phone alone (no laptop needed)</td></tr>
+</table>
+
+<hr>
+
+<h2 id="event">7. Event-day checklist</h2>
+<ul>
+  <li>[ ] Supabase project is active (not paused).</li>
+  <li>[ ] GitHub Pages link opens and shows the title screen.</li>
+  <li>[ ] Laptop is charged and connected to the TV or projector, and sound is on.</li>
+  <li>[ ] Two test phones are charged and have mobile data in case the Wi-Fi fails.</li>
+  <li>[ ] Motion access was allowed on both phones (test one throw).</li>
+  <li>[ ] Browser zoom is 100% and the page is in fullscreen.</li>
+  <li>[ ] Backup plan: if the internet is down, run <code>index.html?practice</code> on the laptop, or <code>play.html?solo=1</code> on a phone.</li>
+  <li>[ ] Backup video: the gameplay video is ready on the laptop.</li>
+</ul>
+
+<hr>
+
+<h2 id="trouble">8. Troubleshooting</h2>
+<dl>
+  <dt><b>The page is blank or shows nothing</b></dt>
+  <dd>The game must be served from a web server (GitHub Pages or <code>python -m http.server</code>). Double-clicking the file does not work. It also needs internet the first time to load three.js and the fonts.</dd>
+
+  <dt><b>"Could not connect" on the host or phone</b></dt>
+  <dd>Check the internet connection. Check that the Supabase project is not paused. To test without internet, use <code>?net=local</code> on one PC.</dd>
+
+  <dt><b>The flick does not throw</b></dt>
+  <dd>Make sure motion access was allowed. On iPhone, reload the page and tap Join again to get the permission prompt. Flick harder, or swipe up fast on the screen instead. If the trumpo is not thrown within 3 seconds, it is thrown weakly by itself.</dd>
+
+  <dt><b>Tilt steering does not work or drifts</b></dt>
+  <dd>Tap <b>Re-center tilt</b> while holding the phone comfortably. Or use the round drag pad at the bottom left.</dd>
+
+  <dt><b>"This room already has two players"</b></dt>
+  <dd>The room is full. On the host, click <b>Cancel</b> and then <b>Host a match</b> again to make a new room.</dd>
+
+  <dt><b>A phone disconnected mid-match</b></dt>
+  <dd>Reload the phone page and join the same room again from the same browser tab. If that fails, cancel on the host and make a new room.</dd>
+
+  <dt><b>No sound</b></dt>
+  <dd>Browsers only play sound after the first tap or click. Click anywhere on the host page. Check the mute button (bottom right) and the phone's silent switch.</dd>
+
+  <dt><b>Changes do not show on GitHub Pages</b></dt>
+  <dd>Wait up to 10 minutes after pushing, then hard-refresh with Ctrl+Shift+R.</dd>
+</dl>
+
+<hr>
+
+<h2 id="files">9. File map</h2>
+<table border="1" cellpadding="6" cellspacing="0">
+  <tr><th>File</th><th>Purpose</th></tr>
+  <tr><td><code>index.html</code>, <code>js/host.js</code></td><td>Host and spectator screen, practice mode, commentary</td></tr>
+  <tr><td><code>play.html</code>, <code>js/play.js</code></td><td>Phone controller page</td></tr>
+  <tr><td><code>js/sim.js</code></td><td>Trumpo physics: spin, wobble, collisions, powers, stray dog</td></tr>
+  <tr><td><code>js/engine.js</code></td><td>Match flow (lobby, pick, rounds, champion) and the CPU opponent</td></tr>
+  <tr><td><code>js/scene.js</code></td><td>3D plaza, trumpo models and effects (three.js)</td></tr>
+  <tr><td><code>js/controller.js</code>, <code>js/input.js</code></td><td>Player screens and controls: circle drawing, flick, swipe, tilt</td></tr>
+  <tr><td><code>js/audio.js</code></td><td>Music and sound effects, generated in the browser</td></tr>
+  <tr><td><code>js/net.js</code>, <code>js/config.js</code></td><td>Online rooms (Supabase) and offline test mode</td></tr>
+  <tr><td><code>js/data.js</code></td><td>Characters and trumpos (names, stats, powers)</td></tr>
+  <tr><td><code>css/style.css</code></td><td>Game styles</td></tr>
+</table>
+
+<hr>
+<p>Paikutan: Trumpo Showdown - DOST Level Up 3.0 - Philippine Games and Sports</p>
+
+</body>
+</html>
