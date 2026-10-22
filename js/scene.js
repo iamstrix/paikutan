@@ -69,8 +69,16 @@ function makeTop(topId, slot, low) {
   ring.rotation.x = -Math.PI / 2; ring.position.y = 0.02;
   const shield = new THREE.Mesh(new THREE.SphereGeometry(0.78, 24, 16), new THREE.MeshBasicMaterial({ color: '#7fffd4', transparent: true, opacity: 0.22, depthWrite: false }));
   shield.position.y = 0.45; shield.visible = false;
-  root.add(ring, shield);
-  return { root, precess, tilt, spinner, ring, shield, prec: rand(0, 6), drop: 0, state: null, target: null, wasLaunched: false, fallT: 0 };
+  // Ground arrow showing where the player is steering.
+  const shape = new THREE.Shape();
+  shape.moveTo(-0.07, 0.65); shape.lineTo(0.07, 0.65); shape.lineTo(0.07, 1.2); shape.lineTo(0.2, 1.2);
+  shape.lineTo(0, 1.6); shape.lineTo(-0.2, 1.2); shape.lineTo(-0.07, 1.2); shape.closePath();
+  const arrowMesh = new THREE.Mesh(new THREE.ShapeGeometry(shape), new THREE.MeshBasicMaterial({ color: PLAYER_COLORS[slot], transparent: true, opacity: 0.85, depthWrite: false }));
+  arrowMesh.rotation.x = -Math.PI / 2;
+  const arrow = new THREE.Group();
+  arrow.position.y = 0.025; arrow.visible = false; arrow.add(arrowMesh);
+  root.add(ring, shield, arrow);
+  return { root, precess, tilt, spinner, ring, shield, arrow, prec: rand(0, 6), drop: 0, state: null, target: null, wasLaunched: false, fallT: 0 };
 }
 
 function makeDog() {
@@ -285,13 +293,43 @@ export function createScene(canvas, { low = false } = {}) {
     }
     bolt.geometry.setFromPoints(pts);
     bolt.visible = true; boltT = 0.45;
-    flash.position.set(x, 3, z); flash.intensity = 60;
+    flash.color.set('#e8f4ff'); flash.position.set(x, 3, z); flash.intensity = 60;
+  }
+
+  // Expanding shockwave rings on the ground.
+  const waves = Array.from({ length: 8 }, () => {
+    const m = new THREE.Mesh(new THREE.RingGeometry(0.85, 1, 48), new THREE.MeshBasicMaterial({ transparent: true, opacity: 0, depthWrite: false, side: THREE.DoubleSide }));
+    m.rotation.x = -Math.PI / 2; m.position.y = 0.03; m.visible = false; m.userData = { t: 0, dur: 1, size: 1 };
+    scene.add(m);
+    return m;
+  });
+  let waveNext = 0;
+  function wave(x, z, color, size = 3, dur = 0.5) {
+    const m = waves[waveNext]; waveNext = (waveNext + 1) % waves.length;
+    m.position.x = x; m.position.z = z; m.material.color.set(color);
+    Object.assign(m.userData, { t: 0, dur, size }); m.visible = true;
+  }
+  function updateWaves(dt) {
+    for (const m of waves) {
+      if (!m.visible) continue;
+      const u = m.userData; u.t += dt;
+      const k = u.t / u.dur;
+      if (k >= 1) { m.visible = false; continue; }
+      m.scale.setScalar(0.2 + u.size * (1 - (1 - k) * (1 - k)));
+      m.material.opacity = 0.9 * (1 - k);
+    }
+  }
+  function pop(x, z, color, power) {
+    flash.color.set(color); flash.position.set(x, 3, z); flash.intensity = power;
   }
 
   let tops = [null, null];
   let topIds = [null, null];
   let shake = 0, eclipse = 0, time = 0;
   let view = 'spectator';
+  // Spectator camera: 'auto', 'top' (top-down), 'close' (low, wheel-height chase), 'orbit'.
+  let camMode = 'auto';
+  let party = null; // winner celebration: { slot, final, t }
   let instant = true;
   let dogTarget = null;
   const camPos = new THREE.Vector3(), camLook = new THREE.Vector3();
@@ -311,7 +349,11 @@ export function createScene(canvas, { low = false } = {}) {
   function reset() {
     for (const t of tops) if (t) { t.root.visible = false; t.state = t.target = null; t.wasLaunched = false; t.fallT = 0; }
     dog.visible = false; dogTarget = null;
+    party = null;
   }
+
+  function celebrate(slot, final) { party = { slot, final, t: 0 }; }
+  function setCam(m) { camMode = m; }
 
   function applySnap(snap, direct = true) {
     instant = direct;
@@ -322,25 +364,43 @@ export function createScene(canvas, { low = false } = {}) {
   function fx(e) {
     switch (e.type) {
       case 'hit':
-        burst(e.x, 0.45, e.z, Math.round(10 + 30 * e.i), '#ffcf5a', 3 + 5 * e.i, 3);
-        shake = Math.max(shake, e.i * 0.35);
+        burst(e.x, 0.45, e.z, Math.round(10 + 40 * e.i), '#ffcf5a', 3 + 6 * e.i, 3);
+        shake = Math.max(shake, e.i * 0.45);
+        if (e.i > 0.6) { wave(e.x, e.z, '#fff3c4', 1.5 + 2 * e.i, 0.35); pop(e.x, e.z, '#ffcf5a', 25 * e.i); }
         break;
       case 'launch':
         burst(e.x, 0.05, e.z, 18, '#d8b98c', 2.5, 1.2);
         break;
       case 'fall': case 'out':
-        burst(e.x, 0.1, e.z, 25, '#d8b98c', 3, 1.5);
-        shake = Math.max(shake, 0.2);
+        burst(e.x, 0.1, e.z, 60, '#d8b98c', 4, 2.5);
+        burst(e.x, 0.3, e.z, 25, '#ffffff', 5, 3);
+        wave(e.x, e.z, '#ffffff', 4, 0.6);
+        shake = Math.max(shake, 0.7);
         break;
       case 'bark':
         burst(e.x, 0.3, e.z, 15, '#d8b98c', 3, 2);
         break;
       case 'ability':
-        if (e.top === 'kidlat') { strike(e.tx, e.tz); burst(e.tx, 0.4, e.tz, 50, '#e8f4ff', 6, 4); shake = 0.6; }
-        if (e.top === 'tikbalang') burst(e.x, 0.2, e.z, 40, '#8d5524', 5, 1.5);
-        if (e.top === 'agimat') burst(e.x, 0.6, e.z, 30, '#7fffd4', 2.5, 2.5);
-        if (e.top === 'diwata') burst(e.x, 0.3, e.z, 60, '#ff9ecb', 1.5, 6);
-        if (e.top === 'bakunawa') { eclipse = 5; burst(e.tx, 0.5, e.tz, 40, '#9b5de5', 3, 3); }
+        if (e.top === 'kidlat') {
+          strike(e.tx, e.tz); burst(e.tx, 0.4, e.tz, 90, '#e8f4ff', 7, 5); burst(e.tx, 0.4, e.tz, 40, '#ffd23f', 5, 3);
+          wave(e.tx, e.tz, '#ffd23f', 4, 0.5); shake = 0.9;
+        }
+        if (e.top === 'tikbalang') {
+          burst(e.x, 0.2, e.z, 80, '#8d5524', 6, 2); burst(e.x, 0.4, e.z, 30, '#e63946', 4, 2);
+          wave(e.x, e.z, '#e63946', 3, 0.4); pop(e.x, e.z, '#ff6b3d', 40); shake = Math.max(shake, 0.5);
+        }
+        if (e.top === 'agimat') {
+          burst(e.x, 0.6, e.z, 70, '#7fffd4', 3, 3); wave(e.x, e.z, '#7fffd4', 3, 0.7);
+          pop(e.x, e.z, '#7fffd4', 40); shake = Math.max(shake, 0.3);
+        }
+        if (e.top === 'diwata') {
+          burst(e.x, 0.3, e.z, 120, '#ff9ecb', 2, 7); burst(e.x, 0.3, e.z, 40, '#fff8e7', 1.5, 8);
+          wave(e.x, e.z, '#ff9ecb', 3, 0.8); pop(e.x, e.z, '#ffb3e0', 50);
+        }
+        if (e.top === 'bakunawa') {
+          eclipse = 5; burst(e.tx, 0.5, e.tz, 90, '#9b5de5', 4, 4);
+          wave(e.tx, e.tz, '#9b5de5', 5, 0.9); wave(e.x, e.z, '#5bc0be', 3, 0.6); shake = Math.max(shake, 0.5);
+        }
         break;
     }
   }
@@ -383,6 +443,9 @@ export function createScene(canvas, { low = false } = {}) {
       t.root.position.y = 0.3 * t.fallT;
       t.spinner.rotation.y -= dt * 3 * (1 - t.fallT);
     }
+    const am = Math.hypot(s.wx || 0, s.wz || 0);
+    t.arrow.visible = st.alive && am > 0.15 && !party;
+    if (t.arrow.visible) { t.arrow.rotation.y = Math.atan2(-s.wx, -s.wz); t.arrow.scale.setScalar(0.6 + 0.4 * Math.min(1, am)); }
     t.shield.visible = st.shield && st.alive;
     t.shield.material.opacity = 0.18 + Math.sin(time * 8) * 0.06;
     t.ring.material.color.set(st.invert ? '#9b5de5' : PLAYER_COLORS[slot]);
@@ -398,6 +461,23 @@ export function createScene(canvas, { low = false } = {}) {
       // Phones: stand behind your own throwing line; pull back in portrait so the circle fits.
       pos = new THREE.Vector3(0, a < 1 ? 10 : 8, sz * (a < 1 ? 9 : 9.5));
       look = new THREE.Vector3(0, 0, -sz * 0.6);
+    } else if (party && tops[party.slot] && tops[party.slot].state) {
+      // Winner close-up: slow orbit around the trumpo still spinning.
+      const w = tops[party.slot].state, ang = party.t * 0.6 + 0.8;
+      look = new THREE.Vector3(w.x, 0.5, w.z);
+      pos = look.clone().add(new THREE.Vector3(Math.cos(ang) * 3, 1.4 - Math.min(0.6, party.t * 0.3), Math.sin(ang) * 3));
+    } else if (camMode === 'top') {
+      pos = new THREE.Vector3(0, 15, 0.01); look = new THREE.Vector3(0, 0, 0);
+    } else if (camMode === 'orbit') {
+      const ang = time * 0.25;
+      pos = new THREE.Vector3(Math.cos(ang) * 9, 4, Math.sin(ang) * 9); look = new THREE.Vector3(0, 0.3, 0);
+    } else if (camMode === 'close') {
+      // Wheel-height chase: low and tight on the middle of the action.
+      const live = tops.filter(t => t && t.state && t.state.launched);
+      look = new THREE.Vector3(0, 0.4, 0);
+      if (live.length) look.set(live.reduce((s, t) => s + t.state.x, 0) / live.length, 0.4, live.reduce((s, t) => s + t.state.z, 0) / live.length);
+      const ang = time * 0.15;
+      pos = look.clone().add(new THREE.Vector3(Math.cos(ang) * 3.2, 0.35, Math.sin(ang) * 3.2));
     } else {
       // Spectator: side-on so both players' sides read left/right, with a slow sway.
       const ang = Math.sin(time * 0.12) * 0.25;
@@ -412,9 +492,10 @@ export function createScene(canvas, { low = false } = {}) {
     // Widen the lens until the whole circle fits across the screen (portrait phones need more).
     const dist = pos.distanceTo(look);
     const fov = THREE.MathUtils.radToDeg(2 * Math.atan(Math.tan(Math.atan((ARENA_R + (a < 1 ? 2.5 : 1)) / dist)) / a));
-    camera.fov = THREE.MathUtils.clamp(fov, 42, 80);
+    const tight = view === 'spectator' && (party || camMode === 'close');
+    camera.fov = tight ? 40 : THREE.MathUtils.clamp(fov, 42, 80);
     camera.updateProjectionMatrix();
-    const k = 1 - Math.exp(-dt * 3);
+    const k = 1 - Math.exp(-dt * (tight ? 5 : 3));
     if (camPos.lengthSq() === 0) { camPos.copy(pos); camLook.copy(look); }
     camPos.lerp(pos, k); camLook.lerp(look, k);
     camera.position.copy(camPos);
@@ -435,6 +516,20 @@ export function createScene(canvas, { low = false } = {}) {
     } else dog.visible = false;
     plaza.flags.forEach(f => { f.rotation.x = Math.sin(time * 2.2 + f.userData.phase) * 0.35; });
     updateParticles(dt);
+    updateWaves(dt);
+    if (party) {
+      party.t += dt;
+      const w = tops[party.slot] && tops[party.slot].state;
+      // Confetti, and fireworks over the plaza for the match winner.
+      if (w && Math.random() < (party.final ? 0.5 : 0.25)) {
+        burst(w.x + rand(-1.5, 1.5), 2.5, w.z + rand(-1.5, 1.5), 8, ['#e63946', '#ffd23f', '#3a86ff', '#2a9d8f', '#ff70a6', '#fff'][Math.floor(rand(0, 6))], 2, 2);
+      }
+      if (party.final && Math.random() < 0.06) {
+        const fx = rand(-6, 6), fz = rand(-6, 6);
+        burst(fx, rand(5, 8), fz, 50, ['#ffd23f', '#ff70a6', '#7fffd4', '#e8f4ff'][Math.floor(rand(0, 4))], 5, 3);
+        pop(fx, fz, '#ffd23f', 20);
+      }
+    }
     shake = Math.max(0, shake - dt * 1.5);
     if (boltT > 0) { boltT -= dt; boltMat.opacity = Math.random() > 0.3 ? 1 : 0.2; if (boltT <= 0) bolt.visible = false; }
     flash.intensity = Math.max(0, flash.intensity - dt * 150);
@@ -451,5 +546,5 @@ export function createScene(canvas, { low = false } = {}) {
   window.addEventListener('resize', resize);
   resize();
   setView('spectator');
-  return { setPlayers, applySnap, fx, render, resize, setView, reset };
+  return { setPlayers, applySnap, fx, render, resize, setView, reset, celebrate, setCam };
 }

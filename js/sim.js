@@ -1,23 +1,23 @@
 // Trumpo physics for one round. Pure functions with no DOM, so the host can run it
 // authoritatively (and Node can test it). Phones only render snapshots of it.
-import { CHARACTERS, TOPS, byId } from './data.js';
+import { TOPS, byId } from './data.js';
 
 export const ARENA_R = 5;        // chalk circle radius
 export const TOP_R = 0.42;       // trumpo body radius
 export const STEP = 1 / 60;
 export const LAUNCH_Z = 4.2;     // where each player stands (slot 0 at +z, slot 1 at -z)
-export const LATE_T = 45;        // after this, spin drains twice as fast
-export const MAX_T = 90;
+export const LATE_T = 35;        // after this, spin drains twice as fast
+export const MAX_T = 70;
 
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 
 export function makeTop(slot, charId, topId) {
-  const c = byId(CHARACTERS, charId), tp = byId(TOPS, topId);
+  const tp = byId(TOPS, topId);
   return {
-    slot, char: c.id, top: tp.id,
-    mass: 1 + (c.str - 1) * 0.1,
-    decay: 1.2 - c.lon * 0.07,
-    sta: c.sta,
+    slot, char: charId, top: tp.id,
+    mass: 1 + (tp.str - 1) * 0.1,
+    decay: 1.2 - tp.lon * 0.07,
+    sta: tp.sta,
     launched: false, alive: true, out: false,
     x: 0, z: slot === 0 ? LAUNCH_Z : -LAUNCH_Z, vx: 0, vz: 0,
     spin: 0, wobble: 0, steady: 1,
@@ -40,7 +40,7 @@ export const toLocal = (slot, wx, wz) => (slot === 0 ? [wx, -wz] : [-wx, wz]);
 
 const ev = (w, type, data) => w.events.push({ type, ...data });
 
-// How much a hit unsettles a top: character balance and how neatly the player drew circles.
+// How much a hit unsettles a top: trumpo balance and how neatly the player drew circles.
 const wobbleGain = tp => (1.6 - tp.sta * 0.2) * (1.25 - 0.5 * tp.steady);
 
 export function launch(w, slot, { spinPower = 0.3, steadiness = 0.4, throwPower = 0.2, angle = 0 }) {
@@ -98,7 +98,7 @@ const weight = tp => tp.mass * (tp.dash > 0 ? 1.8 : 1) * (tp.shield > 0 ? 1.5 : 
 
 function hitTop(tp, by, intensity) {
   const k = (tp.shield > 0 ? 0.3 : 1) * intensity * weight(by) / weight(tp);
-  tp.spin -= 0.025 * k;
+  tp.spin -= 0.03 * k;
   // A slow top is much easier to knock over.
   tp.wobble += 0.25 * k * wobbleGain(tp) * (1.6 - tp.spin);
   tp.charge = Math.min(1, tp.charge + 0.08);
@@ -172,23 +172,24 @@ export function step(w, dt = STEP) {
     if (m > 1) { sx /= m; sy /= m; }
     if (tp.invert > 0) { sx = -sx; sy = -sy; }
     const [wx, wz] = toWorld(tp.slot, sx, sy);
-    const grip = 4.5 * (0.35 + 0.65 * tp.spin);
+    tp.wx = wx; tp.wz = wz;
+    const grip = 7 * (0.35 + 0.65 * tp.spin);
     // The ground dips slightly toward the middle, so tops keep meeting.
     let ax = wx * grip - tp.x * 0.35, az = wz * grip - tp.z * 0.35;
     const wander = tp.wobble * 2.2;
     ax += Math.cos(w.t * 3 + tp.slot * 2) * wander;
     az += Math.sin(w.t * 3 + tp.slot * 2) * wander;
     tp.vx += ax * dt; tp.vz += az * dt;
-    const fr = Math.exp(-dt * (0.7 + 1.2 * (1 - tp.spin)));
+    const fr = Math.exp(-dt * (1.0 + 1.2 * (1 - tp.spin)));
     tp.vx *= fr; tp.vz *= fr;
     tp.x += tp.vx * dt; tp.z += tp.vz * dt;
 
     // Steering is not free: it costs a little spin.
-    tp.spin -= dt * (0.03 * tp.decay * late + Math.min(1, m) * 0.012);
+    tp.spin -= dt * (0.04 * tp.decay * late + Math.min(1, m) * 0.012);
     const target = clamp((0.45 - tp.spin) / 0.45, 0, 1) * 0.85;
     if (tp.wobble < target) tp.wobble += (target - tp.wobble) * dt;
     else tp.wobble = Math.max(target, tp.wobble - dt * (0.015 + 0.012 * tp.sta));
-    tp.charge = Math.min(1, tp.charge + dt / 10);
+    tp.charge = Math.min(1, tp.charge + dt / 8);
     if (tp.wantAbility) {
       tp.wantAbility = false;
       if (tp.charge >= 1) useAbility(w, tp, opp);
@@ -229,7 +230,7 @@ export function snapshot(w) {
   return {
     t: r2(w.t),
     tops: w.tops.map(tp => [r2(tp.x), r2(tp.z), r3(Math.max(0, tp.spin)), r3(tp.wobble),
-      +tp.launched, +tp.alive, +tp.out, r2(tp.charge), +(tp.shield > 0), +(tp.invert > 0), +(tp.dash > 0)]),
+      +tp.launched, +tp.alive, +tp.out, r2(tp.charge), +(tp.shield > 0), +(tp.invert > 0), +(tp.dash > 0), r2(tp.wx || 0), r2(tp.wz || 0)]),
     dog: w.dog ? [r2(w.dog.x), r2(w.dog.z), Math.sign(w.dog.vx)] : null,
   };
 }
@@ -238,7 +239,7 @@ export function decodeSnap(s) {
   return {
     t: s.t,
     tops: s.tops.map(a => ({ x: a[0], z: a[1], spin: a[2], wobble: a[3], launched: !!a[4], alive: !!a[5],
-      out: !!a[6], charge: a[7], shield: !!a[8], invert: !!a[9], dash: !!a[10] })),
+      out: !!a[6], charge: a[7], shield: !!a[8], invert: !!a[9], dash: !!a[10], wx: a[11] || 0, wz: a[12] || 0 })),
     dog: s.dog && { x: s.dog[0], z: s.dog[1], dir: s.dog[2] },
   };
 }

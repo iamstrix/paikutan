@@ -23,8 +23,8 @@ export function charIcon(charId, size = 56) {
   return `<div class="char-icon" style="width:${size}px;height:${size}px;background:${c.color};font-size:${size * 0.55}px">${c.emoji}</div>`;
 }
 
-const statBars = c => ['str', 'lon', 'sta'].map(k =>
-  `<div class="stat"><span>${STAT_LABELS[k]}</span><i>${'<b></b>'.repeat(c[k])}${'<b class="off"></b>'.repeat(5 - c[k])}</i></div>`).join('');
+const statBars = t => ['str', 'lon', 'sta'].map(k =>
+  `<div class="stat"><span>${STAT_LABELS[k]}</span><i>${'<b></b>'.repeat(t[k])}${'<b class="off"></b>'.repeat(5 - t[k])}</i></div>`).join('');
 
 export function createController(root, { mode = 'phone', send, myId, sounds = mode === 'phone' }) {
   const phone = mode === 'phone';
@@ -65,7 +65,7 @@ export function createController(root, { mode = 'phone', send, myId, sounds = mo
 
   function howTo() {
     return `<ol class="howto">
-      <li><b>Pick</b> a player and a trumpo. Each trumpo has a mythic power.</li>
+      <li><b>Pick</b> a player and a trumpo. Each trumpo has its own stats and a mythic power.</li>
       <li><b>Paikot!</b> Draw fast circles on the ring. Faster = more spin, neater = steadier.</li>
       <li><b>Bitaw!</b> ${phone ? 'Tilt to aim, then flick your phone forward like casting a line.' : 'Drag the mouse upward and let go, fast.'}</li>
       <li><b>Laban!</b> ${phone ? 'Tilt to steer' : 'WASD / arrows to steer'}, tap the power when it’s full. Last trumpo spinning inside the circle wins.</li>
@@ -92,13 +92,13 @@ export function createController(root, { mode = 'phone', send, myId, sounds = mo
         <div class="cards" data-list="char">${CHARACTERS.map(c => `
           <button class="card" data-id="${c.id}">
             ${charIcon(c.id, 54)}
-            <div class="card-body"><b>${c.name}</b><small>${c.title}</small>${statBars(c)}<p>${c.blurb}</p></div>
+            <div class="card-body"><b>${c.name}</b><small>${c.title}</small><p>${c.blurb}</p></div>
           </button>`).join('')}</div>
         <h2>Pick your trumpo</h2>
         <div class="cards" data-list="top">${TOPS.map(t => `
           <button class="card" data-id="${t.id}">
             ${topIcon(t.id, 54)}
-            <div class="card-body"><b>${t.name}</b><small>${t.power}</small><p>${t.desc}</p></div>
+            <div class="card-body"><b>${t.name}</b><small>${t.power}</small>${statBars(t)}<p>${t.desc}</p></div>
           </button>`).join('')}</div>
         <button class="btn big" data-act="ready">Ready!</button>
       </div>`, () => {
@@ -329,7 +329,7 @@ export function createController(root, { mode = 'phone', send, myId, sounds = mo
         pad.addEventListener('pointerup', end);
         pad.addEventListener('pointercancel', end);
       }
-      const timer = setInterval(sendSteer, 100);
+      const timer = setInterval(sendSteer, 66);
       return () => { clearInterval(timer); joy = null; send('steer', { x: 0, y: 0 }); };
     });
   }
@@ -343,7 +343,7 @@ export function createController(root, { mode = 'phone', send, myId, sounds = mo
       v = [x / m, y / m];
     } else v = motion.steer();
     const now = performance.now();
-    if (Math.abs(v[0] - lastSteer[0]) + Math.abs(v[1] - lastSteer[1]) > 0.06 || now - lastSteerAt > 800) {
+    if (Math.abs(v[0] - lastSteer[0]) + Math.abs(v[1] - lastSteer[1]) > 0.04 || now - lastSteerAt > 800) {
       lastSteer = v; lastSteerAt = now;
       send('steer', { x: Math.round(v[0] * 100) / 100, y: Math.round(v[1] * 100) / 100 });
     }

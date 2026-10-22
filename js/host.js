@@ -10,6 +10,8 @@ import { CHARACTERS, TOPS, PLAYER_COLORS, byId } from './data.js';
 const $ = s => document.querySelector(s);
 const scene = createScene($('#view'));
 let engine = null, net = null, ctrl = null, mode = 'title';
+const CAMS = ['auto', 'top', 'close', 'orbit'];
+let camIdx = 0;
 let state = null, snap = null, lastNetSnap = 0, lastPhase = '', lateSaid = false, bannerUntil = 0;
 
 const REASON = { fall: 'Natumba! Toppled over.', out: 'Labas! Out of the circle.', time: 'Time! Faster spinner wins.', draw: 'Tabla! Replay the round.' };
@@ -96,6 +98,7 @@ function onState(s) {
     if (s.phase === 'countdown') { scene.reset(); lateSaid = false; }
     if (s.phase === 'throw' && mode !== 'title') audio.beep(true);
     if ((s.phase === 'roundEnd' || s.phase === 'matchEnd') && s.result && s.result.winner >= 0 && mode !== 'title') audio.win();
+    if (s.phase === 'roundEnd' && s.result && s.result.winner >= 0) scene.celebrate(s.result.winner, Math.max(...s.scores) >= WIN_ROUNDS);
     if (s.phase === 'fight') bannerUntil = performance.now() + 1200;
     audio.music(true, ['fight', 'throw', 'countdown'].includes(s.phase) ? 0.12 : 0.3);
     lastPhase = s.phase;
@@ -227,7 +230,14 @@ $('#btn-mute').onclick = () => { audio.unlock(); audio.setMuted(!audio.muted); $
 $('#btn-full').onclick = () => (document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen()).catch(() => {});
 addEventListener('keydown', e => {
   if (e.code === 'Escape' && mode !== 'title') start('title');
-  if (e.code === 'KeyM' && !(e.target instanceof HTMLInputElement)) $('#btn-mute').click();
+  if (e.target instanceof HTMLInputElement) return;
+  if (e.code === 'KeyM') $('#btn-mute').click();
+  // B-roll helpers: C cycles the spectator camera, H hides the HUD for clean footage.
+  if (e.code === 'KeyC' && mode !== 'practice') {
+    camIdx = (camIdx + 1) % CAMS.length;
+    scene.setCam(CAMS[camIdx]);
+  }
+  if (e.code === 'KeyH') document.body.classList.toggle('clean');
 });
 // Online rooms need a heartbeat so late joiners and reconnects get the current state.
 setInterval(() => { if (net && engine) net.send('state', engine.state()); }, 2000);

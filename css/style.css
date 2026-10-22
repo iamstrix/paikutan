@@ -216,3 +216,6 @@ body.phone-page.show-scene .ctrl .panel:not(.throw) { background: var(--panel-so
 @media (prefers-reduced-motion: reduce) {
   * { animation: none !important; }
 }
+
+/* Clean mode (H) hides the HUD for B-roll footage. */
+body.clean #hud, body.clean #corner { display: none; }
