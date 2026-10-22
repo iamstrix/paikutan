@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="theme-color" content="#2b1d12" />
+    <link rel="icon" href="data:," />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Lilita+One&family=Nunito:wght@600;800&display=swap" rel="stylesheet" />
+    <title>tromPOW!</title>
+  </head>
+  <body>
+    <main id="app">
+      <canvas id="game-canvas" aria-label="tromPOW game view"></canvas>
+      <div id="labels" aria-hidden="true"></div>
+
+      <section id="lobby" class="screen">
+        <div class="sign-card">
+          <h1 class="logo">trom<span>POW!</span></h1>
+          <p class="tagline">The spinning-top game of Brgy. Maligaya</p>
+          <label class="field">
+            <span>Your name</span>
+            <input id="name-input" maxlength="14" autocomplete="off" placeholder="e.g. Bunso" />
+          </label>
+          <div class="field">
+            <span>Who are you in the barangay?</span>
+            <div id="char-grid" role="radiogroup" aria-label="Character"></div>
+          </div>
+          <div class="field">
+            <span>Pick your trompo</span>
+            <div id="top-grid" role="radiogroup" aria-label="Trompo power"></div>
+          </div>
+          <div class="actions">
+            <button id="btn-solo" class="btn primary" type="button">Play with bots</button>
+            <button id="btn-host" class="btn" type="button">Create a room</button>
+            <div class="join">
+              <input id="code-input" maxlength="4" autocomplete="off" placeholder="CODE" aria-label="Room code" />
+              <button id="btn-join" class="btn" type="button">Join</button>
+            </div>
+          </div>
+          <p id="lobby-status" role="status"></p>
+          <details class="how">
+            <summary>How to play</summary>
+            <ul>
+              <li><b>WASD</b> walk, <b>Shift</b> run (bump someone and they tumble!)</li>
+              <li>Step inside the <b>ring of stones</b> to start a match</li>
+              <li><b>Spin:</b> draw fast circles on the ring for 3 seconds: speed = power, neatness = steadiness</li>
+              <li><b>Throw:</b> drag the mouse up and let go (Space = medium throw)</li>
+              <li><b>Fight:</b> WASD steers (costs a little spin), <b>Space / E</b> fires your power</li>
+              <li>Last trompo spinning in the circle wins. <b>1–6</b> to taunt! <b>📱</b> uses your phone as the trompo.</li>
+            </ul>
+          </details>
+        </div>
+      </section>
+
+      <section id="hud" hidden>
+        <div id="scoreboard" aria-label="Scores"></div>
+        <div id="corner">
+          <div id="clock">3:30 PM</div>
+          <div id="room-code" hidden></div>
+          <button id="mute-btn" class="icon-btn" type="button" aria-label="Mute">🔊</button>
+          <button id="pair-btn" class="icon-btn" type="button" aria-label="Connect your phone">📱</button>
+        </div>
+        <div id="banner" aria-live="assertive"></div>
+        <div id="spin-panel" class="hud-card" hidden>
+          <div class="sp-head"><b>SPIN!</b><span>Drag in circles around the ring for 3 seconds. Speed = power, neatness = steadiness.</span></div>
+          <canvas id="spin-pad" aria-label="Circle drawing pad"></canvas>
+          <div class="sp-meters">
+            <div class="meter-row"><span>Power</span><i><b id="sp-power"></b></i></div>
+            <div class="meter-row"><span>Steady</span><i><b id="sp-stab"></b></i></div>
+          </div>
+          <p id="sp-note" hidden></p>
+        </div>
+        <div id="throw-panel" class="hud-card" hidden>
+          <div id="tp-count">One</div>
+          <div class="aim"><i id="tp-arrow"></i></div>
+          <p id="tp-text"></p>
+        </div>
+        <div id="invert-warn" hidden>BAKUNAWA! Your steering is reversed!</div>
+        <button id="power-btn" type="button" hidden>
+          <svg viewBox="0 0 100 100" aria-hidden="true"><circle cx="50" cy="50" r="44" class="track" /><circle cx="50" cy="50" r="44" class="fill" id="power-ring" /></svg>
+          <span><b id="power-name">Kidlat</b><small id="power-state">charging…</small></span>
+        </button>
+        <div id="spin-meter" hidden>
+          <span>SPIN</span>
+          <div class="bar"><b id="spin-lag"></b><i id="spin-fill"></i></div>
+          <small id="palo-ready">POWER ✓</small>
+        </div>
+        <div id="hint"></div>
+        <div id="chat-legend"></div>
+      </section>
+
+      <section id="pair-panel" class="screen" hidden>
+        <div class="sign-card pair-card">
+          <h2>📱 Your phone as the trompo</h2>
+          <p>Scan with your phone camera. Hold the phone like a trompo: <b>draw circles</b> with your finger, <b>flick</b> it forward to throw, <b>tilt</b> to steer.</p>
+          <div id="pair-qr" aria-label="Pairing QR code"></div>
+          <p id="pair-status" class="small"></p>
+          <p id="pair-link" class="small"></p>
+          <button id="pair-close" class="btn" type="button">OK</button>
+        </div>
+      </section>
+
+      <section id="podium" class="screen" hidden>
+        <div class="sign-card podium-card">
+          <h2>Time to go home!</h2>
+          <p id="podium-winner"></p>
+          <ol id="podium-list"></ol>
+          <p class="small">Heading back to the barangay...</p>
+        </div>
+      </section>
+    </main>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

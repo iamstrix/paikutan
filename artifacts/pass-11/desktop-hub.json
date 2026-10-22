@@ -1,0 +1,137 @@
+{
+  "url": "http://127.0.0.1:5188",
+  "mode": "desktop",
+  "state": "hub",
+  "requestedState": "hub",
+  "appliedState": "hub",
+  "runId": "pass-11",
+  "seed": 42,
+  "screenshotPath": "artifacts/pass-11/desktop-hub.png",
+  "gpu": {
+    "renderer": "ANGLE (NVIDIA, NVIDIA GeForce GTX 1050 Ti (0x00001C82) Direct3D11 vs_5_0 ps_5_0, D3D11)",
+    "vendor": "Google Inc. (NVIDIA)",
+    "softwareRendered": false
+  },
+  "result": {
+    "ok": true,
+    "reason": "nonblank",
+    "rect": {
+      "x": 0,
+      "y": 0,
+      "width": 1280,
+      "height": 720
+    },
+    "drawingBuffer": {
+      "width": 1280,
+      "height": 720
+    },
+    "alphaPixels": 4096,
+    "variance": 255,
+    "colorBuckets": 235,
+    "metrics": {
+      "colorBuckets": 340,
+      "colorEntropyBits": 5.91,
+      "edgeDensity": 0.509,
+      "luminance": {
+        "mean": 113.6,
+        "p5": 19.3,
+        "p95": 229.3,
+        "contrast": 210
+      },
+      "dominantColorShare": 0.16,
+      "nonBackgroundShare": 0.84
+    },
+    "renderBudget": {
+      "tier": "desktop",
+      "note": "starting-point budget; adjust per game and document overrides",
+      "rows": [
+        {
+          "metric": "calls",
+          "actual": 153,
+          "limit": 300,
+          "ok": true
+        },
+        {
+          "metric": "triangles",
+          "actual": 37358,
+          "limit": 750000,
+          "ok": true
+        },
+        {
+          "metric": "geometries",
+          "actual": 201,
+          "limit": 300,
+          "ok": true
+        },
+        {
+          "metric": "textures",
+          "actual": 46,
+          "limit": 60,
+          "ok": true
+        }
+      ],
+      "withinBudget": true
+    },
+    "diagnostics": {
+      "frame": 13,
+      "role": "solo",
+      "phase": "hub",
+      "round": 0,
+      "clock": 930,
+      "localId": 0,
+      "players": [
+        {
+          "id": 0,
+          "name": "Ikaw",
+          "bot": false,
+          "wins": 0
+        },
+        {
+          "id": 1,
+          "name": "Mang Totoy",
+          "bot": true,
+          "wins": 0
+        },
+        {
+          "id": 2,
+          "name": "Kuya Jun",
+          "bot": true,
+          "wins": 0
+        },
+        {
+          "id": 3,
+          "name": "Tita Marites",
+          "bot": true,
+          "wins": 0
+        }
+      ],
+      "alive": 0,
+      "localSpin": 0,
+      "player": {
+        "position": {
+          "x": -0.25,
+          "y": 0,
+          "z": 5.5
+        },
+        "speed": 0
+      },
+      "renderer": {
+        "calls": 153,
+        "triangles": 37358,
+        "geometries": 201,
+        "textures": 46
+      },
+      "canvas": {
+        "clientWidth": 1280,
+        "clientHeight": 720,
+        "width": 1280,
+        "height": 720,
+        "dpr": 1
+      }
+    }
+  },
+  "consoleErrors": [],
+  "pageErrors": [],
+  "consoleErrorCount": 0,
+  "pageErrorCount": 0
+}

@@ -1,0 +1,292 @@
+:root {
+  --cream: #f6e7b8;
+  --paper: #fff6dc;
+  --ink: #2b1d12;
+  --red: #c0392b;
+  --blue: #1f5fa8;
+  --yellow: #f2c230;
+  font-family: Nunito, "Segoe UI", sans-serif;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  height: 100%;
+  background: #2b1d12;
+  overscroll-behavior: none;
+  touch-action: manipulation;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+#ctl {
+  min-height: 100%;
+  padding: max(10px, env(safe-area-inset-top)) 12px max(14px, env(safe-area-inset-bottom));
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  color: #fff;
+  font-family: "Lilita One", Impact, sans-serif;
+  font-size: 1.4rem;
+}
+
+header span {
+  color: var(--yellow);
+}
+
+#who {
+  padding: 2px 10px;
+  border: 3px solid var(--yellow);
+  border-radius: 999px;
+  background: var(--paper);
+  color: var(--ink);
+  font-style: normal;
+  font-size: 0.9rem;
+}
+
+#view {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.card {
+  padding: 14px;
+  border: 4px solid var(--ink);
+  border-radius: 16px;
+  background: var(--cream);
+  box-shadow: 0 6px 0 var(--ink);
+}
+
+.card.center {
+  text-align: center;
+}
+
+h2 {
+  margin: 0 0 6px;
+  font-family: "Lilita One", Impact, sans-serif;
+  font-weight: 400;
+  color: var(--red);
+}
+
+.small {
+  font-size: 0.85rem;
+  opacity: 0.85;
+}
+
+.btn {
+  min-height: 52px;
+  padding: 10px 18px;
+  border: 3px solid var(--ink);
+  border-radius: 14px;
+  background: var(--red);
+  color: #fff;
+  font-family: "Lilita One", Impact, sans-serif;
+  font-size: 1.3rem;
+  box-shadow: 0 4px 0 var(--ink);
+}
+
+.btn:disabled {
+  opacity: 0.5;
+}
+
+.pill {
+  min-height: 44px;
+  padding: 8px 12px;
+  border: 3px solid var(--ink);
+  border-radius: 999px;
+  background: var(--paper);
+  font: inherit;
+  font-weight: 800;
+}
+
+.chat {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.pad {
+  display: block;
+  width: 100%;
+  aspect-ratio: 1;
+  touch-action: none;
+}
+
+.meter {
+  display: grid;
+  grid-template-columns: 4.2em 1fr;
+  align-items: center;
+  gap: 8px;
+  margin-top: 6px;
+  font-family: "Lilita One", Impact, sans-serif;
+}
+
+.meter i {
+  height: 14px;
+  border: 2px solid var(--ink);
+  border-radius: 7px;
+  background: #e8c48c;
+  overflow: hidden;
+}
+
+.meter b {
+  display: block;
+  height: 100%;
+  width: 0;
+  background: linear-gradient(90deg, var(--red), var(--yellow), #2f9e6f);
+}
+
+.meter.big {
+  padding: 10px;
+  border: 3px solid var(--ink);
+  border-radius: 12px;
+  background: var(--paper);
+}
+
+.throw {
+  flex: 1;
+  touch-action: none;
+}
+
+.count {
+  font-family: "Lilita One", Impact, sans-serif;
+  font-size: 3.4rem;
+  color: var(--red);
+}
+
+.aim {
+  position: relative;
+  width: 140px;
+  height: 120px;
+  margin: 8px auto;
+}
+
+.aim i {
+  position: absolute;
+  left: 50%;
+  bottom: 0;
+  width: 16px;
+  height: 110px;
+  margin-left: -8px;
+  border-radius: 8px;
+  background: var(--red);
+  transform-origin: 50% 100%;
+}
+
+.fight {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.fight [hidden] {
+  display: none;
+}
+
+.fight > .pill {
+  align-self: center;
+}
+
+.warn {
+  padding: 8px;
+  border: 3px solid var(--ink);
+  border-radius: 12px;
+  background: #3a1f6b;
+  color: #fff;
+  text-align: center;
+  font-family: "Lilita One", Impact, sans-serif;
+}
+
+.joy {
+  position: relative;
+  flex: 1;
+  min-height: 200px;
+  border: 4px dashed rgba(255, 246, 220, 0.5);
+  border-radius: 20px;
+  display: grid;
+  place-items: center;
+  color: var(--paper);
+  font-weight: 800;
+  touch-action: none;
+}
+
+.joy span {
+  position: absolute;
+  bottom: 10px;
+  font-size: 0.85rem;
+}
+
+.joy-knob {
+  width: 80px;
+  height: 80px;
+  border: 4px solid var(--ink);
+  border-radius: 50%;
+  background: var(--yellow);
+}
+
+.power {
+  position: relative;
+  align-self: center;
+  width: 150px;
+  height: 150px;
+  border: 4px solid var(--ink);
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, var(--c1), var(--c2));
+  color: #fff;
+  box-shadow: 0 6px 0 var(--ink);
+  padding: 0;
+}
+
+.power svg {
+  position: absolute;
+  inset: 4px;
+  transform: rotate(-90deg);
+}
+
+.power .track {
+  fill: none;
+  stroke: rgba(0, 0, 0, 0.25);
+  stroke-width: 8;
+}
+
+.power .fill {
+  fill: none;
+  stroke: #fff;
+  stroke-width: 8;
+  stroke-linecap: round;
+  stroke-dasharray: 276.5;
+  stroke-dashoffset: 276.5;
+}
+
+.power span {
+  position: relative;
+  display: grid;
+  font-family: "Lilita One", Impact, sans-serif;
+  font-size: 1.3rem;
+  text-shadow: 0 2px 0 var(--ink);
+}
+
+.power small {
+  font-family: Nunito, sans-serif;
+  font-size: 0.75rem;
+  font-weight: 800;
+}
+
+.power.ready {
+  box-shadow: 0 6px 0 var(--ink), 0 0 0 8px rgba(255, 210, 63, 0.7);
+}

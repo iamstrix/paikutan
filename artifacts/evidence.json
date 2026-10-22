@@ -1,0 +1,46 @@
+{
+  "version": 1,
+  "runId": "pass-11",
+  "captures": [
+    {
+      "mode": "desktop",
+      "state": "lobby",
+      "report": "artifacts/pass-11/desktop-lobby.json"
+    },
+    {
+      "mode": "desktop",
+      "state": "hub",
+      "report": "artifacts/pass-11/desktop-hub.json"
+    },
+    {
+      "mode": "desktop",
+      "state": "charge",
+      "report": "artifacts/pass-11/desktop-charge.json"
+    },
+    {
+      "mode": "desktop",
+      "state": "throw",
+      "report": "artifacts/pass-11/desktop-throw.json"
+    },
+    {
+      "mode": "desktop",
+      "state": "fight",
+      "report": "artifacts/pass-11/desktop-fight.json"
+    },
+    {
+      "mode": "desktop",
+      "state": "dusk",
+      "report": "artifacts/pass-11/desktop-dusk.json"
+    },
+    {
+      "mode": "desktop",
+      "state": "podium",
+      "report": "artifacts/pass-11/desktop-podium.json"
+    }
+  ],
+  "artifacts": [
+    "artifacts/pass-11/host-pair-qr.png",
+    "artifacts/pass-11/phone-paikot.png",
+    "artifacts/pass-11/phone-laban.png"
+  ]
+}
