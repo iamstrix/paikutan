@@ -26,7 +26,7 @@ function start(newMode) {
   $('#lobby').hidden = mode !== 'host';
   state = snap = null; lastPhase = '';
   scene.reset();
-  scene.setLocalSteer(0, null); scene.setLocalSteer(1, null);
+  scene.setLocalSteer(-1, null);
   engine = new Engine(onEngine);
   $('#ticker').innerHTML = '';
   if (mode === 'title' || mode === 'demo') {

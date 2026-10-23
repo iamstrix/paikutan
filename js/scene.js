@@ -331,6 +331,7 @@ export function createScene(canvas, { low = false } = {}) {
   let camMode = 'auto';
   let party = null; // winner celebration: { slot, final, t }
   const localSteer = [null, null]; // this device's own steering, drawn without waiting for the host
+  let own = -1; // slot this device plays; -1 for a spectator screen, which shows both arrows
   let instant = true;
   let dogTarget = null;
   const camPos = new THREE.Vector3(), camLook = new THREE.Vector3();
@@ -355,7 +356,12 @@ export function createScene(canvas, { low = false } = {}) {
 
   function celebrate(slot, final) { party = { slot, final, t: 0 }; }
   function setCam(m) { camMode = m; }
-  function setLocalSteer(slot, v) { if (slot === 0 || slot === 1) localSteer[slot] = v; }
+  // slot < 0 clears it (spectator). A player device only shows its own arrow, never the rival's.
+  function setLocalSteer(slot, v) {
+    own = slot === 0 || slot === 1 ? slot : -1;
+    localSteer[0] = localSteer[1] = null;
+    if (own >= 0) localSteer[own] = v;
+  }
 
   function applySnap(snap, direct = true) {
     instant = direct;
@@ -463,7 +469,7 @@ export function createScene(canvas, { low = false } = {}) {
     const am = Math.hypot(ax, az);
     if (am > 0.05) t.dir = [ax / am, az / am];
     else if (!t.dir) t.dir = [-st.x || 0, -st.z || 1];
-    t.arrow.visible = st.alive && !party;
+    t.arrow.visible = st.alive && !party && (own < 0 || own === slot);
     if (t.arrow.visible) {
       t.arrow.rotation.y = Math.atan2(-t.dir[0], -t.dir[1]);
       t.arrow.scale.setScalar(0.6 + 0.4 * Math.min(1, am));

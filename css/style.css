@@ -238,11 +238,10 @@ body.clean #hud, body.clean #corner { display: none; }
 /* Trumpo carousel (pick and counterpick). */
 .carousel { display: flex; align-items: center; justify-content: center; gap: 4px; }
 .car-arrow { font: inherit; border: 0; background: var(--panel-soft); color: var(--yellow); width: 40px; height: 40px; border-radius: 50%; cursor: pointer; flex: none; }
-.car-stage { flex: 1; max-width: 340px; display: flex; align-items: center; justify-content: center; gap: 14px; min-height: 140px; touch-action: pan-y; user-select: none; }
-.car-side { opacity: 0.45; cursor: pointer; transition: opacity 0.15s; }
-.car-side:hover { opacity: 0.8; }
-.car-main { animation: car-in 0.2s ease-out, car-bob 1.8s ease-in-out 0.2s infinite; filter: drop-shadow(0 8px 10px rgba(0, 0, 0, 0.45)); }
-@keyframes car-in { from { transform: scale(0.75); opacity: 0.3; } }
+.car-stage { position: relative; flex: 1; max-width: 360px; height: 150px; overflow: hidden; touch-action: pan-y; user-select: none; cursor: grab; }
+.car-stage:active { cursor: grabbing; }
+.car-item { position: absolute; left: 50%; top: 50%; will-change: transform; }
+.car-item.main .top-icon { animation: car-bob 1.8s ease-in-out infinite; filter: drop-shadow(0 8px 10px rgba(0, 0, 0, 0.45)); }
 @keyframes car-bob { 50% { transform: translateY(-5px) rotate(3deg); } }
 .car-dots { display: flex; justify-content: center; gap: 6px; }
 .car-dots i { width: 7px; height: 7px; border-radius: 50%; background: rgba(255, 255, 255, 0.2); }

@@ -55,42 +55,93 @@ export function createController(root, { mode = 'phone', send, myId, sounds = mo
     return true;
   }
 
-  // Swipeable trumpo picker: big trumpo in the middle, smaller neighbours, arrows on both sides.
+  // Trumpo picker: a strip that follows the finger pixel by pixel, then eases to the nearest trumpo.
+  // pos is a fractional index; the trumpo nearest to it sits in the middle, biggest.
   function carousel(el, startId, onChange) {
-    const n = TOPS.length, at = k => TOPS[((k % n) + n) % n];
-    let i = Math.max(0, TOPS.findIndex(t => t.id === startId));
+    const n = TOPS.length, wrap = v => ((v % n) + n) % n;
+    let pos = Math.max(0, TOPS.findIndex(t => t.id === startId)), goal = pos, shown = -1, picked = TOPS[pos].id;
+    let anim = 0, drag = null;
     el.innerHTML = `
       <div class="carousel">
         <button class="car-arrow" data-d="-1" aria-label="Previous trumpo">◀</button>
-        <div class="car-stage"></div>
+        <div class="car-stage">${TOPS.map(t => `<div class="car-item">${topIcon(t.id, 124)}</div>`).join('')}</div>
         <button class="car-arrow" data-d="1" aria-label="Next trumpo">▶</button>
       </div>
       <div class="car-dots"></div>
       <div class="car-info"></div>`;
-    const stage = el.querySelector('.car-stage');
-    function render() {
-      const t = at(i), strong = TOPS.find(x => x.id === t.strong);
-      stage.innerHTML = `<div class="car-side" data-d="-1">${topIcon(at(i - 1).id, 52)}</div>
-        <div class="car-main">${topIcon(t.id, 124)}</div>
-        <div class="car-side" data-d="1">${topIcon(at(i + 1).id, 52)}</div>`;
-      el.querySelector('.car-dots').innerHTML = TOPS.map((x, k) => `<i class="${x === t ? 'on' : ''}"></i>`).join('');
+    const stage = el.querySelector('.car-stage'), items = [...stage.children];
+    const spacing = () => Math.min(120, stage.clientWidth * 0.36) || 110;
+    // Signed distance from the middle, the short way round the loop.
+    const offset = k => wrap(k - pos + n / 2) - n / 2;
+
+    function layout() {
+      const sp = spacing();
+      items.forEach((it, k) => {
+        const d = offset(k), a = Math.min(1, Math.abs(d));
+        it.style.transform = `translate(-50%, -50%) translateX(${d * sp}px) scale(${1 - 0.58 * a})`;
+        it.style.opacity = Math.abs(d) > 1.6 ? 0 : String(1 - 0.55 * a);
+        it.style.zIndex = String(10 - Math.round(Math.abs(d) * 3));
+      });
+      const idx = wrap(Math.round(pos));
+      if (idx !== shown) { shown = idx; info(); }
+    }
+    function info() {
+      const t = TOPS[shown], strong = TOPS.find(x => x.id === t.strong);
+      items.forEach((it, k) => it.classList.toggle('main', k === shown));
+      el.querySelector('.car-dots').innerHTML = TOPS.map((x, k) => `<i class="${k === shown ? 'on' : ''}"></i>`).join('');
       el.querySelector('.car-info').innerHTML = `<b class="car-name">${t.name}</b><small>${t.power}</small>
         ${statBars(t)}<p>${t.desc}</p>${strong ? `<p class="car-strong">Strong against <b>${strong.name}</b></p>` : ''}`;
     }
-    function move(d) { i += d; render(); if (sounds) audio.click(); onChange(at(i).id); }
-    el.querySelectorAll('.car-arrow').forEach(b => { b.onclick = () => move(+b.dataset.d); });
-    let x0 = null, swiped = false;
-    stage.addEventListener('pointerdown', e => { x0 = e.clientX; swiped = false; });
+    // Ease out from wherever the strip is (even halfway between two trumpos) to a whole index.
+    function settle(target) {
+      cancelAnimationFrame(anim);
+      goal = target;
+      const from = pos, t0 = performance.now(), dur = 180 + 140 * Math.min(2, Math.abs(target - from));
+      const tick = now => {
+        const k = Math.min(1, (now - t0) / dur);
+        pos = from + (target - from) * (1 - Math.pow(1 - k, 3));
+        layout();
+        if (k < 1) { anim = requestAnimationFrame(tick); return; }
+        pos = goal = wrap(target);
+        layout();
+        if (TOPS[shown].id !== picked) { picked = TOPS[shown].id; if (sounds) audio.click(); onChange(picked); }
+      };
+      anim = requestAnimationFrame(tick);
+    }
+
+    el.querySelectorAll('.car-arrow').forEach(b => { b.onclick = () => settle(Math.round(goal) + +b.dataset.d); });
+    stage.addEventListener('pointerdown', e => {
+      cancelAnimationFrame(anim);
+      stage.setPointerCapture(e.pointerId);
+      drag = { x: e.clientX, p: pos, moved: false, vx: 0, lx: e.clientX, lt: e.timeStamp };
+    });
+    stage.addEventListener('pointermove', e => {
+      if (!drag) return;
+      const dx = e.clientX - drag.x, dt = e.timeStamp - drag.lt;
+      if (Math.abs(dx) > 4) drag.moved = true;
+      if (dt > 0) drag.vx = drag.vx * 0.5 + 0.5 * (e.clientX - drag.lx) / dt;
+      drag.lx = e.clientX; drag.lt = e.timeStamp;
+      pos = drag.p - dx / spacing();
+      layout();
+    });
     stage.addEventListener('pointerup', e => {
-      if (x0 != null && Math.abs(e.clientX - x0) > 40) { swiped = true; move(e.clientX < x0 ? 1 : -1); }
-      x0 = null;
+      if (!drag) return;
+      const d = drag;
+      drag = null;
+      if (!d.moved) {
+        // A tap on a side trumpo brings it to the middle.
+        const hit = document.elementFromPoint(e.clientX, e.clientY);
+        const it = hit && hit.closest('.car-item');
+        settle(Math.round(pos + (it ? offset(items.indexOf(it)) : 0)));
+        return;
+      }
+      // A quick flick carries on to the next trumpo; a slow drag snaps to the nearest.
+      const fling = Math.max(-1, Math.min(1, (-d.vx * 140) / spacing()));
+      settle(Math.round(pos + fling));
     });
-    stage.addEventListener('click', e => {
-      const side = e.target.closest('.car-side');
-      if (side && !swiped) move(+side.dataset.d);
-    });
-    render();
-    return { get id() { return at(i).id; } };
+    stage.addEventListener('pointercancel', () => { drag = null; settle(Math.round(pos)); });
+    layout();
+    return { get id() { return TOPS[shown].id; } };
   }
 
   // ---------- views ----------
