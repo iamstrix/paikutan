@@ -215,6 +215,7 @@ export function playFx(e) {
   switch (e.type) {
     case 'hit': audio.hit(e.i); break;
     case 'launch': audio.land(); break;
+    case 'boost': audio.dash(); break;
     case 'fall': case 'out': audio.fall(); break;
     case 'dog': case 'bark': audio.bark(); break;
     case 'ability': {

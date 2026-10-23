@@ -26,6 +26,7 @@ function start(newMode) {
   $('#lobby').hidden = mode !== 'host';
   state = snap = null; lastPhase = '';
   scene.reset();
+  scene.setLocalSteer(0, null); scene.setLocalSteer(1, null);
   engine = new Engine(onEngine);
   $('#ticker').innerHTML = '';
   if (mode === 'title' || mode === 'demo') {
@@ -248,6 +249,7 @@ function frame(now) {
   const dt = Math.min(0.05, (now - last) / 1000);
   last = now;
   engine.update(dt);
+  if (ctrl && ctrl.slot >= 0) scene.setLocalSteer(ctrl.slot, ctrl.localSteer());
   scene.render(dt);
   updateHud();
   const humOn = mode !== 'title' && snap && state && ['throw', 'fight'].includes(state.phase);

@@ -8,6 +8,8 @@ export const STEP = 1 / 60;
 export const LAUNCH_Z = 4.2;     // where each player stands (slot 0 at +z, slot 1 at -z)
 export const LATE_T = 35;        // after this, spin drains twice as fast
 export const MAX_T = 70;
+export const BOOST_CD = 2.5;     // seconds between dashes
+const BOOST_V = 6, BOOST_COST = 0.04;
 
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 
@@ -21,8 +23,8 @@ export function makeTop(slot, charId, topId) {
     launched: false, alive: true, out: false,
     x: 0, z: slot === 0 ? LAUNCH_Z : -LAUNCH_Z, vx: 0, vz: 0,
     spin: 0, wobble: 0, steady: 1,
-    charge: 0, shield: 0, invert: 0, dash: 0, hitCd: 0,
-    sx: 0, sy: 0, wantAbility: false,
+    charge: 0, shield: 0, invert: 0, dash: 0, hitCd: 0, boostCd: 0,
+    sx: 0, sy: 0, wantAbility: false, wantBoost: false,
   };
 }
 
@@ -91,6 +93,21 @@ function useAbility(w, tp, opp) {
       break;
   }
   ev(w, 'ability', { slot: tp.slot, top: tp.top, x: tp.x, z: tp.z, tx: opp.x, tz: opp.z });
+}
+
+// Every top's quick dash: a burst toward where the player steers. It costs spin and adds
+// no weight, so Tikbalang's charge stays the heavy ram.
+function boost(w, tp, wx, wz) {
+  let dx = wx, dz = wz, d = Math.hypot(dx, dz);
+  if (d < 0.2) { dx = tp.vx; dz = tp.vz; d = Math.hypot(dx, dz); }
+  if (d < 0.5) { dx = -tp.x; dz = -tp.z; d = Math.hypot(dx, dz); }
+  if (d < 0.1) { [dx, dz] = toWorld(tp.slot, 0, 1); d = 1; }
+  dx /= d; dz /= d;
+  tp.vx = tp.vx * 0.4 + dx * BOOST_V;
+  tp.vz = tp.vz * 0.4 + dz * BOOST_V;
+  tp.spin -= BOOST_COST;
+  tp.boostCd = BOOST_CD;
+  ev(w, 'boost', { slot: tp.slot, x: tp.x, z: tp.z, dx, dz });
 }
 
 // Dashing or shielded tops count as heavier in a clash.
@@ -166,6 +183,7 @@ export function step(w, dt = STEP) {
     tp.invert = Math.max(0, tp.invert - dt);
     tp.dash = Math.max(0, tp.dash - dt);
     tp.hitCd = Math.max(0, tp.hitCd - dt);
+    tp.boostCd = Math.max(0, tp.boostCd - dt);
 
     let sx = tp.sx, sy = tp.sy;
     const m = Math.hypot(sx, sy);
@@ -173,6 +191,10 @@ export function step(w, dt = STEP) {
     if (tp.invert > 0) { sx = -sx; sy = -sy; }
     const [wx, wz] = toWorld(tp.slot, sx, sy);
     tp.wx = wx; tp.wz = wz;
+    if (tp.wantBoost) {
+      tp.wantBoost = false;
+      if (tp.boostCd <= 0) boost(w, tp, wx, wz);
+    }
     const grip = 7 * (0.35 + 0.65 * tp.spin);
     // The ground dips slightly toward the middle, so tops keep meeting.
     let ax = wx * grip - tp.x * 0.35, az = wz * grip - tp.z * 0.35;
@@ -230,7 +252,7 @@ export function snapshot(w) {
   return {
     t: r2(w.t),
     tops: w.tops.map(tp => [r2(tp.x), r2(tp.z), r3(Math.max(0, tp.spin)), r3(tp.wobble),
-      +tp.launched, +tp.alive, +tp.out, r2(tp.charge), +(tp.shield > 0), +(tp.invert > 0), +(tp.dash > 0), r2(tp.wx || 0), r2(tp.wz || 0)]),
+      +tp.launched, +tp.alive, +tp.out, r2(tp.charge), +(tp.shield > 0), +(tp.invert > 0), +(tp.dash > 0), r2(tp.wx || 0), r2(tp.wz || 0), r2(tp.boostCd)]),
     dog: w.dog ? [r2(w.dog.x), r2(w.dog.z), Math.sign(w.dog.vx)] : null,
   };
 }
@@ -239,7 +261,7 @@ export function decodeSnap(s) {
   return {
     t: s.t,
     tops: s.tops.map(a => ({ x: a[0], z: a[1], spin: a[2], wobble: a[3], launched: !!a[4], alive: !!a[5],
-      out: !!a[6], charge: a[7], shield: !!a[8], invert: !!a[9], dash: !!a[10], wx: a[11] || 0, wz: a[12] || 0 })),
+      out: !!a[6], charge: a[7], shield: !!a[8], invert: !!a[9], dash: !!a[10], wx: a[11] || 0, wz: a[12] || 0, boostCd: a[13] || 0 })),
     dog: s.dog && { x: s.dog[0], z: s.dog[1], dir: s.dog[2] },
   };
 }

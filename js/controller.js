@@ -1,6 +1,7 @@
 // One player's controls and screens: pick, spin (draw circles), throw (flick/swipe), fight (steer + power).
 // mode 'phone' uses touch + motion sensors; mode 'desktop' uses mouse + keyboard (practice on PC).
 import { CHARACTERS, TOPS, PLAYER_COLORS, STAT_LABELS, byId } from './data.js';
+import { toWorld, BOOST_CD } from './sim.js';
 import { CircleTracker, SPIN_SECONDS, readSwipe, Motion } from './input.js';
 import { WIN_ROUNDS } from './engine.js';
 import { audio } from './audio.js';
@@ -35,6 +36,7 @@ export function createController(root, { mode = 'phone', send, myId, sounds = mo
   const keys = new Set();
   let joy = null; // active touch joystick vector
   let lastSteer = [0, 0], lastSteerAt = 0;
+  let inverted = false; // Bakunawa eclipse, from the latest snapshot
 
   root.classList.add('ctrl', phone ? 'phone' : 'desktop');
 
@@ -68,7 +70,7 @@ export function createController(root, { mode = 'phone', send, myId, sounds = mo
       <li><b>Pick</b> a player and a trumpo. Each trumpo has its own stats and a mythic power.</li>
       <li><b>Paikot!</b> Draw fast circles on the ring. Faster = more spin, neater = steadier.</li>
       <li><b>Bitaw!</b> ${phone ? 'Tilt to aim, then flick your phone forward like casting a line.' : 'Drag the mouse upward and let go, fast.'}</li>
-      <li><b>Laban!</b> ${phone ? 'Tilt to steer' : 'WASD / arrows to steer'}, tap the power when it’s full. Last trumpo spinning inside the circle wins.</li>
+      <li><b>Laban!</b> ${phone ? 'Tilt to steer' : 'WASD / arrows to steer'}, ${phone ? 'tap Dash' : 'Shift to dash'} for a quick burst (costs a little spin), tap the power when it’s full. Last trumpo spinning inside the circle wins.</li>
     </ol>`;
   }
 
@@ -301,7 +303,11 @@ export function createController(root, { mode = 'phone', send, myId, sounds = mo
         <div class="warn" data-warn hidden>Bakunawa! Your steering is reversed!</div>
         ${phone ? `<div class="joy"><div class="joy-knob"></div><span>${motion.hasTilt ? 'Tilt to steer · or drag here' : 'Drag here to steer'}</span></div>
           <button class="btn ghost small center-btn" data-act="center">Re-center tilt</button>`
-        : `<div class="keys-hint">WASD / arrows steer · <b>Space</b> power · steering costs a little spin</div>`}
+        : `<div class="keys-hint">WASD / arrows steer · <b>Shift</b> dash · <b>Space</b> power · steering and dashing cost a little spin</div>`}
+        <button class="dash" data-act="dash">
+          <svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="45" class="track"/><circle cx="50" cy="50" r="45" class="fill" data-dring/></svg>
+          <span><b>DASH</b></span>
+        </button>
         <button class="power" data-act="power" style="--c1:${t.colors[0]};--c2:${t.colors[1]}">
           <svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="45" class="track"/><circle cx="50" cy="50" r="45" class="fill" data-ring/></svg>
           <span><b>${t.power}</b><small data-ready>charging…</small></span>
@@ -310,6 +316,7 @@ export function createController(root, { mode = 'phone', send, myId, sounds = mo
       motion.calibrate();
       const btn = root.querySelector('[data-act=power]');
       btn.onclick = () => send('ability', {});
+      root.querySelector('[data-act=dash]').addEventListener('pointerdown', e => { e.preventDefault(); send('boost', {}); });
       const c = root.querySelector('[data-act=center]');
       if (c) c.onclick = () => motion.calibrate();
       const pad = root.querySelector('.joy');
@@ -334,14 +341,25 @@ export function createController(root, { mode = 'phone', send, myId, sounds = mo
     });
   }
 
-  function sendSteer() {
-    let v;
-    if (joy) v = joy;
-    else if (!phone) {
+  function readSteer() {
+    if (joy) return joy;
+    if (!phone) {
       const x = (keys.has('right') ? 1 : 0) - (keys.has('left') ? 1 : 0), y = (keys.has('up') ? 1 : 0) - (keys.has('down') ? 1 : 0);
       const m = Math.hypot(x, y) || 1;
-      v = [x / m, y / m];
-    } else v = motion.steer();
+      return [x / m, y / m];
+    }
+    return motion.steer();
+  }
+
+  // Steering in world space straight from local input, so the guide arrow needs no host round trip.
+  function localSteer() {
+    if (key !== 'fight' || slot < 0) return null;
+    const [x, y] = readSteer(), k = inverted ? -1 : 1;
+    return toWorld(slot, x * k, y * k);
+  }
+
+  function sendSteer() {
+    const v = readSteer();
     const now = performance.now();
     if (Math.abs(v[0] - lastSteer[0]) + Math.abs(v[1] - lastSteer[1]) > 0.04 || now - lastSteerAt > 800) {
       lastSteer = v; lastSteerAt = now;
@@ -412,6 +430,9 @@ export function createController(root, { mode = 'phone', send, myId, sounds = mo
     root.querySelector('.power').classList.toggle('ready', ready);
     root.querySelector('[data-ready]').textContent = ready ? 'TAP!' : 'charging…';
     root.querySelector('[data-warn]').hidden = !a.invert;
+    inverted = a.invert;
+    root.querySelector('[data-dring]').style.strokeDashoffset = String(283 * (a.boostCd / BOOST_CD));
+    root.querySelector('.dash').classList.toggle('ready', a.boostCd <= 0 && a.alive);
   }
 
   // Countdown beeps and timers shown in any view.
@@ -430,12 +451,13 @@ export function createController(root, { mode = 'phone', send, myId, sounds = mo
     addEventListener('keydown', e => {
       if (map[e.code]) { keys.add(map[e.code]); e.preventDefault(); }
       if ((e.code === 'Space' || e.code === 'KeyE') && key === 'fight') { e.preventDefault(); send('ability', {}); }
+      if ((e.code === 'ShiftLeft' || e.code === 'ShiftRight' || e.code === 'KeyQ') && key === 'fight' && !e.repeat) { e.preventDefault(); send('boost', {}); }
     });
     addEventListener('keyup', e => { if (map[e.code]) keys.delete(map[e.code]); });
   }
 
   return {
-    setState, onSnap,
+    setState, onSnap, localSteer,
     get slot() { return slot; },
     destroy() { if (cleanup) cleanup(); cleanup = null; key = ''; root.innerHTML = ''; },
   };

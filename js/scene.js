@@ -330,6 +330,7 @@ export function createScene(canvas, { low = false } = {}) {
   // Spectator camera: 'auto', 'top' (top-down), 'close' (low, wheel-height chase), 'orbit'.
   let camMode = 'auto';
   let party = null; // winner celebration: { slot, final, t }
+  const localSteer = [null, null]; // this device's own steering, drawn without waiting for the host
   let instant = true;
   let dogTarget = null;
   const camPos = new THREE.Vector3(), camLook = new THREE.Vector3();
@@ -354,6 +355,7 @@ export function createScene(canvas, { low = false } = {}) {
 
   function celebrate(slot, final) { party = { slot, final, t: 0 }; }
   function setCam(m) { camMode = m; }
+  function setLocalSteer(slot, v) { if (slot === 0 || slot === 1) localSteer[slot] = v; }
 
   function applySnap(snap, direct = true) {
     instant = direct;
@@ -370,6 +372,10 @@ export function createScene(canvas, { low = false } = {}) {
         break;
       case 'launch':
         burst(e.x, 0.05, e.z, 18, '#d8b98c', 2.5, 1.2);
+        break;
+      case 'boost':
+        burst(e.x - e.dx * 0.4, 0.08, e.z - e.dz * 0.4, 22, '#e3c49a', 2.5, 1);
+        wave(e.x, e.z, '#fff8e7', 1.4, 0.25);
         break;
       case 'fall': case 'out':
         burst(e.x, 0.1, e.z, 60, '#d8b98c', 4, 2.5);
@@ -443,9 +449,10 @@ export function createScene(canvas, { low = false } = {}) {
       t.root.position.y = 0.3 * t.fallT;
       t.spinner.rotation.y -= dt * 3 * (1 - t.fallT);
     }
-    const am = Math.hypot(s.wx || 0, s.wz || 0);
+    const [ax, az] = localSteer[slot] || [s.wx || 0, s.wz || 0];
+    const am = Math.hypot(ax, az);
     t.arrow.visible = st.alive && am > 0.15 && !party;
-    if (t.arrow.visible) { t.arrow.rotation.y = Math.atan2(-s.wx, -s.wz); t.arrow.scale.setScalar(0.6 + 0.4 * Math.min(1, am)); }
+    if (t.arrow.visible) { t.arrow.rotation.y = Math.atan2(-ax, -az); t.arrow.scale.setScalar(0.6 + 0.4 * Math.min(1, am)); }
     t.shield.visible = st.shield && st.alive;
     t.shield.material.opacity = 0.18 + Math.sin(time * 8) * 0.06;
     t.ring.material.color.set(st.invert ? '#9b5de5' : PLAYER_COLORS[slot]);
@@ -546,5 +553,5 @@ export function createScene(canvas, { low = false } = {}) {
   window.addEventListener('resize', resize);
   resize();
   setView('spectator');
-  return { setPlayers, applySnap, fx, render, resize, setView, reset, celebrate, setCam };
+  return { setPlayers, applySnap, fx, render, resize, setView, reset, celebrate, setCam, setLocalSteer };
 }

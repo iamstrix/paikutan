@@ -219,3 +219,13 @@ body.phone-page.show-scene .ctrl .panel:not(.throw) { background: var(--panel-so
 
 /* Clean mode (H) hides the HUD for B-roll footage. */
 body.clean #hud, body.clean #corner { display: none; }
+
+/* Dash: smaller round button above the power button. */
+.dash { position: absolute; right: 42px; bottom: 170px; width: 84px; height: 84px; border-radius: 50%; border: 0; padding: 0; cursor: pointer;
+  background: rgba(27, 20, 48, 0.75); color: #fff8e7; display: flex; align-items: center; justify-content: center; touch-action: none; }
+.dash svg { position: absolute; inset: 0; transform: rotate(-90deg); }
+.dash .track { fill: none; stroke: rgba(255, 255, 255, 0.15); stroke-width: 8; }
+.dash .fill { fill: none; stroke: #fff8e7; stroke-width: 8; stroke-dasharray: 283; stroke-dashoffset: 0; stroke-linecap: round; }
+.dash span { position: relative; font-size: 0.8rem; }
+.dash.ready { box-shadow: 0 0 18px rgba(255, 248, 231, 0.6); }
+.ctrl.desktop .dash { left: calc(50% + 90px); right: auto; bottom: 94px; }

@@ -92,6 +92,7 @@ function frame(now) {
   const dt = Math.min(0.05, (now - last) / 1000);
   last = now;
   if (engine) engine.update(dt);
+  if (ctrl && ctrl.slot >= 0) scene.setLocalSteer(ctrl.slot, ctrl.localSteer());
   if (document.body.classList.contains('show-scene')) scene.render(dt);
   if (solo && snap && state) {
     const on = ['throw', 'fight'].includes(state.phase);

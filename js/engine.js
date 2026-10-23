@@ -120,6 +120,9 @@ export class Engine {
       case 'ability':
         if (tp && (this.phase === 'fight' || this.phase === 'throw')) tp.wantAbility = true;
         break;
+      case 'boost':
+        if (tp && (this.phase === 'fight' || this.phase === 'throw')) tp.wantBoost = true;
+        break;
       case 'rematch':
         if (this.phase !== 'matchEnd') return;
         pl.rematch = true;
@@ -205,6 +208,11 @@ export class Engine {
     const m = Math.hypot(tx, tz) || 1;
     const [lx, ly] = toLocal(s, tx / m, tz / m);
     me.sx = lx * 0.8; me.sy = ly * 0.8;
+    // Dash back from the edge, or to press an attack when ahead on spin.
+    if (me.boostCd <= 0 && me.spin > 0.35) {
+      const near = op.launched && op.alive && Math.hypot(op.x - me.x, op.z - me.z) < 2.2;
+      if (Math.hypot(me.x, me.z) > 4 || (near && me.spin > op.spin - 0.05 && Math.random() < 0.3)) me.wantBoost = true;
+    }
     if (me.charge >= 1 && Math.random() < 0.25) {
       const d = Math.hypot(op.x - me.x, op.z - me.z);
       if (me.top !== 'tikbalang' || d < 3.5) me.wantAbility = true;
