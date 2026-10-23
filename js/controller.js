@@ -55,6 +55,44 @@ export function createController(root, { mode = 'phone', send, myId, sounds = mo
     return true;
   }
 
+  // Swipeable trumpo picker: big trumpo in the middle, smaller neighbours, arrows on both sides.
+  function carousel(el, startId, onChange) {
+    const n = TOPS.length, at = k => TOPS[((k % n) + n) % n];
+    let i = Math.max(0, TOPS.findIndex(t => t.id === startId));
+    el.innerHTML = `
+      <div class="carousel">
+        <button class="car-arrow" data-d="-1" aria-label="Previous trumpo">◀</button>
+        <div class="car-stage"></div>
+        <button class="car-arrow" data-d="1" aria-label="Next trumpo">▶</button>
+      </div>
+      <div class="car-dots"></div>
+      <div class="car-info"></div>`;
+    const stage = el.querySelector('.car-stage');
+    function render() {
+      const t = at(i), strong = TOPS.find(x => x.id === t.strong);
+      stage.innerHTML = `<div class="car-side" data-d="-1">${topIcon(at(i - 1).id, 52)}</div>
+        <div class="car-main">${topIcon(t.id, 124)}</div>
+        <div class="car-side" data-d="1">${topIcon(at(i + 1).id, 52)}</div>`;
+      el.querySelector('.car-dots').innerHTML = TOPS.map((x, k) => `<i class="${x === t ? 'on' : ''}"></i>`).join('');
+      el.querySelector('.car-info').innerHTML = `<b class="car-name">${t.name}</b><small>${t.power}</small>
+        ${statBars(t)}<p>${t.desc}</p>${strong ? `<p class="car-strong">Strong against <b>${strong.name}</b></p>` : ''}`;
+    }
+    function move(d) { i += d; render(); if (sounds) audio.click(); onChange(at(i).id); }
+    el.querySelectorAll('.car-arrow').forEach(b => { b.onclick = () => move(+b.dataset.d); });
+    let x0 = null, swiped = false;
+    stage.addEventListener('pointerdown', e => { x0 = e.clientX; swiped = false; });
+    stage.addEventListener('pointerup', e => {
+      if (x0 != null && Math.abs(e.clientX - x0) > 40) { swiped = true; move(e.clientX < x0 ? 1 : -1); }
+      x0 = null;
+    });
+    stage.addEventListener('click', e => {
+      const side = e.target.closest('.car-side');
+      if (side && !swiped) move(+side.dataset.d);
+    });
+    render();
+    return { get id() { return at(i).id; } };
+  }
+
   // ---------- views ----------
   function viewLobby() {
     show('lobby', `
@@ -70,7 +108,8 @@ export function createController(root, { mode = 'phone', send, myId, sounds = mo
       <li><b>Pick</b> a player and a trumpo. Each trumpo has its own stats and a mythic power.</li>
       <li><b>Paikot!</b> Draw fast circles on the ring. Faster = more spin, neater = steadier.</li>
       <li><b>Bitaw!</b> ${phone ? 'Tilt to aim, then flick your phone forward like casting a line.' : 'Drag the mouse upward and let go, fast.'}</li>
-      <li><b>Laban!</b> ${phone ? 'Tilt to steer' : 'WASD / arrows to steer'}, ${phone ? 'tap Dash' : 'Shift to dash'} for a quick burst (costs a little spin), tap the power when it’s full. Behind on spin? Dash into your rival to steal some back. Last trumpo spinning inside the circle wins.</li>
+      <li><b>Laban!</b> ${phone ? 'Tilt to steer' : 'WASD / arrows to steer'}, ${phone ? 'tap Dash' : 'Shift to dash'} for a quick burst (costs a little spin), tap the power when it’s full. Behind on spin? Dash into your rival to steal some back.</li>
+      <li><b>Lost a round?</b> You may switch trumpo to counter your rival. The round winner stays locked. Last trumpo spinning inside the circle wins.</li>
     </ol>`;
   }
 
@@ -97,11 +136,7 @@ export function createController(root, { mode = 'phone', send, myId, sounds = mo
             <div class="card-body"><b>${c.name}</b><small>${c.title}</small><p>${c.blurb}</p></div>
           </button>`).join('')}</div>
         <h2>Pick your trumpo</h2>
-        <div class="cards" data-list="top">${TOPS.map(t => `
-          <button class="card" data-id="${t.id}">
-            ${topIcon(t.id, 54)}
-            <div class="card-body"><b>${t.name}</b><small>${t.power}</small>${statBars(t)}<p>${t.desc}</p></div>
-          </button>`).join('')}</div>
+        <div data-car></div>
         <button class="btn big" data-act="ready">Ready!</button>
       </div>`, () => {
       root.querySelectorAll('[data-list] .card').forEach(b => {
@@ -113,6 +148,7 @@ export function createController(root, { mode = 'phone', send, myId, sounds = mo
           send('pick', { ...sel, ready: false });
         };
       });
+      carousel(root.querySelector('[data-car]'), sel.top, id => { sel.top = id; send('pick', { ...sel, ready: false }); });
       root.querySelector('[data-act=ready]').onclick = () => { if (sounds) audio.click(); send('pick', { ...sel, ready: true }); };
     });
     if (fresh) mark();
@@ -378,6 +414,34 @@ export function createController(root, { mode = 'phone', send, myId, sounds = mo
       </div>`);
   }
 
+  function viewCounter() {
+    const loser = st.result && st.result.winner >= 0 ? 1 - st.result.winner : -1;
+    const o = opp(), ot = byId(TOPS, o.top);
+    if (slot !== loser) {
+      show('counterWait', `
+        <div class="hud-msg">
+          <h2>Rival is picking a counter…</h2>
+          <p>Round winners stay locked: you keep <b>${byId(TOPS, me().top).name}</b>.</p>
+          <p class="score" data-timer></p>
+        </div>`);
+      return;
+    }
+    const cur = me().top;
+    show('counter', `
+      <div class="panel center counter">
+        <h2>Pick a counter <span class="timer" data-timer></span></h2>
+        <p class="muted small">You lost the round, so you may switch. ${o.name} is locked with <b>${ot.name}</b>.</p>
+        <div data-car></div>
+        <button class="btn big" data-act="confirm"></button>
+      </div>`, () => {
+      const btn = root.querySelector('[data-act=confirm]');
+      const label = id => { btn.textContent = id === cur ? `Keep ${byId(TOPS, cur).name}` : `Switch to ${byId(TOPS, id).name}`; };
+      const car = carousel(root.querySelector('[data-car]'), cur, label);
+      label(cur);
+      btn.onclick = () => { if (sounds) audio.click(); btn.disabled = true; send('counter', { top: car.id }); };
+    });
+  }
+
   function viewMatchEnd() {
     const champ = st.result && st.result.champion === slot;
     const p = me();
@@ -414,6 +478,7 @@ export function createController(root, { mode = 'phone', send, myId, sounds = mo
         break;
       case 'fight': viewFight(); break;
       case 'roundEnd': viewRoundEnd(); break;
+      case 'counter': viewCounter(); break;
       case 'matchEnd': viewMatchEnd(); break;
     }
   }

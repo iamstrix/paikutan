@@ -86,6 +86,10 @@ function onMessage(ev, p) {
   }
 }
 
+const musicBtn = () => $('#btn-music').classList.toggle('off', audio.musicMuted);
+$('#btn-music').onclick = () => { audio.unlock(); audio.setMusicMuted(!audio.musicMuted); musicBtn(); };
+musicBtn();
+
 let last = performance.now();
 function frame(now) {
   requestAnimationFrame(frame);

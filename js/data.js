@@ -13,16 +13,17 @@ export const CHARACTERS = [
     blurb: 'Sells the trumpos, and knows how to throw them.' },
 ];
 
+// strong: the trumpo this one counters (a soft edge, shown to players for counterpicks).
 export const TOPS = [
-  { id: 'kidlat', name: 'Kidlat', power: 'Lightning Strike', str: 4, lon: 2, sta: 3, colors: ['#ffd23f', '#1d3557'],
+  { id: 'kidlat', name: 'Kidlat', power: 'Lightning Strike', strong: 'diwata', str: 4, lon: 2, sta: 3, colors: ['#ffd23f', '#1d3557'],
     desc: 'A bolt from the sky zaps your rival: knockback and lost spin.' },
-  { id: 'tikbalang', name: 'Tikbalang', power: 'Tikbalang Dash', str: 5, lon: 2, sta: 2, colors: ['#8d5524', '#e63946'],
+  { id: 'tikbalang', name: 'Tikbalang', power: 'Tikbalang Dash', strong: 'agimat', str: 5, lon: 2, sta: 2, colors: ['#8d5524', '#e63946'],
     desc: 'Charge straight at your rival with extra weight. Aim matters.' },
-  { id: 'agimat', name: 'Agimat', power: 'Amulet Shield', str: 2, lon: 3, sta: 4, colors: ['#2a9d8f', '#e9c46a'],
+  { id: 'agimat', name: 'Agimat', power: 'Amulet Shield', strong: 'kidlat', str: 2, lon: 3, sta: 4, colors: ['#2a9d8f', '#e9c46a'],
     desc: 'For 5 seconds, hits barely hurt and you are harder to push.' },
-  { id: 'diwata', name: 'Diwata', power: "Diwata's Blessing", str: 2, lon: 4, sta: 3, colors: ['#f6bdc0', '#7b2cbf'],
+  { id: 'diwata', name: 'Diwata', power: "Diwata's Blessing", strong: 'bakunawa', str: 2, lon: 4, sta: 3, colors: ['#f6bdc0', '#7b2cbf'],
     desc: 'Restores spin and steadies your wobble.' },
-  { id: 'bakunawa', name: 'Bakunawa', power: 'Eclipse', str: 3, lon: 3, sta: 3, colors: ['#0b132b', '#5bc0be'],
+  { id: 'bakunawa', name: 'Bakunawa', power: 'Eclipse', strong: 'tikbalang', str: 3, lon: 3, sta: 3, colors: ['#0b132b', '#5bc0be'],
     desc: 'The sea serpent swallows the moon: rival steering is reversed for 5 seconds.' },
 ];
 

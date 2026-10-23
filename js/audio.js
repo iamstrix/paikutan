@@ -2,6 +2,9 @@
 // Music is a kulintang-style gong loop (pentatonic gongs, agung, dabakan drum).
 let ctx = null, master, sfxBus, musicBus, noiseBuf;
 let muted = false;
+// Music can be switched off on its own (sound effects stay on); remembered per device.
+let musicMuted = false, musicLevel = 0.32;
+try { musicMuted = localStorage.getItem('paikutan-music') === 'off'; } catch { /* storage blocked: default on */ }
 const hums = [];
 let whirNode = null;
 let musicTimer = null, musicStep = 0, musicNext = 0, musicWanted = null;
@@ -15,7 +18,7 @@ function ensure() {
   master.gain.value = muted ? 0 : 0.9;
   master.connect(ctx.destination);
   sfxBus = ctx.createGain(); sfxBus.gain.value = 0.8; sfxBus.connect(master);
-  musicBus = ctx.createGain(); musicBus.gain.value = 0.32; musicBus.connect(master);
+  musicBus = ctx.createGain(); musicBus.gain.value = musicMuted ? 0 : musicLevel; musicBus.connect(master);
   noiseBuf = ctx.createBuffer(1, ctx.sampleRate, ctx.sampleRate);
   const d = noiseBuf.getChannelData(0);
   for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
@@ -85,6 +88,12 @@ export const audio = {
     if (musicWanted) { const [on, level] = musicWanted; musicWanted = null; this.music(on, level); }
   },
   get muted() { return muted; },
+  get musicMuted() { return musicMuted; },
+  setMusicMuted(m) {
+    musicMuted = m;
+    try { localStorage.setItem('paikutan-music', m ? 'off' : 'on'); } catch { /* not saved: fine */ }
+    if (ctx) musicBus.gain.setTargetAtTime(m ? 0 : musicLevel, ctx.currentTime, 0.1);
+  },
   setMuted(m) {
     muted = m;
     if (ctx) master.gain.setTargetAtTime(m ? 0 : 0.9, ctx.currentTime, 0.05);
@@ -92,7 +101,8 @@ export const audio = {
   music(on, level = 0.32) {
     // Browsers block audio before the first tap, so remember the request until unlock().
     if (!ctx) { musicWanted = [on, level]; return; }
-    musicBus.gain.setTargetAtTime(level, ctx.currentTime, 0.4);
+    musicLevel = level;
+    musicBus.gain.setTargetAtTime(musicMuted ? 0 : level, ctx.currentTime, 0.4);
     if (on && !musicTimer) {
       musicNext = ctx.currentTime + 0.1;
       musicTimer = setInterval(scheduleMusic, 60);

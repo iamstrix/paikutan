@@ -101,6 +101,9 @@ function onState(s) {
     if ((s.phase === 'roundEnd' || s.phase === 'matchEnd') && s.result && s.result.winner >= 0 && mode !== 'title') audio.win();
     if (s.phase === 'roundEnd' && s.result && s.result.winner >= 0) scene.celebrate(s.result.winner, Math.max(...s.scores) >= WIN_ROUNDS);
     if (s.phase === 'fight') bannerUntil = performance.now() + 1200;
+    if (s.phase === 'charge' && s.switched && s.switched.from !== s.switched.to) {
+      say(`Counterpick! <b style="color:${PLAYER_COLORS[s.switched.slot]}">${nameOf(s.switched.slot)}</b> switches to ${byId(TOPS, s.switched.to).name}.`);
+    }
     audio.music(true, ['fight', 'throw', 'countdown'].includes(s.phase) ? 0.12 : 0.3);
     lastPhase = s.phase;
   }
@@ -164,7 +167,18 @@ function renderBanner() {
   switch (ph) {
     case 'pick': big = 'Pumili!'; small = 'Players are picking a character and a trumpo'; break;
     case 'vs': big = `${nameOf(0)} <em>vs</em> ${nameOf(1)}`; small = 'Best of 3'; break;
-    case 'charge': big = `Round ${state.round}: PAIKOT!`; small = 'Players draw fast circles to spin their trumpo'; break;
+    case 'counter': {
+      const w = state.result.winner;
+      big = `${nameOf(1 - w)} is picking a counter…`;
+      small = `${nameOf(w)} won, so stays locked with ${byId(TOPS, state.players[w].top).name} · ${t}s`;
+      break;
+    }
+    case 'charge': {
+      const sw = state.switched;
+      big = `Round ${state.round}: PAIKOT!`;
+      small = sw ? `${nameOf(sw.slot)} ${sw.from === sw.to ? 'stays with' : 'switches to'} ${byId(TOPS, sw.to).name}!` : 'Players draw fast circles to spin their trumpo';
+      break;
+    }
     case 'countdown': big = ['', 'Isa…', 'Dalawa…', 'Tatlo…'][4 - Math.min(3, Math.max(1, t))]; small = 'Get ready to throw'; break;
     case 'throw': big = 'BITAW!'; break;
     case 'fight': if (performance.now() < bannerUntil) big = 'LABAN!'; break;
@@ -229,11 +243,15 @@ $('#btn-rematch').onclick = () => {
   engine.players.forEach(p => p && engine.handle(p.id, 'rematch'));
 };
 $('#btn-mute').onclick = () => { audio.unlock(); audio.setMuted(!audio.muted); $('#btn-mute').textContent = audio.muted ? '🔇' : '🔊'; };
+const musicBtn = () => { $('#btn-music').classList.toggle('off', audio.musicMuted); $('#btn-music').title = audio.musicMuted ? 'Music off (N)' : 'Music on (N)'; };
+$('#btn-music').onclick = () => { audio.unlock(); audio.setMusicMuted(!audio.musicMuted); musicBtn(); };
+musicBtn();
 $('#btn-full').onclick = () => (document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen()).catch(() => {});
 addEventListener('keydown', e => {
   if (e.code === 'Escape' && mode !== 'title') start('title');
   if (e.target instanceof HTMLInputElement) return;
   if (e.code === 'KeyM') $('#btn-mute').click();
+  if (e.code === 'KeyN') $('#btn-music').click();
   // B-roll helpers: C cycles the spectator camera, H hides the HUD for clean footage.
   if (e.code === 'KeyC' && mode !== 'practice') {
     camIdx = (camIdx + 1) % CAMS.length;

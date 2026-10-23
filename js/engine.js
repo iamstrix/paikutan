@@ -4,7 +4,7 @@ import { CHARACTERS, TOPS } from './data.js';
 import { createWorld, launch, step, snapshot, STEP, toLocal } from './sim.js';
 
 export const WIN_ROUNDS = 2; // best of 3
-const DURATION = { vs: 3.5, charge: 25, countdown: 3.2, throw: 3, roundEnd: 4.5 };
+const DURATION = { vs: 3.5, charge: 25, countdown: 3.2, throw: 3, roundEnd: 3, counter: 8 };
 
 const pickRandom = list => list[Math.floor(Math.random() * list.length)].id;
 const rnd = (a, b) => a + Math.random() * (b - a);
@@ -21,6 +21,7 @@ export class Engine {
     this.result = null;
     this.acc = 0;
     this.cpuT = [0, 0];
+    this.switched = null; // last counterpick: { slot, from, to }
     this.go('lobby');
   }
 
@@ -29,7 +30,7 @@ export class Engine {
   state() {
     return {
       phase: this.phase, timer: Math.max(0, Math.round(this.timer * 10) / 10), round: this.round,
-      scores: this.scores, result: this.result,
+      scores: this.scores, result: this.result, switched: this.switched,
       players: this.players.map(p => p && {
         id: p.id, name: p.name, kind: p.kind, char: p.char, top: p.top, picked: p.picked,
         spun: !!p.spun, spinPower: p.spun ? p.spun.power : 0, steadiness: p.spun ? p.spun.stability : 0,
@@ -46,6 +47,7 @@ export class Engine {
     const ps = this.players.filter(Boolean);
     if (phase === 'pick') ps.forEach(p => { p.picked = false; p.rematch = false; });
     if (phase === 'vs') { this.round = 0; this.scores = [0, 0]; this.result = null; }
+    if (phase === 'vs' || phase === 'counter') this.switched = null;
     if (phase === 'charge') {
       this.round++;
       this.world = null;
@@ -123,6 +125,15 @@ export class Engine {
       case 'boost':
         if (tp && (this.phase === 'fight' || this.phase === 'throw')) tp.wantBoost = true;
         break;
+      case 'counter': {
+        // Only the loser of the last round may switch; the winner stays locked.
+        if (this.phase !== 'counter' || !this.result || s !== 1 - this.result.winner) return;
+        const from = pl.top;
+        if (TOPS.some(t => t.id === p.top)) pl.top = p.top;
+        this.switched = { slot: s, from, to: pl.top };
+        this.go('charge');
+        break;
+      }
       case 'rematch':
         if (this.phase !== 'matchEnd') return;
         pl.rematch = true;
@@ -155,8 +166,9 @@ export class Engine {
       this.go('countdown');
     } else if (ph === 'countdown' && this.timer <= 0) this.go('throw');
     else if (ph === 'roundEnd' && this.timer <= 0) {
-      this.go(Math.max(...this.scores) >= WIN_ROUNDS ? 'matchEnd' : 'charge');
-    }
+      // A replayed draw has no loser, so there is no counterpick.
+      this.go(Math.max(...this.scores) >= WIN_ROUNDS ? 'matchEnd' : this.result.winner >= 0 ? 'counter' : 'charge');
+    } else if (ph === 'counter' && this.timer <= 0) this.go('charge');
     if (ph === 'throw' && this.timer <= 0) {
       this.players.forEach((p, s) => { if (!p.thrown) this.throwTop(s, 0.15, 0); });
       if (this.phase === 'throw') this.go('fight');
@@ -187,6 +199,9 @@ export class Engine {
       } else if (ph === 'fight' && ready) {
         this.cpuT[s] = 0.2;
         this.cpuSteer(s);
+      } else if (ph === 'counter' && ready && this.result && s === 1 - this.result.winner) {
+        const c = TOPS.find(t => t.strong === this.players[this.result.winner].top);
+        this.handle(p.id, 'counter', { top: c && Math.random() < 0.7 ? c.id : p.top });
       } else if (ph === 'matchEnd' && this.cpuT[s] < -3 && !p.rematch) {
         this.handle(p.id, 'rematch');
       }
