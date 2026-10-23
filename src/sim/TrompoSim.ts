@@ -18,6 +18,30 @@ export const MAX_T = 90;
 export const RING_RADIUS = 2.8;
 export const WORLD_SCALE = RING_RADIUS / ARENA_R;
 
+// tromPOW core-loop tuning on top of paikutan (see tests/balance.spec.ts for the targets).
+/** The circle starts shrinking at SQUEEZE_START and reaches SQUEEZE_MIN of its size at SQUEEZE_END. */
+export const SQUEEZE_START = 15;
+export const SQUEEZE_END = 35;
+export const SQUEEZE_MIN = 0.6;
+/** Palo: a dash-strike that costs spin and leaves you exposed for a moment afterwards. */
+export const PALO_SPEED = 4.5;
+export const PALO_COST = 0.015;
+export const PALO_CD = 1.6;
+const PALO_DASH = 0.35;
+const EXPOSED = 0.6;
+/** After landing, a top takes no clash damage (except a landing strike) so the opening isn't a blind pile-up. */
+const GRACE = 1.5;
+const LANDING_STRIKE_R = 1.0;
+const CHARGE_START = 0.4;
+/** A hit within this long before a top goes down earns the hitter the KO. */
+export const KO_CREDIT = 2;
+const FLICK_SPEED = 7;
+const FLICK_R = 0.25;
+const DIP = 0.5;
+const KNOCKBACK = 1.0;
+/** Passive spin drain per second (paikutan: 0.03); the squeeze, not slow decay, should end rounds. */
+const BASE_DECAY = 0.02;
+
 const clamp = (v: number, a: number, b: number) => Math.max(a, Math.min(b, v));
 
 /** What one player's spin drawing and throw produced. Every input device produces this. */
@@ -46,6 +70,13 @@ export type Top = {
   shield: number;
   invert: number;
   dash: number;
+  paloCd: number;
+  /** Seconds left of the post-palo exposed window (lighter and takes more damage). */
+  exposed: number;
+  grace: number;
+  stun: number;
+  lastHitBy: number;
+  lastHitAt: number;
   /** Steering in player-local space: x = right, y = away from the player. */
   sx: number;
   sy: number;
@@ -56,12 +87,20 @@ export type SimEvent =
   | { type: 'launch'; id: number; x: number; z: number; p: number }
   | { type: 'hit'; a: number; b: number; x: number; z: number; i: number }
   | { type: 'ability'; id: number; power: string; x: number; z: number; tx: number; tz: number }
-  | { type: 'out'; id: number; x: number; z: number }
-  | { type: 'fall'; id: number; x: number; z: number }
+  | { type: 'out'; id: number; x: number; z: number; by: number }
+  | { type: 'fall'; id: number; x: number; z: number; by: number }
+  | { type: 'palo'; id: number; x: number; z: number }
+  | { type: 'steal'; id: number; amount: number; x: number; z: number }
+  | { type: 'strike'; id: number; target: number; x: number; z: number }
+  | { type: 'flick'; by: number; x: number; z: number }
+  | { type: 'flickHit'; id: number; x: number; z: number }
+  | { type: 'squeeze' }
   | { type: 'dog' }
   | { type: 'bark'; id: number; x: number; z: number };
 
 export type Dog = { x: number; z: number; vx: number; hit: Set<number> };
+/** A multo's flicked tsinelas: a small slider that bumps live tops; never scores. */
+export type Flick = { by: number; x: number; z: number; vx: number; vz: number; life: number; hit: Set<number> };
 
 /** Player-local direction (x = right, y = away) to world x/z for a seat, and back. */
 export function toWorld(seat: number, x: number, y: number): [number, number] {
@@ -78,13 +117,16 @@ export function toLocal(seat: number, wx: number, wz: number): [number, number] 
 // How much a hit unsettles a top: character balance and how neatly the player drew circles.
 const wobbleGain = (tp: Top) => (1.6 - tp.sta * 0.2) * (1.25 - 0.5 * tp.steady);
 // Dashing or shielded tops count as heavier in a clash.
-const weight = (tp: Top) => tp.mass * (tp.dash > 0 ? 1.8 : 1) * (tp.shield > 0 ? 1.5 : 1);
+const weight = (tp: Top) => tp.mass * (tp.dash > 0 ? 1.8 : 1) * (tp.shield > 0 ? 1.5 : 1) * (tp.exposed > 0 ? 0.7 : 1);
 
 export class Battle {
   readonly tops: Top[];
   t = 0;
   events: SimEvent[] = [];
   dog: Dog | null = null;
+  readonly flicks: Flick[] = [];
+  /** Current circle radius (shrinks during the squeeze). */
+  ring = ARENA_R;
   over = false;
   winner = -1;
   reason = '';
@@ -119,6 +161,12 @@ export class Battle {
         shield: 0,
         invert: 0,
         dash: 0,
+        paloCd: 0,
+        exposed: 0,
+        grace: 0,
+        stun: 0,
+        lastHitBy: -1,
+        lastHitAt: -99,
         sx: 0,
         sy: 0,
         wantAbility: false,
@@ -139,15 +187,64 @@ export class Battle {
     const s = clamp(input.steadiness, 0, 1);
     const [fx, fz] = toWorld(tp.seat, Math.sin(a), Math.cos(a));
     tp.launched = true;
-    tp.x = Math.cos(tp.seat) * LAUNCH_R + fx * (0.3 + p);
-    tp.z = Math.sin(tp.seat) * LAUNCH_R + fz * (0.3 + p);
-    tp.vx = fx * (1.5 + 5 * p);
-    tp.vz = fz * (1.5 + 5 * p);
+    // The throw places the top: power is how far in it lands, the tilt is where. That makes it a decision.
+    const reach = 0.3 + p * 2.2;
+    tp.x = Math.cos(tp.seat) * LAUNCH_R + fx * reach;
+    tp.z = Math.sin(tp.seat) * LAUNCH_R + fz * reach;
+    tp.vx = fx * (1 + 2 * p);
+    tp.vz = fz * (1 + 2 * p);
+    tp.grace = GRACE;
+    tp.charge = CHARGE_START;
     tp.spin = clamp(0.45 + 0.4 * clamp(input.spinPower, 0, 1) + 0.15 * p, 0, 1);
     tp.steady = s;
     // A harder throw lands with more shake; a neat spin absorbs some of it.
     tp.wobble = 0.2 * (1 - s) + 0.2 * p * (1 - 0.6 * s);
     this.events.push({ type: 'launch', id, x: tp.x, z: tp.z, p });
+    // Landing strike: come down on a top that's already spinning (the old pukpukan hit).
+    for (const o of this.tops) {
+      if (o === tp || !o.launched || !o.alive || o.grace > 0.6) continue;
+      if (Math.hypot(o.x - tp.x, o.z - tp.z) > LANDING_STRIKE_R) continue;
+      const dx = o.x - tp.x;
+      const dz = o.z - tp.z;
+      const d = Math.hypot(dx, dz) || 1;
+      this.damage(o, tp, 1, true);
+      o.vx += (dx / d) * 4;
+      o.vz += (dz / d) * 4;
+      this.events.push({ type: 'strike', id, target: o.id, x: o.x, z: o.z });
+    }
+  }
+
+  /** Palo: dash toward where you're steering (or the nearest rival). Costs spin; leaves you exposed after. */
+  palo(id: number): void {
+    const tp = this.top(id);
+    if (!tp || !tp.launched || !tp.alive || tp.paloCd > 0 || tp.spin < PALO_COST + 0.08 || tp.stun > 0) return;
+    let dx: number;
+    let dz: number;
+    if (Math.hypot(tp.sx, tp.sy) > 0.2) {
+      const flip = tp.invert > 0 ? -1 : 1;
+      [dx, dz] = toWorld(tp.seat, tp.sx * flip, tp.sy * flip);
+    } else {
+      const op = this.nearestRival(tp);
+      dx = op ? op.x - tp.x : -tp.x;
+      dz = op ? op.z - tp.z : -tp.z;
+    }
+    const d = Math.hypot(dx, dz) || 1;
+    tp.vx = (dx / d) * PALO_SPEED + tp.vx * 0.3;
+    tp.vz = (dz / d) * PALO_SPEED + tp.vz * 0.3;
+    tp.dash = Math.max(tp.dash, PALO_DASH);
+    tp.exposed = 0;
+    tp.spin -= PALO_COST;
+    tp.paloCd = PALO_CD;
+    this.events.push({ type: 'palo', id, x: tp.x, z: tp.z });
+  }
+
+  /** A knocked-out player's multo flicks a tsinelas from outside the circle toward (tx, tz). */
+  flick(by: number, fromX: number, fromZ: number, tx: number, tz: number): void {
+    const dx = tx - fromX;
+    const dz = tz - fromZ;
+    const d = Math.hypot(dx, dz) || 1;
+    this.flicks.push({ by, x: fromX, z: fromZ, vx: (dx / d) * FLICK_SPEED, vz: (dz / d) * FLICK_SPEED, life: 1.6, hit: new Set() });
+    this.events.push({ type: 'flick', by, x: fromX, z: fromZ });
   }
 
   steer(id: number, x: number, y: number): void {
@@ -196,6 +293,9 @@ export class Battle {
     if (this.over) return;
     this.t += dt;
     const late = this.t > LATE_T ? 2 : 1;
+    const squeeze = clamp((this.t - SQUEEZE_START) / (SQUEEZE_END - SQUEEZE_START), 0, 1);
+    if (squeeze > 0 && this.ring === ARENA_R) this.events.push({ type: 'squeeze' });
+    this.ring = ARENA_R * (1 - (1 - SQUEEZE_MIN) * squeeze);
     for (const tp of this.tops) {
       if (!tp.launched) continue;
       if (!tp.alive) {
@@ -209,10 +309,16 @@ export class Battle {
       }
       tp.shield = Math.max(0, tp.shield - dt);
       tp.invert = Math.max(0, tp.invert - dt);
+      const wasDashing = tp.dash > 0;
       tp.dash = Math.max(0, tp.dash - dt);
+      if (wasDashing && tp.dash === 0 && tp.paloCd > 0) tp.exposed = EXPOSED;
+      else tp.exposed = Math.max(0, tp.exposed - dt);
+      tp.paloCd = Math.max(0, tp.paloCd - dt);
+      tp.grace = Math.max(0, tp.grace - dt);
+      tp.stun = Math.max(0, tp.stun - dt);
 
-      let sx = tp.sx;
-      let sy = tp.sy;
+      let sx = tp.stun > 0 ? 0 : tp.sx;
+      let sy = tp.stun > 0 ? 0 : tp.sy;
       const m = Math.hypot(sx, sy);
       if (m > 1) {
         sx /= m;
@@ -225,8 +331,8 @@ export class Battle {
       const [wx, wz] = toWorld(tp.seat, sx, sy);
       const grip = 4.5 * (0.35 + 0.65 * tp.spin);
       // The ground dips slightly toward the middle, so tops keep meeting.
-      let ax = wx * grip - tp.x * 0.35;
-      let az = wz * grip - tp.z * 0.35;
+      let ax = wx * grip - tp.x * DIP;
+      let az = wz * grip - tp.z * DIP;
       const wander = tp.wobble * 2.2;
       ax += Math.cos(this.t * 3 + tp.id * 2) * wander;
       az += Math.sin(this.t * 3 + tp.id * 2) * wander;
@@ -239,7 +345,7 @@ export class Battle {
       tp.z += tp.vz * dt;
 
       // Steering is not free: it costs a little spin.
-      tp.spin -= dt * (0.03 * tp.decay * late + Math.min(1, m) * 0.012);
+      tp.spin -= dt * (BASE_DECAY * tp.decay * late + Math.min(1, m) * 0.008);
       const target = clamp((0.45 - tp.spin) / 0.45, 0, 1) * 0.85;
       if (tp.wobble < target) tp.wobble += (target - tp.wobble) * dt;
       else tp.wobble = Math.max(target, tp.wobble - dt * (0.015 + 0.012 * tp.sta));
@@ -254,17 +360,19 @@ export class Battle {
       for (let j = i + 1; j < this.tops.length; j += 1) this.collide(this.tops[i], this.tops[j], i * 16 + j);
     }
     this.strayDog(dt);
+    this.moveFlicks(dt);
 
     for (const tp of this.tops) {
       if (!tp.launched || !tp.alive) continue;
-      if (Math.hypot(tp.x, tp.z) > ARENA_R + TOP_R * 0.5) {
+      const by = this.t - tp.lastHitAt < KO_CREDIT ? tp.lastHitBy : -1;
+      if (Math.hypot(tp.x, tp.z) > this.ring + TOP_R * 0.5) {
         tp.alive = false;
         tp.out = true;
-        this.events.push({ type: 'out', id: tp.id, x: tp.x, z: tp.z });
+        this.events.push({ type: 'out', id: tp.id, x: tp.x, z: tp.z, by });
       } else if (tp.spin <= 0.03 || tp.wobble >= 1) {
         tp.alive = false;
         tp.spin = 0;
-        this.events.push({ type: 'fall', id: tp.id, x: tp.x, z: tp.z });
+        this.events.push({ type: 'fall', id: tp.id, x: tp.x, z: tp.z, by });
       }
     }
   }
@@ -299,40 +407,56 @@ export class Battle {
       case 'kidlat':
         if (opp) {
           const k = opp.shield > 0 ? 0.3 : 1;
-          opp.spin -= 0.07 * k;
-          opp.wobble += 0.12 * k;
+          opp.spin -= 0.15 * k;
+          opp.wobble += 0.15 * k;
           opp.vx += (dx / d) * 3 * k;
           opp.vz += (dz / d) * 3 * k;
+          opp.stun = 0.5 * k;
+          this.credit(opp, tp);
         }
         break;
       case 'tikbalang':
-        tp.vx = (dx / d) * 8;
-        tp.vz = (dz / d) * 8;
+        tp.vx = (dx / d) * 9;
+        tp.vz = (dz / d) * 9;
         tp.dash = 0.8;
         break;
       case 'agimat':
+        // Shield: hits barely hurt and attackers bounce off (see collide).
         tp.shield = 5;
         break;
       case 'diwata':
-        tp.spin = Math.min(1, tp.spin + 0.07);
-        tp.wobble = Math.max(0, tp.wobble - 0.3);
+        // Blessing: a little spin, no wobble, and a moment where hits don't hurt.
+        tp.spin = Math.min(1, tp.spin + 0.08);
+        tp.wobble = 0;
+        tp.grace = Math.max(tp.grace, 1);
         break;
       case 'bakunawa':
         if (opp) {
-          opp.invert = 5;
-          opp.spin -= 0.06;
+          opp.invert = 4;
+          opp.spin -= 0.1 * (opp.shield > 0 ? 0.3 : 1);
+          this.credit(opp, tp);
         }
         break;
     }
     this.events.push({ type: 'ability', id: tp.id, power: tp.power, x: tp.x, z: tp.z, tx: opp ? opp.x : 0, tz: opp ? opp.z : 0 });
   }
 
-  private hitTop(tp: Top, by: Top, intensity: number): void {
-    const k = ((tp.shield > 0 ? 0.3 : 1) * intensity * weight(by)) / weight(tp);
-    tp.spin -= 0.025 * k;
-    // A slow top is much easier to knock over.
-    tp.wobble += 0.25 * k * wobbleGain(tp) * (1.6 - tp.spin);
+  private credit(tp: Top, by: Top): void {
+    tp.lastHitBy = by.id;
+    tp.lastHitAt = this.t;
+  }
+
+  /** Spin and wobble damage to `tp` from `by`; mult > 1 when tp was the one hit, < 1 when tp did the hitting. */
+  private damage(tp: Top, by: Top, mult: number, force = false): number {
     tp.charge = Math.min(1, tp.charge + 0.08);
+    this.credit(tp, by);
+    if (tp.grace > 0 && !force) return 0;
+    const k = (tp.shield > 0 ? 0.3 : 1) * mult * (tp.exposed > 0 ? 1.3 : 1);
+    const loss = Math.min(Math.max(0, tp.spin), 0.03 * k);
+    tp.spin -= loss;
+    // A slow top is much easier to knock over.
+    tp.wobble += 0.12 * k * wobbleGain(tp) * (1.6 - tp.spin);
+    return loss;
   }
 
   private collide(a: Top, b: Top, key: number): void {
@@ -350,12 +474,14 @@ export class Battle {
     a.z -= nz * push * ia;
     b.x += nx * push * ib;
     b.z += nz * push * ib;
+    // Still landing: tops just slide apart, no hit yet.
+    if (a.grace > 0 || b.grace > 0) return;
     const vn = (b.vx - a.vx) * nx + (b.vz - a.vz) * nz;
     // paikutan keeps a per-top hit cooldown; with many tops it has to be per pair.
     const fresh = (this.pairCd.get(key) ?? 0) <= 0;
     let J = vn < 0 ? (-1.8 * vn) / (ia + ib) : 0;
     // Both tops spin the same way, so their rims grind in opposite directions and kick apart.
-    const clash = fresh ? 1.4 * (a.spin + b.spin) : 0;
+    const clash = fresh ? 0.9 * (a.spin + b.spin) : 0;
     J += (clash / (ia + ib)) * 0.5;
     a.vx -= nx * J * ia;
     a.vz -= nz * J * ia;
@@ -369,10 +495,59 @@ export class Battle {
     b.vx -= tx * 0.6 * a.spin;
     b.vz -= tz * 0.6 * a.spin;
     const i = clamp((Math.abs(vn) + clash) / 7, 0.15, 1);
-    this.hitTop(a, b, i);
-    this.hitTop(b, a, i);
+    // Who hit whom: the top closing faster along the impact line (a dash counts extra) is the attacker.
+    const closeA = a.vx * nx + a.vz * nz + (a.dash > 0 ? 3 : 0);
+    const closeB = -(b.vx * nx + b.vz * nz) + (b.dash > 0 ? 3 : 0);
+    const atk = closeA > closeB + 0.5 ? a : closeB > closeA + 0.5 ? b : null;
+    if (!atk) {
+      this.damage(a, b, i);
+      this.damage(b, a, i);
+    } else {
+      const vic = atk === a ? b : a;
+      const sign = atk === a ? 1 : -1;
+      const stolen = this.damage(vic, atk, 1.8 * i);
+      this.damage(atk, vic, 0.5 * i);
+      // Agaw-ikot: the attacker takes the spin the victim lost.
+      if (stolen > 0) {
+        atk.spin = Math.min(1, atk.spin + stolen);
+        this.events.push({ type: 'steal', id: atk.id, amount: stolen, x: atk.x, z: atk.z });
+      }
+      const kb = vic.shield > 0 ? 0.4 : KNOCKBACK;
+      vic.vx += nx * sign * kb * i;
+      vic.vz += nz * sign * kb * i;
+      // Agimat: attackers bounce off a shielded top.
+      if (vic.shield > 0) {
+        atk.vx -= nx * sign * 2.5 * i;
+        atk.vz -= nz * sign * 2.5 * i;
+      }
+    }
     this.pairCd.set(key, 0.35);
     this.events.push({ type: 'hit', a: a.id, b: b.id, x: (a.x + b.x) / 2, z: (a.z + b.z) / 2, i });
+  }
+
+  private moveFlicks(dt: number): void {
+    for (let i = this.flicks.length - 1; i >= 0; i -= 1) {
+      const f = this.flicks[i];
+      f.life -= dt;
+      const fr = Math.exp(-dt * 0.8);
+      f.vx *= fr;
+      f.vz *= fr;
+      f.x += f.vx * dt;
+      f.z += f.vz * dt;
+      for (const tp of this.tops) {
+        if (!tp.launched || !tp.alive || f.hit.has(tp.id) || Math.hypot(tp.x - f.x, tp.z - f.z) > TOP_R + FLICK_R) continue;
+        f.hit.add(tp.id);
+        const sp = Math.hypot(f.vx, f.vz) || 1;
+        tp.vx += (f.vx / sp) * 3;
+        tp.vz += (f.vz / sp) * 3;
+        if (tp.grace <= 0) {
+          tp.spin -= 0.03 * (tp.shield > 0 ? 0.3 : 1);
+          tp.wobble += 0.08 * (tp.shield > 0 ? 0.3 : 1);
+        }
+        this.events.push({ type: 'flickHit', id: tp.id, x: tp.x, z: tp.z });
+      }
+      if (f.life <= 0 || Math.hypot(f.x, f.z) > 9) this.flicks.splice(i, 1);
+    }
   }
 
   // Asong gala: a stray dog runs through once per round and bumps whatever it touches.

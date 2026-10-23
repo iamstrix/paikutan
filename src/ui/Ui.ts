@@ -14,7 +14,7 @@ function $(sel: string): HTMLElement {
   return el;
 }
 
-type Chip = { el: HTMLElement; name: HTMLElement; spin: HTMLElement; fill: HTMLElement; wins: HTMLElement; lastWins: number; out: boolean };
+type Chip = { el: HTMLElement; name: HTMLElement; spin: HTMLElement; fill: HTMLElement; wins: HTMLElement; lastScore: number; out: boolean };
 
 type LobbyHandlers = {
   solo: (name: string, char: string, power: string) => void;
@@ -200,7 +200,7 @@ export class Ui {
           spin: el.querySelector('.spin')!,
           fill: el.querySelector('.spin i')!,
           wins: el.querySelector('.wins')!,
-          lastWins: p.wins,
+          lastScore: p.score,
           out: false,
         };
         this.chips.set(p.id, c);
@@ -218,13 +218,13 @@ export class Ui {
       c.el.classList.toggle('out', out);
       c.spin.hidden = !live;
       c.fill.style.width = `${live && t ? Math.round(Math.min(1, t[T_SPIN]) * 100) : 0}%`;
-      const stars = '★'.repeat(p.wins) || '·';
-      if (c.wins.textContent !== stars) c.wins.textContent = stars;
-      if (p.wins > c.lastWins) {
+      const pts = `${p.score} pts`;
+      if (c.wins.textContent !== pts) c.wins.textContent = pts;
+      if (p.score > c.lastScore) {
         this.animate(c.wins, [{ scale: '2.4', rotate: '-20deg' }, { scale: '1', rotate: '0deg' }], 600);
         this.animate(c.el, [{ backgroundColor: '#ffd23f' }, {}], 900, 0, 'ease-out');
       }
-      c.lastWins = p.wins;
+      c.lastScore = p.score;
     });
     for (const [id, c] of this.chips) {
       if (seen.has(id)) continue;
@@ -278,7 +278,7 @@ export class Ui {
   }
 
   /** LABAN: your spin meter, the power button's charge ring, and the Bakunawa warning. */
-  fightState(spin: number | null, charge: number, power: string, invert: boolean): void {
+  fightState(spin: number | null, charge: number, power: string, invert: boolean, wobble = 0): void {
     if (spin !== null && this.spinMeter.hidden) {
       this.animate(this.spinMeter, [{ translate: '0 50px', opacity: 0 }, { translate: '0 0', opacity: 1 }], 380);
       this.animate(this.powerBtn, [{ scale: '0.4', opacity: 0 }, { scale: '1', opacity: 1 }], 380);
@@ -290,6 +290,10 @@ export class Ui {
     if (spin === null) return;
     const width = `${Math.min(1, spin) * 100}%`;
     $('#spin-fill').style.width = width;
+    // Wobble is the second way to lose (you topple at full); it was invisible before.
+    const wob = $('#wobble-fill');
+    wob.style.width = `${Math.min(1, wobble) * 100}%`;
+    wob.classList.toggle('danger', wobble > 0.7);
     // Damage bar: the red lag trails the fill down after a hit, like a fighting game.
     const lag = $('#spin-lag');
     lag.style.transition = this.lastSpin < 0 || spin > this.lastSpin ? 'none' : '';
@@ -306,6 +310,19 @@ export class Ui {
     this.powerBtn.classList.toggle('ready', ready);
     ($('#power-ring') as unknown as SVGCircleElement).style.strokeDashoffset = String(276.5 * (1 - Math.min(1, charge)));
     $('#palo-ready').textContent = ready ? 'POWER ✓' : '';
+  }
+
+  /** A label that floats up and fades at a screen point. */
+  floatText(x: number, y: number, text: string, color: string): void {
+    const el = document.createElement('div');
+    el.className = 'float-text';
+    el.textContent = text;
+    el.style.left = `${x}px`;
+    el.style.top = `${y}px`;
+    el.style.color = color;
+    this.labels.append(el);
+    el.animate([{ translate: '-50% 0', opacity: 1 }, { translate: '-50% -40px', opacity: 0 }], { duration: 900, easing: 'ease-out' });
+    setTimeout(() => el.remove(), 900);
   }
 
   /** Phone pairing: the QR and link for this player's controller page. */
@@ -335,7 +352,7 @@ export class Ui {
       return;
     }
     if (!wasHidden) return;
-    const sorted = [...players].sort((a, b) => b.wins - a.wins);
+    const sorted = [...players].sort((a, b) => b.score - a.score);
     const champ = players.find((p) => p.id === winnerId);
     const winnerLine = $('#podium-winner');
     winnerLine.textContent = champ ? `${champ.name} is this afternoon's trompo champion!` : '';
@@ -347,7 +364,7 @@ export class Ui {
           <i class="cap" style="background:${PLAYER_COLORS[p.color]}"></i>
           <span class="place">${i === 0 ? '👑' : `#${i + 1}`}</span>
           <span class="who">${escapeHtml(p.name)}</span>
-          <span class="stars">${'★'.repeat(p.wins) || '·'}</span>
+          <span class="stars">${p.score} pts</span>
         </li>`,
       )
       .join('');

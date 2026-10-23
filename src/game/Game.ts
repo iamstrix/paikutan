@@ -54,7 +54,7 @@ const DASH_COOLDOWN = 1.1;
 /** paikutan's countdown words by whole seconds left. */
 const COUNT_WORDS: Record<number, string> = { 3: 'One!', 2: 'Two!', 1: 'Three!' };
 /** Messages a paired phone may send for its player. */
-const PHONE_MSGS = new Set<ClientMsg['t']>(['spin', 'throw', 'steer', 'ability', 'chat']);
+const PHONE_MSGS = new Set<ClientMsg['t']>(['spin', 'throw', 'steer', 'ability', 'palo', 'flick', 'chat']);
 const PHONE_STALE_MS = 7000;
 /** Where alitaptap gather at dusk: the mango tree and the gumamela bushes. */
 const FIREFLY_SPOTS: [number, number][] = [[-4.6, -4.2], [-6, -6.3], [6, -6.5], [-11.5, -6.4], [11.5, -6.6], [-3, 11.6], [3, 11.6]];
@@ -136,6 +136,12 @@ export class Game {
   private readonly lookTarget = new THREE.Vector3();
   private readonly look = new THREE.Vector3(0, 1, 0);
   private readonly tmp = new THREE.Vector3();
+  private readonly raycaster = new THREE.Raycaster();
+  private readonly ground = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
+  private readonly ndc = new THREE.Vector2();
+  /** Multo tsinelas meshes, pooled; positions come from the snapshot. */
+  private readonly flickMeshes: THREE.Mesh[] = [];
+  private powerWasReady = false;
 
   constructor(private readonly canvas: HTMLCanvasElement) {
     this.renderer = createRenderer(canvas);
@@ -157,6 +163,11 @@ export class Game {
     this.battleInput.onThrow((r) => this.sendLocal({ t: 'throw', power: r.power, angle: r.angle }));
     this.battleInput.onSteer((x, y) => this.sendLocal({ t: 'steer', x: round2(x), y: round2(y) }));
     this.battleInput.onAbility(() => this.sendLocal({ t: 'ability' }));
+    this.battleInput.onPalo(() => this.sendLocal({ t: 'palo' }));
+    this.battleInput.onFlick((cx, cy) => {
+      const g = this.pickGround(cx, cy);
+      if (g) this.sendLocal({ t: 'flick', x: round2(g.x), z: round2(g.z) });
+    });
 
     this.atmosphere = new Atmosphere(this.scene);
     this.atmosphere.setClock(CLOCK_START);
@@ -427,7 +438,8 @@ export class Game {
     this.dog.update(dt, elapsed);
     this.updateCamera(dt, elapsed);
     const ambient = this.reducedMotion ? 0 : elapsed;
-    this.world.update(ambient, RING_RADIUS);
+    this.world.update(ambient, snap && this.role !== 'none' ? snap.ring : RING_RADIUS);
+    this.syncFlicks(snap && this.role !== 'none' ? snap.flicks : []);
     if (!this.reducedMotion) {
       const local = this.avatars.get(this.localId);
       const people = [...this.avatars.values(), ...this.extras].map((a) => a.group.position);
@@ -473,9 +485,11 @@ export class Game {
         this.ui.showBanner('THROW!');
         this.audio.beat(true);
         break;
-      case 'fight':
-        this.battleInput.setStage(seated ? 'fight' : 'idle');
+      case 'fight': {
+        const mine = this.topOf(snap, this.localId);
+        this.battleInput.setStage(!seated ? 'idle' : mine && mine[T_LAUNCHED] && !mine[T_ALIVE] ? 'out' : 'fight');
         break;
+      }
       case 'podium':
         this.battleInput.setStage('idle');
         this.ui.showPodium(snap.players, snap.winner);
@@ -535,7 +549,8 @@ export class Game {
           if (ring) this.effects.pow(e.x, 1.0, e.z, 'BLAG!');
           this.audio.out();
           if (e.id === this.localId) {
-            this.battleInput.setStage('idle');
+            // Out of the round, but not out of the fight: aim your multo flicks.
+            this.battleInput.setStage(snap.phase === 'fight' ? 'out' : 'idle');
             this.ui.showBanner(ring ? 'OUT!' : 'TOPPLED!');
           }
           break;
@@ -602,9 +617,42 @@ export class Game {
           this.audio.boing();
           break;
         }
+        case 'palo':
+          this.effects.puff(e.x, 0.05, e.z, { n: 6, speed: 1.4, size: 0.35 });
+          this.audio.whoosh();
+          break;
+        case 'steal':
+          this.floatText(e.x, e.z, `+${Math.round(e.amount * 100)} spin`, e.id === this.localId ? '#2f9e6f' : '#f3e2c0');
+          break;
+        case 'strike':
+          this.effects.pow(e.x, 1.1, e.z, 'STRIKE!', 1.3);
+          this.effects.ring(e.x, e.z, '#ffd23f', 1.4, 0.5);
+          this.shake = Math.min(0.4, this.shake + 0.25);
+          this.audio.clash(3);
+          break;
+        case 'flick':
+          this.audio.whoosh();
+          break;
+        case 'flickHit':
+          this.effects.puff(e.x, 0.05, e.z, { n: 8, size: 0.35, color: '#c9c2e8' });
+          this.effects.pow(e.x, 0.9, e.z, 'BOINK!', 0.9);
+          this.tops.get(e.id)?.kick(1);
+          this.audio.boing();
+          break;
+        case 'squeeze':
+          this.ui.showBanner('THE CIRCLE IS SHRINKING!');
+          this.audio.warn();
+          break;
+        case 'ko': {
+          const hitter = snap.players.find((pl) => pl.id === e.id);
+          if (e.id === this.localId) this.ui.showBanner('+1 KO!');
+          const av = this.avatars.get(e.id);
+          if (av && hitter) this.floatText(av.group.position.x, av.group.position.z, '+1 KO', PLAYER_COLORS[hitter.color], 2.4);
+          break;
+        }
         case 'roundWin': {
           const p = snap.players.find((pl) => pl.id === e.id);
-          this.ui.showBanner(p ? `${p.name.toUpperCase()} WINS!` : 'DRAW!');
+          this.ui.showBanner(p ? `${p.name.toUpperCase()} WINS +3!` : 'DRAW!');
           if (e.id === this.localId) this.audio.win();
           const w = this.tops.get(e.id);
           if (w) this.effects.confetti(w.group.position.x, 0.5, w.group.position.z);
@@ -860,7 +908,14 @@ export class Game {
     // LABAN: spin meter, power button, Bakunawa warning.
     const mine = this.topOf(snap, this.localId);
     const alive = (snap.phase === 'fight' || snap.phase === 'throw') && !!mine && !!mine[T_LAUNCHED] && !!mine[T_ALIVE];
-    this.ui.fightState(alive ? mine![T_SPIN] : null, mine ? mine[T_CHARGE] : 0, me?.power ?? 'kidlat', !!mine?.[T_INVERT]);
+    this.ui.fightState(alive ? mine![T_SPIN] : null, mine ? mine[T_CHARGE] : 0, me?.power ?? 'kidlat', !!mine?.[T_INVERT], mine ? mine[T_WOBBLE] : 0);
+    // Powers were getting forgotten: call it out the moment it's ready.
+    const ready = alive && mine![T_CHARGE] >= 1;
+    if (ready && !this.powerWasReady) {
+      this.ui.showBanner('POWER READY!');
+      this.audio.chime();
+    }
+    this.powerWasReady = ready;
 
     this.ui.setPairing(this.pairUrl(), paired, this.room ? null : 'Phones need an online room (Supabase) or ?net=local.');
     this.ui.setHint(this.hintFor(snap, alive, paired));
@@ -884,8 +939,8 @@ export class Game {
       case 'throw':
         return seated ? '' : 'Watching...';
       case 'fight':
-        if (alive) return paired ? 'Tilt your phone to steer · tap the power' : 'WASD steer (costs spin) · Space / E power';
-        return seated ? 'You lost this round. Taunt the others! (1–6)' : 'Watching...';
+        if (alive) return paired ? 'Tilt to steer · tap the pad to PALO · power button' : 'WASD steer · Space / click PALO (dash-strike) · E / right-click power';
+        return seated ? 'You\'re out — click the circle to flick your tsinelas at someone!' : 'Watching...';
       case 'roundEnd':
         return '';
       case 'podium':
@@ -915,6 +970,7 @@ export class Game {
         const d = botSteer(this.rm.battle, top, this.rng);
         this.sendLocal({ t: 'steer', x: d.x, y: d.y });
         if (d.ability) this.sendLocal({ t: 'ability' });
+        if (d.palo) this.sendLocal({ t: 'palo' });
       }
     }
   }
@@ -951,14 +1007,39 @@ export class Game {
         this.podiumFill.position.copy(w.group.position).add(this.tmp.set(fx * 2.2, 2.2, fz * 2.2));
       }
     } else if (snap) {
-      // Behind your seat looking at the bilog: W/tilt-forward steers away from you, as in paikutan.
+      // Behind your seat: W/tilt-forward steers away from you, as in paikutan. The camera never
+      // rotates off that angle, so steering stays consistent; it only slides and zooms.
       const seat = snap.seats.indexOf(this.localId);
       const s = seat >= 0 ? slotPos(seat, snap.seats.length) : { x: 0, y: 1 };
       const len = Math.hypot(s.x, s.y) || 1;
-      const duel = phase === 'fight' && snap.tops.filter((t) => t[T_LAUNCHED] && t[T_ALIVE]).length <= 2;
-      const dist = duel ? 6.4 : 8.4;
-      this.camTarget.set((s.x / len) * dist, duel ? 4.4 : 5.8, (s.y / len) * dist);
-      this.lookTarget.set(0, 0.2, 0);
+      const dx = s.x / len;
+      const dz = s.y / len;
+      const mine = this.topOf(snap, this.localId);
+      if (phase === 'fight' && mine && mine[T_LAUNCHED] && mine[T_ALIVE]) {
+        // Follow: frame your top and its nearest rival.
+        let rx = mine[T_X];
+        let rz = mine[T_Z];
+        let best = Infinity;
+        for (const t of snap.tops) {
+          if (t[0] === this.localId || !t[T_LAUNCHED] || !t[T_ALIVE]) continue;
+          const d = Math.hypot(t[T_X] - mine[T_X], t[T_Z] - mine[T_Z]);
+          if (d < best) {
+            best = d;
+            rx = t[T_X];
+            rz = t[T_Z];
+          }
+        }
+        const cx = mine[T_X] * 0.65 + rx * 0.35;
+        const cz = mine[T_Z] * 0.65 + rz * 0.35;
+        const dist = THREE.MathUtils.clamp(4.6 + (Number.isFinite(best) ? best : 0) * 0.9, 4.6, 7.5);
+        this.camTarget.set(cx + dx * dist, 2.4 + dist * 0.42, cz + dz * dist);
+        this.lookTarget.set(cx, 0.2, cz);
+      } else {
+        // Before the throw, or out of the round: the whole bilog (aim your flicks from here).
+        const out = phase === 'fight';
+        this.camTarget.set(dx * (out ? 7.4 : 8.4), out ? 7 : 5.8, dz * (out ? 7.4 : 8.4));
+        this.lookTarget.set(0, 0.2, 0);
+      }
     }
 
     this.podiumFill.intensity = phase === 'podium' ? 4 : 0;
@@ -994,6 +1075,39 @@ export class Game {
       }
     }
     this.ui.pruneLabels(alive);
+  }
+
+  private pickGround(clientX: number, clientY: number): THREE.Vector3 | null {
+    const rect = this.canvas.getBoundingClientRect();
+    this.ndc.set(((clientX - rect.left) / rect.width) * 2 - 1, -((clientY - rect.top) / rect.height) * 2 + 1);
+    this.raycaster.setFromCamera(this.ndc, this.camera);
+    return this.raycaster.ray.intersectPlane(this.ground, new THREE.Vector3());
+  }
+
+  /** A short floating label at a world spot (spin stolen, KO points). */
+  private floatText(x: number, z: number, text: string, color: string, y = 0.9): void {
+    this.tmp.set(x, y, z).project(this.camera);
+    if (this.tmp.z > 1) return;
+    this.ui.floatText((this.tmp.x * 0.5 + 0.5) * this.canvas.clientWidth, (-this.tmp.y * 0.5 + 0.5) * this.canvas.clientHeight, text, color);
+  }
+
+  /** Ghostly tsinelas flicked by knocked-out players. */
+  private syncFlicks(flicks: [number, number][]): void {
+    while (this.flickMeshes.length < flicks.length) {
+      const m = new THREE.Mesh(
+        new THREE.BoxGeometry(0.16, 0.04, 0.34),
+        new THREE.MeshBasicMaterial({ color: '#c9c2e8', transparent: true, opacity: 0.75 }),
+      );
+      this.scene.add(m);
+      this.flickMeshes.push(m);
+    }
+    this.flickMeshes.forEach((m, i) => {
+      const f = flicks[i];
+      m.visible = !!f;
+      if (!f) return;
+      m.position.set(f[0], 0.12, f[1]);
+      m.rotation.y += 0.4;
+    });
   }
 
   /** Townsfolk for the title screen backdrop. */
@@ -1069,7 +1183,7 @@ export class Game {
       round: snap?.round ?? 0,
       clock: this.clockShown,
       localId: this.localId,
-      players: (snap?.players ?? []).map((p) => ({ id: p.id, name: p.name, bot: p.bot, wins: p.wins })),
+      players: (snap?.players ?? []).map((p) => ({ id: p.id, name: p.name, bot: p.bot, score: p.score })),
       alive: snap ? snap.tops.filter((t) => t[T_LAUNCHED] && t[T_ALIVE]).length : 0,
       localSpin: mine && mine[T_ALIVE] ? mine[T_SPIN] : 0,
       player: {

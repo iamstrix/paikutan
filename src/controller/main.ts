@@ -1,8 +1,9 @@
 import './controller.css';
-import { T_ALIVE, T_CHARGE, T_INVERT, T_LAUNCHED, T_SPIN, type ClientMsg, type PlayerInfo, type Snapshot, type TopSnap } from '../game/RoundManager';
+import { slotPos, T_ALIVE, T_CHARGE, T_INVERT, T_LAUNCHED, T_SPIN, T_X, T_Z, type ClientMsg, type PlayerInfo, type Snapshot, type TopSnap } from '../game/RoundManager';
 import { CircleTracker, Motion, readSwipe, requestMotion, SPIN_SECONDS } from '../input/gestures';
 import { PhoneNet } from '../net/Net';
 import { topById } from '../sim/data';
+import { RING_RADIUS } from '../sim/TrompoSim';
 import { QUICK_CHAT } from '../systems/AudioSystem';
 import { PLAYER_COLORS } from '../ui/colors';
 
@@ -27,7 +28,7 @@ const send = (msg: ClientMsg) => net?.send(msg);
 const pct = (v: number) => `${Math.round(Math.max(0, Math.min(1, v)) * 100)}%`;
 const me = (): PlayerInfo | undefined => snap?.players.find((p) => p.id === pid);
 const myTop = (): TopSnap | undefined => snap?.tops.find((t) => t[0] === pid);
-const buzz = (ms: number) => navigator.vibrate?.(ms);
+const buzz = (ms: number | number[]) => navigator.vibrate?.(ms);
 
 function show(name: string, html: string, init?: () => (() => void) | void): void {
   if (shown === name) return;
@@ -85,6 +86,7 @@ function start(): void {
           for (const e of events) {
             if (e.type === 'hit' && (e.a === pid || e.b === pid)) buzz(Math.round(30 + e.i * 60));
             if ((e.type === 'out' || e.type === 'fall') && e.id === pid) buzz(300);
+            if (e.type === 'ko' && e.id === pid) buzz([60, 40, 60]);
             if (e.type === 'roundWin' && e.id === pid) buzz(150);
           }
         };
@@ -119,6 +121,7 @@ function render(): void {
       return p.thrown ? idle('Thrown! Watch your trompo…', 'thrown') : throwView();
     case 'fight':
       if (seated && top && top[T_LAUNCHED] && top[T_ALIVE]) return fightView(p);
+      if (seated && top && top[T_LAUNCHED]) return outView();
       return idle(seated ? 'You lost this round. Taunt them!' : 'Watching…', 'out');
     case 'roundEnd':
       return idle(snap.winner === pid ? 'YOU WIN!' : 'Round over…', 'roundEnd');
@@ -139,7 +142,7 @@ function spunView(p: PlayerInfo): void {
     `<div class="card center">
       <h2>Nice spin!</h2>
       <div class="meter"><span>Power</span><i><b style="width:${pct(p.spinPower)}"></b></i></div>
-      <div class="meter"><span>Steady</span><i><b style="width:${pct(p.steadiness)}"></b></i></div>
+      <div class="meter"><span>Balance</span><i><b style="width:${pct(p.steadiness)}"></b></i></div>
       <p class="small">Next: <b>Throw!</b> Tilt to aim, flick forward.</p>
     </div>`,
   );
@@ -154,7 +157,8 @@ function spinView(): void {
       <p class="small">Draw fast circles <b>on the ring</b> for ${SPIN_SECONDS} seconds.</p>
       <canvas class="pad"></canvas>
       <div class="meter"><span>Power</span><i><b data-m="power"></b></i></div>
-      <div class="meter"><span>Steady</span><i><b data-m="stab"></b></i></div>
+      <div class="meter"><span>Balance</span><i><b data-m="stab"></b></i></div>
+      <p class="small">Neat circles = balance: you wobble less when hit.</p>
     </div>`,
     () => {
       const cv = $<HTMLCanvasElement>('.pad', view);
@@ -313,7 +317,7 @@ function fightView(p: PlayerInfo): void {
     `<div class="fight">
       <div class="meter big"><span>Spin</span><i><b data-spin></b></i></div>
       <div class="warn" data-warn hidden>BAKUNAWA! Steering reversed!</div>
-      <div class="joy"><div class="joy-knob"></div><span>${motion.hasTilt ? 'Tilt to steer · or drag here' : 'Drag here to steer'}</span></div>
+      <div class="joy"><div class="joy-knob"></div><span>${motion.hasTilt ? 'Tilt to steer · TAP here = PALO dash' : 'Drag to steer · TAP = PALO dash'}</span></div>
       <button class="pill" data-center>Re-center tilt</button>
       <button class="power" data-power style="--c1:${t.colors[0]};--c2:${t.colors[1]}">
         <svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="44" class="track"/><circle cx="50" cy="50" r="44" class="fill" data-ring/></svg>
@@ -333,13 +337,20 @@ function fightView(p: PlayerInfo): void {
       const pad = $('.joy', view);
       const knob = $('.joy-knob', view);
       let origin: [number, number] | null = null;
+      let downAt = 0;
+      let moved = 0;
+      let wasReady = false;
       pad.onpointerdown = (e) => {
         pad.setPointerCapture(e.pointerId);
         origin = [e.clientX, e.clientY];
-        joy = [0, 0];
+        downAt = performance.now();
+        moved = 0;
+        joy = null;
       };
       pad.onpointermove = (e) => {
         if (!origin) return;
+        moved = Math.max(moved, Math.hypot(e.clientX - origin[0], e.clientY - origin[1]));
+        if (moved < 12) return;
         let x = (e.clientX - origin[0]) / 60;
         let y = -(e.clientY - origin[1]) / 60;
         const m = Math.hypot(x, y);
@@ -350,7 +361,12 @@ function fightView(p: PlayerInfo): void {
         joy = [x, y];
         knob.style.translate = `${x * 40}px ${-y * 40}px`;
       };
-      pad.onpointerup = pad.onpointercancel = () => {
+      pad.onpointerup = pad.onpointercancel = (e) => {
+        // A quick tap (no drag) is the palo dash-strike.
+        if (e.type === 'pointerup' && origin && moved < 12 && performance.now() - downAt < 250) {
+          send({ t: 'palo' });
+          buzz(25);
+        }
         origin = null;
         joy = null;
         knob.style.translate = '';
@@ -371,6 +387,8 @@ function fightView(p: PlayerInfo): void {
           ($('[data-ring]', view) as unknown as SVGCircleElement).style.strokeDashoffset = String(276.5 * (1 - Math.min(1, charge)));
           $('[data-ready]', view).textContent = charge >= 1 ? 'READY! TAP IT' : 'charging…';
           $('[data-power]', view).classList.toggle('ready', charge >= 1);
+          if (charge >= 1 && !wasReady) buzz([40, 60, 40]);
+          wasReady = charge >= 1;
           $('[data-warn]', view).hidden = !top[T_INVERT];
         }
       };
@@ -379,6 +397,77 @@ function fightView(p: PlayerInfo): void {
         clearInterval(timer);
         send({ t: 'steer', x: 0, y: 0 });
       };
+    },
+  );
+}
+
+/** MULTO: out of the round, tap the mini bilog to flick your tsinelas at someone. */
+function outView(): void {
+  show(
+    'out',
+    `<div class="card spin">
+      <h2>You're out!</h2>
+      <p class="small">Tap the circle to flick your tsinelas at someone (every 3 s).</p>
+      <canvas class="pad"></canvas>
+    </div>${chatButtons()}`,
+    () => {
+      bindChat();
+      const cv = $<HTMLCanvasElement>('.pad', view);
+      const g = cv.getContext('2d')!;
+      let raf = 0;
+      // Drawn from your seat: you're at the bottom, so "up" is away from you, like on screen.
+      const frameOf = () => {
+        const seat = snap ? snap.seats.indexOf(pid) : -1;
+        const sp = seat >= 0 && snap ? slotPos(seat, snap.seats.length) : { x: 0, y: 1 };
+        const len = Math.hypot(sp.x, sp.y) || 1;
+        const r = cv.getBoundingClientRect();
+        return { dx: sp.x / len, dz: sp.y / len, w: r.width, h: r.height, k: (Math.min(r.width, r.height) * 0.45) / RING_RADIUS };
+      };
+      cv.onpointerdown = (e) => {
+        const f = frameOf();
+        const r = cv.getBoundingClientRect();
+        const u = (e.clientX - r.left - f.w / 2) / f.k;
+        const v = (e.clientY - r.top - f.h / 2) / f.k;
+        send({ t: 'flick', x: Math.round((u * f.dz + v * f.dx) * 100) / 100, z: Math.round((-u * f.dx + v * f.dz) * 100) / 100 });
+        buzz(30);
+      };
+      const frame = () => {
+        raf = requestAnimationFrame(frame);
+        const f = frameOf();
+        const dpr = window.devicePixelRatio || 1;
+        if (cv.width !== Math.round(f.w * dpr)) {
+          cv.width = Math.round(f.w * dpr);
+          cv.height = Math.round(f.h * dpr);
+        }
+        g.setTransform(dpr, 0, 0, dpr, 0, 0);
+        g.clearRect(0, 0, f.w, f.h);
+        const at = (x: number, z: number) => [f.w / 2 + (x * f.dz - z * f.dx) * f.k, f.h / 2 + (x * f.dx + z * f.dz) * f.k] as const;
+        g.fillStyle = '#d9b98a';
+        g.beginPath();
+        g.arc(f.w / 2, f.h / 2, (snap?.ring ?? RING_RADIUS) * f.k, 0, 7);
+        g.fill();
+        g.strokeStyle = '#c0392b';
+        g.lineWidth = 3;
+        g.stroke();
+        for (const t of snap?.tops ?? []) {
+          if (!t[T_LAUNCHED] || !t[T_ALIVE]) continue;
+          const pl = snap?.players.find((q) => q.id === t[0]);
+          const [x, y] = at(t[T_X], t[T_Z]);
+          g.fillStyle = pl ? PLAYER_COLORS[pl.color] : '#fff';
+          g.beginPath();
+          g.arc(x, y, 12, 0, 7);
+          g.fill();
+          g.strokeStyle = '#2b1d12';
+          g.stroke();
+        }
+        g.fillStyle = '#c9c2e8';
+        for (const [fx, fz] of snap?.flicks ?? []) {
+          const [x, y] = at(fx, fz);
+          g.fillRect(x - 5, y - 8, 10, 16);
+        }
+      };
+      frame();
+      return () => cancelAnimationFrame(raf);
     },
   );
 }

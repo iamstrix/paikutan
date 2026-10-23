@@ -1036,3 +1036,27 @@ button:focus-visible {
   letter-spacing: -0.02em;
   color: var(--red);
 }
+
+/* --- Core-loop pass: wobble meter, floating numbers --- */
+#spin-meter .bar.wobble {
+  width: 110px;
+}
+
+#spin-meter .bar.wobble i {
+  background: linear-gradient(90deg, #f3e2c0, #e8622c);
+}
+
+#spin-meter .bar.wobble i.danger {
+  background: #d6453d;
+  animation: pop 300ms ease-out infinite alternate;
+}
+
+.float-text {
+  position: absolute;
+  font-family: "Lilita One", Impact, sans-serif;
+  font-size: 1.15rem;
+  -webkit-text-stroke: 1px #2b1d12;
+  text-shadow: 0 2px 0 #2b1d12;
+  pointer-events: none;
+  white-space: nowrap;
+}

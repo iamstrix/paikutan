@@ -7,7 +7,7 @@ interface ThreeGameDiagnostics {
   round: number;
   clock: number;
   localId: number;
-  players: { id: number; name: string; bot: boolean; wins: number }[];
+  players: { id: number; name: string; bot: boolean; score: number }[];
   alive: number;
   localSpin: number;
   player: {

@@ -4,7 +4,8 @@ import { CircleTracker, readSwipe, SPIN_SECONDS, type SpinResult, type ThrowResu
 /**
  * Desktop fallbacks for paikutan's phone controls:
  * spin = draw circles with the mouse on the pad; throw = drag up and let go
- * (Space for a medium throw); fight = WASD/arrows steer, Space/E power.
+ * (Space for a medium throw); fight = WASD/arrows steer, Space/left-click palo,
+ * E/right-click power; out = left-click the ground to flick your multo.
  */
 export class DesktopBattleInput implements BattleInput {
   aim = 0;
@@ -13,6 +14,8 @@ export class DesktopBattleInput implements BattleInput {
   private throwCb: (r: ThrowResult) => void = () => {};
   private steerCb: (x: number, y: number) => void = () => {};
   private abilityCb: () => void = () => {};
+  private paloCb: () => void = () => {};
+  private flickCb: (x: number, y: number) => void = () => {};
   private readonly keys = new Set<string>();
   private tracker: CircleTracker | null = null;
   private spinStart = 0;
@@ -30,8 +33,10 @@ export class DesktopBattleInput implements BattleInput {
     if (e.target instanceof HTMLInputElement) return;
     this.keys.add(e.code);
     if (e.repeat) return;
-    if (this.stage === 'fight' && (e.code === 'Space' || e.code === 'KeyE')) {
+    if (this.stage === 'fight' && e.code === 'Space') {
       e.preventDefault();
+      this.paloCb();
+    } else if (this.stage === 'fight' && e.code === 'KeyE') {
       this.abilityCb();
     } else if (this.stage === 'throw' && e.code === 'Space') {
       e.preventDefault();
@@ -58,6 +63,12 @@ export class DesktopBattleInput implements BattleInput {
   };
   private readonly onDown = (e: PointerEvent) => {
     if (this.stage === 'throw' && e.button === 0) this.swipe = [e.clientX, e.clientY, performance.now()];
+    else if (this.stage === 'fight' && e.button === 0) this.paloCb();
+    else if (this.stage === 'fight' && e.button === 2) this.abilityCb();
+    else if (this.stage === 'out' && e.button === 0) this.flickCb(e.clientX, e.clientY);
+  };
+  private readonly onContextMenu = (e: Event) => {
+    if (this.stage === 'fight') e.preventDefault();
   };
   private readonly onMove = (e: PointerEvent) => {
     if (this.swipe) this.aim = Math.max(-0.6, Math.min(0.6, Math.atan2(e.clientX - this.swipe[0], this.swipe[1] - e.clientY)));
@@ -79,6 +90,7 @@ export class DesktopBattleInput implements BattleInput {
     pad.addEventListener('pointerdown', this.onPadDown);
     pad.addEventListener('pointermove', this.onPadMove);
     canvas.addEventListener('pointerdown', this.onDown);
+    canvas.addEventListener('contextmenu', this.onContextMenu);
     window.addEventListener('pointermove', this.onMove);
     window.addEventListener('pointerup', this.onUp);
   }
@@ -109,6 +121,12 @@ export class DesktopBattleInput implements BattleInput {
   onAbility(cb: () => void): void {
     this.abilityCb = cb;
   }
+  onPalo(cb: () => void): void {
+    this.paloCb = cb;
+  }
+  onFlick(cb: (x: number, y: number) => void): void {
+    this.flickCb = cb;
+  }
 
   update(dt: number): void {
     if (this.stage === 'spin') this.updateSpin();
@@ -136,6 +154,7 @@ export class DesktopBattleInput implements BattleInput {
     this.pad.removeEventListener('pointerdown', this.onPadDown);
     this.pad.removeEventListener('pointermove', this.onPadMove);
     this.canvas.removeEventListener('pointerdown', this.onDown);
+    this.canvas.removeEventListener('contextmenu', this.onContextMenu);
     window.removeEventListener('pointermove', this.onMove);
     window.removeEventListener('pointerup', this.onUp);
   }

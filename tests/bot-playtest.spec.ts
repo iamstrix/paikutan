@@ -44,6 +44,6 @@ test('bot playtest: a solo match runs from hub to podium', async ({ page }, test
   expect(final?.phase, 'match should end on the podium').toBe('podium');
   for (const p of ['charge', 'throw', 'fight', 'roundEnd']) expect(phases.has(p), `phase ${p} visited`).toBe(true);
   expect(maxRound).toBeGreaterThan(0);
-  expect(Math.max(...(final?.players ?? []).map((p) => p.wins))).toBeGreaterThan(0);
+  expect(Math.max(...(final?.players ?? []).map((p) => p.score))).toBeGreaterThan(0);
   expect(errors).toEqual([]);
 });

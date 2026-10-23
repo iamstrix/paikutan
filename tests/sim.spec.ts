@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 import { botSpin, botSteer, botThrow } from '../src/sim/Bot';
-import { ARENA_R, Battle, toLocal, toWorld, type LaunchInput } from '../src/sim/TrompoSim';
+import { ARENA_R, Battle, PALO_COST, PALO_CD, SQUEEZE_END, SQUEEZE_MIN, SQUEEZE_START, toLocal, toWorld, type LaunchInput } from '../src/sim/TrompoSim';
 import { createSeededRandom } from '../src/utils/random';
 
 // Pure checks of the ported paikutan battle physics; no browser page is opened.
@@ -115,4 +115,72 @@ test('same seed and inputs give identical results', () => {
     return JSON.stringify(b.tops);
   };
   expect(play()).toBe(play());
+});
+
+test('palo dashes, costs spin, and has a cooldown', () => {
+  const b = make(2);
+  b.launch(0, good);
+  b.launch(1, good);
+  run(b, 2);
+  b.drainEvents();
+  const t = b.top(0)!;
+  const spin = t.spin;
+  b.palo(0);
+  b.palo(0); // still cooling down: ignored
+  expect(b.drainEvents().filter((e) => e.type === 'palo')).toHaveLength(1);
+  expect(t.spin).toBeCloseTo(spin - PALO_COST, 5);
+  expect(t.paloCd).toBe(PALO_CD);
+  expect(Math.hypot(t.vx, t.vz)).toBeGreaterThan(3);
+});
+
+test('landing grace: freshly thrown tops do not clash, then they do', () => {
+  const b = make(2);
+  b.launch(0, good);
+  b.launch(1, good);
+  const [a, c] = [b.top(0)!, b.top(1)!];
+  const overlap = () => {
+    a.x = 0;
+    a.z = 0;
+    c.x = 0.1;
+    c.z = 0;
+    a.vx = 2;
+    c.vx = -2;
+  };
+  overlap();
+  b.step();
+  expect(b.drainEvents().some((e) => e.type === 'hit')).toBe(false);
+  run(b, 2);
+  b.drainEvents();
+  overlap();
+  b.step();
+  expect(b.drainEvents().some((e) => e.type === 'hit')).toBe(true);
+});
+
+test('the circle squeezes from SQUEEZE_START to SQUEEZE_END', () => {
+  const b = make(2);
+  b.launch(0, good);
+  run(b, SQUEEZE_START - 0.5);
+  expect(b.ring).toBe(ARENA_R);
+  b.drainEvents();
+  run(b, 1);
+  expect(b.drainEvents().some((e) => e.type === 'squeeze')).toBe(true);
+  expect(b.ring).toBeLessThan(ARENA_R);
+  run(b, SQUEEZE_END - SQUEEZE_START);
+  expect(b.ring).toBeCloseTo(ARENA_R * SQUEEZE_MIN, 5);
+});
+
+test('a multo flick bumps a live top', () => {
+  const b = make(2);
+  b.launch(0, good);
+  run(b, 2);
+  const t = b.top(0)!;
+  // Parked in the bowl's centre so the test is about the flick, not about aiming.
+  t.x = t.z = t.vx = t.vz = 0;
+  b.flick(1, ARENA_R + 0.8, 0, 0, 0);
+  let hit = false;
+  for (let i = 0; i < 100 && !hit; i += 1) {
+    b.step();
+    hit = b.drainEvents().some((e) => e.type === 'flickHit' && e.id === 0);
+  }
+  expect(hit).toBe(true);
 });

@@ -12,7 +12,7 @@ export function botThrow(rng: () => number, skill: number): { power: number; ang
 }
 
 /** Steering in the bot's player-local frame, plus whether it wants to fire its power now. */
-export function botSteer(battle: Battle, me: Top, rng: () => number): { x: number; y: number; ability: boolean } {
+export function botSteer(battle: Battle, me: Top, rng: () => number): { x: number; y: number; ability: boolean; palo: boolean } {
   const op = battle.nearestRival(me);
   let tx: number;
   let tz: number;
@@ -39,5 +39,8 @@ export function botSteer(battle: Battle, me: Top, rng: () => number): { x: numbe
     const d = op ? Math.hypot(op.x - me.x, op.z - me.z) : Infinity;
     ability = me.power !== 'tikbalang' || d < 3.5;
   }
-  return { x: lx * 0.8, y: ly * 0.8, ability };
+  // Palo when there's a spin edge and a target in reach.
+  const reach = op ? Math.hypot(op.x - me.x, op.z - me.z) : Infinity;
+  const palo = !!op && me.paloCd <= 0 && reach < 2.5 && me.spin > op.spin - 0.05 && rng() < 0.3;
+  return { x: lx * 0.8, y: ly * 0.8, ability, palo };
 }

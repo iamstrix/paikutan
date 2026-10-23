@@ -47,7 +47,8 @@
               <li>Step inside the <b>ring of stones</b> to start a match</li>
               <li><b>Spin:</b> draw fast circles on the ring for 3 seconds: speed = power, neatness = steadiness</li>
               <li><b>Throw:</b> drag the mouse up and let go (Space = medium throw)</li>
-              <li><b>Fight:</b> WASD steers (costs a little spin), <b>Space / E</b> fires your power</li>
+              <li><b>Fight:</b> WASD steers, <b>Space / click</b> = PALO dash-strike (hits steal spin), <b>E / right-click</b> = power</li>
+              <li>Knock someone out = <b>+1</b>, last trompo spinning = <b>+3</b>. Out? Click the circle to flick your tsinelas!</li>
               <li>Last trompo spinning in the circle wins. <b>1–6</b> to taunt! <b>📱</b> uses your phone as the trompo.</li>
             </ul>
           </details>
@@ -64,11 +65,11 @@
         </div>
         <div id="banner" aria-live="assertive"></div>
         <div id="spin-panel" class="hud-card" hidden>
-          <div class="sp-head"><b>SPIN!</b><span>Drag in circles around the ring for 3 seconds. Speed = power, neatness = steadiness.</span></div>
+          <div class="sp-head"><b>SPIN!</b><span>Drag in circles around the ring for 3 seconds. Speed = spin power. Neat circles = balance (you wobble less when hit).</span></div>
           <canvas id="spin-pad" aria-label="Circle drawing pad"></canvas>
           <div class="sp-meters">
             <div class="meter-row"><span>Power</span><i><b id="sp-power"></b></i></div>
-            <div class="meter-row"><span>Steady</span><i><b id="sp-stab"></b></i></div>
+            <div class="meter-row" title="Neat circles = you wobble less when hit"><span>Balance</span><i><b id="sp-stab"></b></i></div>
           </div>
           <p id="sp-note" hidden></p>
         </div>
@@ -85,6 +86,8 @@
         <div id="spin-meter" hidden>
           <span>SPIN</span>
           <div class="bar"><b id="spin-lag"></b><i id="spin-fill"></i></div>
+          <span>WOBBLE</span>
+          <div class="bar wobble"><i id="wobble-fill"></i></div>
           <small id="palo-ready">POWER ✓</small>
         </div>
         <div id="hint"></div>
