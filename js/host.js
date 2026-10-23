@@ -194,6 +194,7 @@ function commentary(e) {
   switch (e.type) {
     case 'launch': say(`${n(e.slot)} throws! ${e.p > 0.8 ? 'Malakas! A hard throw.' : e.p < 0.3 ? 'A soft toss…' : 'Bitaw!'}`); break;
     case 'hit': if (e.i > 0.75) say('BANGGAAN! Huge clash!'); break;
+    case 'steal': if (e.amt > 0.03) say(`Agaw-ikot! ${n(e.slot)} steals spin back!`); break;
     case 'ability': {
       const o = n(1 - e.slot);
       say({

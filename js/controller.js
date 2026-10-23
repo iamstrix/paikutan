@@ -70,7 +70,7 @@ export function createController(root, { mode = 'phone', send, myId, sounds = mo
       <li><b>Pick</b> a player and a trumpo. Each trumpo has its own stats and a mythic power.</li>
       <li><b>Paikot!</b> Draw fast circles on the ring. Faster = more spin, neater = steadier.</li>
       <li><b>Bitaw!</b> ${phone ? 'Tilt to aim, then flick your phone forward like casting a line.' : 'Drag the mouse upward and let go, fast.'}</li>
-      <li><b>Laban!</b> ${phone ? 'Tilt to steer' : 'WASD / arrows to steer'}, ${phone ? 'tap Dash' : 'Shift to dash'} for a quick burst (costs a little spin), tap the power when it’s full. Last trumpo spinning inside the circle wins.</li>
+      <li><b>Laban!</b> ${phone ? 'Tilt to steer' : 'WASD / arrows to steer'}, ${phone ? 'tap Dash' : 'Shift to dash'} for a quick burst (costs a little spin), tap the power when it’s full. Behind on spin? Dash into your rival to steal some back. Last trumpo spinning inside the circle wins.</li>
     </ol>`;
   }
 

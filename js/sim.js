@@ -148,6 +148,16 @@ function collide(w) {
   hitTop(a, b, i);
   hitTop(b, a, i);
   ev(w, 'hit', { x: (a.x + b.x) / 2, z: (a.z + b.z) / 2, i });
+  // Agaw-ikot: a top that is behind on spin and dashes into the leader steals some spin.
+  // Only on a dash, so it is a skill move rather than every bump. At most 40% of the gap
+  // moves each way, so a lead shrinks but never flips from one hit.
+  const gap = Math.abs(a.spin - b.spin);
+  const [lo, hi] = a.spin < b.spin ? [a, b] : [b, a];
+  if (gap > 0.05 && lo.boostCd > BOOST_CD - 0.6) {
+    const amt = Math.min(0.08, gap * 0.4) * (0.4 + 0.6 * i);
+    lo.spin += amt; hi.spin -= amt;
+    ev(w, 'steal', { slot: lo.slot, x: lo.x, z: lo.z, fx: hi.x, fz: hi.z, amt });
+  }
 }
 
 // Asong gala: a stray dog runs through once per round and bumps whatever it touches.
@@ -211,7 +221,9 @@ export function step(w, dt = STEP) {
     const target = clamp((0.45 - tp.spin) / 0.45, 0, 1) * 0.85;
     if (tp.wobble < target) tp.wobble += (target - tp.wobble) * dt;
     else tp.wobble = Math.max(target, tp.wobble - dt * (0.015 + 0.012 * tp.sta));
-    tp.charge = Math.min(1, tp.charge + dt / 8);
+    // The top behind on spin charges its power up to 1.5x faster.
+    const behind = opp.launched && opp.alive ? clamp((opp.spin - tp.spin) / 0.3, 0, 1) : 0;
+    tp.charge = Math.min(1, tp.charge + dt / 8 * (1 + 0.5 * behind));
     if (tp.wantAbility) {
       tp.wantAbility = false;
       if (tp.charge >= 1) useAbility(w, tp, opp);

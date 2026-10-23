@@ -348,7 +348,7 @@ export function createScene(canvas, { low = false } = {}) {
 
   // Hide both tops between rounds.
   function reset() {
-    for (const t of tops) if (t) { t.root.visible = false; t.state = t.target = null; t.wasLaunched = false; t.fallT = 0; }
+    for (const t of tops) if (t) { t.root.visible = false; t.state = t.target = null; t.wasLaunched = false; t.fallT = 0; t.dir = null; }
     dog.visible = false; dogTarget = null;
     party = null;
   }
@@ -372,6 +372,14 @@ export function createScene(canvas, { low = false } = {}) {
         break;
       case 'launch':
         burst(e.x, 0.05, e.z, 18, '#d8b98c', 2.5, 1.2);
+        break;
+      case 'steal':
+        // Sparks in the thief's colour, from the leader toward the thief.
+        if (e.amt > 0.012) {
+          burst(e.fx, 0.5, e.fz, Math.round(e.amt * 500), PLAYER_COLORS[e.slot], 2.5, 2);
+          burst(e.x, 0.5, e.z, Math.round(e.amt * 400), '#ffffff', 1.5, 3);
+          wave(e.x, e.z, PLAYER_COLORS[e.slot], 1.6, 0.4);
+        }
         break;
       case 'boost':
         burst(e.x - e.dx * 0.4, 0.08, e.z - e.dz * 0.4, 22, '#e3c49a', 2.5, 1);
@@ -449,10 +457,18 @@ export function createScene(canvas, { low = false } = {}) {
       t.root.position.y = 0.3 * t.fallT;
       t.spinner.rotation.y -= dt * 3 * (1 - t.fallT);
     }
+    // Always shown while alive: bright when steering, dimmed on the last direction when not
+    // (tilt has a small dead zone, so hiding it made the arrow flicker).
     const [ax, az] = localSteer[slot] || [s.wx || 0, s.wz || 0];
     const am = Math.hypot(ax, az);
-    t.arrow.visible = st.alive && am > 0.15 && !party;
-    if (t.arrow.visible) { t.arrow.rotation.y = Math.atan2(-ax, -az); t.arrow.scale.setScalar(0.6 + 0.4 * Math.min(1, am)); }
+    if (am > 0.05) t.dir = [ax / am, az / am];
+    else if (!t.dir) t.dir = [-st.x || 0, -st.z || 1];
+    t.arrow.visible = st.alive && !party;
+    if (t.arrow.visible) {
+      t.arrow.rotation.y = Math.atan2(-t.dir[0], -t.dir[1]);
+      t.arrow.scale.setScalar(0.6 + 0.4 * Math.min(1, am));
+      t.arrow.children[0].material.opacity = 0.3 + 0.55 * Math.min(1, am / 0.4);
+    }
     t.shield.visible = st.shield && st.alive;
     t.shield.material.opacity = 0.18 + Math.sin(time * 8) * 0.06;
     t.ring.material.color.set(st.invert ? '#9b5de5' : PLAYER_COLORS[slot]);
