@@ -184,3 +184,75 @@ test('a multo flick bumps a live top', () => {
   }
   expect(hit).toBe(true);
 });
+
+test('a charged palo is faster and costs more than a tap', () => {
+  const dash = (c: number) => {
+    const b = make(2);
+    b.launch(0, good);
+    b.launch(1, good);
+    run(b, 2);
+    const t = b.top(0)!;
+    t.vx = t.vz = 0;
+    const spin = t.spin;
+    b.palo(0, c);
+    return { speed: Math.hypot(t.vx, t.vz), cost: spin - t.spin };
+  };
+  const tap = dash(0);
+  const full = dash(1);
+  expect(full.speed).toBeGreaterThan(tap.speed * 1.4);
+  expect(full.cost).toBeGreaterThan(tap.cost * 3);
+});
+
+test('rolling over a rim coin picks it up', () => {
+  const b = make(2);
+  b.launch(0, good);
+  run(b, 2);
+  const t = b.top(0)!;
+  b.coins.push({ x: t.x, z: t.z });
+  b.drainEvents();
+  b.step();
+  expect(b.drainEvents().some((e) => e.type === 'coin' && e.id === 0)).toBe(true);
+  expect(b.coins).toHaveLength(0);
+});
+
+test('a mango warns, lands on a top, then lies there as a bump', () => {
+  const b = make(2);
+  b.launch(0, good);
+  run(b, 2);
+  const t = b.top(0)!;
+  t.x = t.z = t.vx = t.vz = 0;
+  b.mangoes.push({ x: 0.3, z: 0, t: -0.1 });
+  const spin = t.spin;
+  let landed = false;
+  for (let i = 0; i < 20 && !landed; i += 1) {
+    b.step();
+    landed = b.drainEvents().some((e) => e.type === 'mango');
+  }
+  expect(landed).toBe(true);
+  expect(t.spin).toBeLessThan(spin - 0.01);
+  expect(b.mangoes[0].t).toBeGreaterThan(0);
+});
+
+test('a gust pushes tops along its direction, and mud kills grip', () => {
+  const drift = (setup: (b: Battle) => void) => {
+    const b = make(2);
+    b.launch(0, good);
+    run(b, 2);
+    const t = b.top(0)!;
+    t.x = t.z = t.vx = t.vz = 0;
+    setup(b);
+    run(b, 0.5);
+    return t;
+  };
+  const calm = drift(() => {});
+  const windy = drift((b) => (b.wind = { dx: 1, dz: 0, t: 1 }));
+  expect(windy.x).toBeGreaterThan(calm.x + 0.1);
+  const steer = (mud: boolean) =>
+    drift((b) => {
+      b.steer(0, 1, 0);
+      if (mud) b.mud = { x: 0, z: 0, r: 2, t: 5 };
+    });
+  const dry = steer(false);
+  const wet = steer(true);
+  expect(Math.hypot(wet.vx, wet.vz)).toBeLessThan(Math.hypot(dry.vx, dry.vz));
+});

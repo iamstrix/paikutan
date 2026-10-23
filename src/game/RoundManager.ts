@@ -1,6 +1,6 @@
 import { botSpin, botSteer, botThrow } from '../sim/Bot';
 import { TOPS } from '../sim/data';
-import { ARENA_R, Battle, RING_RADIUS, STEP, WORLD_SCALE, type SimEvent } from '../sim/TrompoSim';
+import { ARENA_R, Battle, MUD_FADE, RING_RADIUS, STEP, WORLD_SCALE, type SimEvent } from '../sim/TrompoSim';
 import { createSeededRandom } from '../utils/random';
 
 // Host-authoritative match logic. Runs only on the host (or in solo); clients
@@ -66,6 +66,14 @@ export type Snapshot = {
   ring: number;
   /** Multo tsinelas in flight, world [x, z]. */
   flicks: [number, number][];
+  /** Piso coins near the rim, world [x, z]. */
+  coins: [number, number][];
+  /** Mangoes, world [x, z, t]: t < 0 falling (seconds to impact), t > 0 lying (seconds left). */
+  mangoes: [number, number, number][];
+  /** Hangin: [dx, dz, t]; t < 0 warning (seconds to the gust), t > 0 blowing. */
+  wind: [number, number, number] | null;
+  /** Putik puddle, world [x, z, radius, fade 0..1]. */
+  mud: [number, number, number, number] | null;
   avatars: Record<number, AvatarPose>;
 };
 
@@ -76,8 +84,8 @@ export type GameEvent =
   | { type: 'tumble'; id: number }
   | { type: 'phase'; phase: Phase }
   | { type: 'roundWin'; id: number }
-  /** Points awarded: `id` knocked `victim` out (+1). */
-  | { type: 'ko'; id: number; victim: number; how: 'out' | 'fall' }
+  /** Points awarded: `id` knocked `victim` out (ring-out 2, topple 1). */
+  | { type: 'ko'; id: number; victim: number; how: 'out' | 'fall'; pts: number }
   | { type: 'matchEnd'; id: number }
   /** A bot commits to a power toward (x, z); it fires WINDUP seconds later. */
   | { type: 'windup'; id: number; x: number; z: number };
@@ -88,7 +96,8 @@ export type ClientMsg =
   | { t: 'throw'; power: number; angle: number }
   | { t: 'steer'; x: number; y: number }
   | { t: 'ability' }
-  | { t: 'palo' }
+  /** Palo dash-strike; `c` 0..1 is how long it was charged. */
+  | { t: 'palo'; c?: number }
   /** A knocked-out player's multo flicks a tsinelas at (x, z) in world metres. */
   | { t: 'flick'; x: number; z: number }
   | { t: 'power'; power: string }
@@ -111,6 +120,9 @@ export const WINDUP = 0.45;
 const ROUND_END_TIME = 4;
 const PODIUM_TIME = 9;
 export const KO_POINTS = 1;
+/** Pushing someone out of the circle pays double: it's the riskier play. */
+export const RINGOUT_POINTS = 2;
+export const COIN_POINTS = 1;
 export const LAST_SPINNING_POINTS = 3;
 /** Seconds between multo flicks for one knocked-out player. */
 export const FLICK_CD = 3;
@@ -222,7 +234,7 @@ export class RoundManager {
         if (top && (this.phase === 'throw' || this.phase === 'fight')) this.battle!.ability(id);
         break;
       case 'palo':
-        if (top && this.phase === 'fight') this.battle!.palo(id);
+        if (top && this.phase === 'fight') this.battle!.palo(id, Number(msg.c) || 0);
         break;
       case 'flick':
         this.flick(id, Number(msg.x), Number(msg.z));
@@ -347,6 +359,10 @@ export class RoundManager {
       dog: b?.dog ? [r2(b.dog.x * S), r2(b.dog.z * S), Math.sign(b.dog.vx)] : null,
       ring: r2((b ? b.ring : ARENA_R) * S),
       flicks: b ? b.flicks.map((f) => [r2(f.x * S), r2(f.z * S)]) : [],
+      coins: b ? b.coins.map((c) => [r2(c.x * S), r2(c.z * S)]) : [],
+      mangoes: b ? b.mangoes.map((m) => [r2(m.x * S), r2(m.z * S), r2(m.t)]) : [],
+      wind: b?.wind ? [r2(b.wind.dx), r2(b.wind.dz), r2(b.wind.t)] : null,
+      mud: b?.mud ? [r2(b.mud.x * S), r2(b.mud.z * S), r2(b.mud.r * S), r2(Math.min(1, b.mud.t / MUD_FADE))] : null,
       avatars: this.avatars,
     };
   }
@@ -463,9 +479,14 @@ export class RoundManager {
       if ((e.type === 'out' || e.type === 'fall') && e.by >= 0 && e.by !== e.id) {
         const hitter = this.players.find((p) => p.id === e.by);
         if (hitter) {
-          hitter.score += KO_POINTS;
-          this.events.push({ type: 'ko', id: e.by, victim: e.id, how: e.type });
+          const pts = e.type === 'out' ? RINGOUT_POINTS : KO_POINTS;
+          hitter.score += pts;
+          this.events.push({ type: 'ko', id: e.by, victim: e.id, how: e.type, pts });
         }
+      }
+      if (e.type === 'coin') {
+        const p = this.players.find((pl) => pl.id === e.id);
+        if (p) p.score += COIN_POINTS;
       }
     }
     if (b.over && this.phase === 'fight') {
@@ -506,7 +527,7 @@ export class RoundManager {
         if (!me || !me.alive || !me.launched) continue;
         const d = botSteer(b, me, this.rng);
         b.steer(p.id, d.x, d.y);
-        if (d.palo) b.palo(p.id);
+        if (d.palo) b.palo(p.id, d.paloCharge);
         if (d.ability && !this.windups.has(p.id)) {
           const target = b.nearestRival(me);
           // Powers that strike a rival are telegraphed so the target can react.

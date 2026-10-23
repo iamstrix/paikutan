@@ -10,6 +10,7 @@ import { DesktopBattleInput } from '../input/DesktopBattleInput';
 import { ClientNet, HostNet, makeRoomCode, netMode, randomId, type HostMsg, type PhoneMsg } from '../net/Net';
 import { botSteer } from '../sim/Bot';
 import { RING_RADIUS } from '../sim/TrompoSim';
+import { ChaosView } from '../entities/ChaosView';
 import { AudioSystem, QUICK_CHAT } from '../systems/AudioSystem';
 import { DebugTools, type DebugTuning } from '../systems/DebugTools';
 import { Effects } from '../systems/Effects';
@@ -115,6 +116,10 @@ export class Game {
   private clockShown = CLOCK_START;
   private shake = 0;
   private snapCamera = true;
+  /** fp = first person while spinning/casting; ride = chasing your thrown top; ant = low behind your top. */
+  private camMode: 'fp' | 'ride' | 'ant' | 'other' = 'other';
+  private readonly tmp2 = new THREE.Vector3();
+  private readonly chaos: ChaosView;
   private frame = 0;
   private elapsed = 0;
   // Route ALL gameplay randomness through this.rng (never Math.random) so the
@@ -163,7 +168,7 @@ export class Game {
     this.battleInput.onThrow((r) => this.sendLocal({ t: 'throw', power: r.power, angle: r.angle }));
     this.battleInput.onSteer((x, y) => this.sendLocal({ t: 'steer', x: round2(x), y: round2(y) }));
     this.battleInput.onAbility(() => this.sendLocal({ t: 'ability' }));
-    this.battleInput.onPalo(() => this.sendLocal({ t: 'palo' }));
+    this.battleInput.onPalo((c) => this.sendLocal({ t: 'palo', c: round2(c) }));
     this.battleInput.onFlick((cx, cy) => {
       const g = this.pickGround(cx, cy);
       if (g) this.sendLocal({ t: 'flick', x: round2(g.x), z: round2(g.z) });
@@ -175,7 +180,8 @@ export class Game {
     this.scene.add(this.world.group);
     this.critters = new Critters(createSeededRandom(5));
     this.effects = new Effects(createSeededRandom(9));
-    this.scene.add(this.critters.group, this.effects.group, this.dog.group, this.podiumFill);
+    this.chaos = new ChaosView(this.effects);
+    this.scene.add(this.critters.group, this.effects.group, this.dog.group, this.podiumFill, this.chaos.group);
 
     this.spawnExtras();
 
@@ -440,6 +446,8 @@ export class Game {
     const ambient = this.reducedMotion ? 0 : elapsed;
     this.world.update(ambient, snap && this.role !== 'none' ? snap.ring : RING_RADIUS);
     this.syncFlicks(snap && this.role !== 'none' ? snap.flicks : []);
+    this.chaos.sync(snap && this.role !== 'none' ? snap : null, this.reducedMotion ? 0 : dt, ambient);
+    this.updateEdgeArrows(snap && this.role !== 'none' ? snap : null);
     if (!this.reducedMotion) {
       const local = this.avatars.get(this.localId);
       const people = [...this.avatars.values(), ...this.extras].map((a) => a.group.position);
@@ -618,7 +626,32 @@ export class Game {
           break;
         }
         case 'palo':
-          this.effects.puff(e.x, 0.05, e.z, { n: 6, speed: 1.4, size: 0.35 });
+          this.effects.puff(e.x, 0.05, e.z, { n: 6 + Math.round(e.c * 10), speed: 1.4 + e.c, size: 0.35 });
+          if (e.c > 0.6) this.effects.pow(e.x, 0.7, e.z, 'BWELO!', 1);
+          this.audio.whoosh();
+          break;
+        case 'coin':
+          this.effects.sparkle(e.x, e.z);
+          this.floatText(e.x, e.z, '+1 PISO', '#f2c230', 0.5);
+          this.audio.chime();
+          break;
+        case 'mangoWarn':
+          this.audio.warn();
+          break;
+        case 'mango': {
+          this.effects.pow(e.x, 0.6, e.z, 'PLOK!', 1);
+          this.effects.puff(e.x, 0.05, e.z, { n: 10, speed: 1.2, size: 0.35 });
+          this.effects.ring(e.x, e.z, '#f5b02e', 0.8, 0.4);
+          const mv = this.tops.get(this.localId);
+          if (mv && mv.group.position.distanceTo(this.tmp.set(e.x, mv.group.position.y, e.z)) < 1) this.shake = Math.min(0.4, this.shake + 0.2);
+          this.audio.land(false);
+          break;
+        }
+        case 'windWarn':
+          this.ui.showBanner('HANGIN!');
+          this.audio.warn();
+          break;
+        case 'wind':
           this.audio.whoosh();
           break;
         case 'steal':
@@ -645,9 +678,9 @@ export class Game {
           break;
         case 'ko': {
           const hitter = snap.players.find((pl) => pl.id === e.id);
-          if (e.id === this.localId) this.ui.showBanner('+1 KO!');
+          if (e.id === this.localId) this.ui.showBanner(e.how === 'out' ? `+${e.pts} RING-OUT!` : `+${e.pts} KO!`);
           const av = this.avatars.get(e.id);
-          if (av && hitter) this.floatText(av.group.position.x, av.group.position.z, '+1 KO', PLAYER_COLORS[hitter.color], 2.4);
+          if (av && hitter) this.floatText(av.group.position.x, av.group.position.z, `+${e.pts} ${e.how === 'out' ? 'RING-OUT' : 'KO'}`, PLAYER_COLORS[hitter.color], 2.4);
           break;
         }
         case 'roundWin': {
@@ -916,6 +949,8 @@ export class Game {
       this.audio.chime();
     }
     this.powerWasReady = ready;
+    this.ui.paloCharge(alive && snap.phase === 'fight' ? this.battleInput.paloCharge : null);
+    this.ui.windArrow(this.windAngle(snap), !!snap.wind && snap.wind[2] > 0);
 
     this.ui.setPairing(this.pairUrl(), paired, this.room ? null : 'Phones need an online room (Supabase) or ?net=local.');
     this.ui.setHint(this.hintFor(snap, alive, paired));
@@ -939,7 +974,7 @@ export class Game {
       case 'throw':
         return seated ? '' : 'Watching...';
       case 'fight':
-        if (alive) return paired ? 'Tilt to steer · tap the pad to PALO · power button' : 'WASD steer · Space / click PALO (dash-strike) · E / right-click power';
+        if (alive) return paired ? 'Tilt to steer · tap the pad = PALO, hold = charged · power button' : 'WASD steer · tap Space/click = PALO, HOLD = charged palo · E / right-click power';
         return seated ? 'You\'re out — click the circle to flick your tsinelas at someone!' : 'Watching...';
       case 'roundEnd':
         return '';
@@ -970,7 +1005,7 @@ export class Game {
         const d = botSteer(this.rm.battle, top, this.rng);
         this.sendLocal({ t: 'steer', x: d.x, y: d.y });
         if (d.ability) this.sendLocal({ t: 'ability' });
-        if (d.palo) this.sendLocal({ t: 'palo' });
+        if (d.palo) this.sendLocal({ t: 'palo', c: round2(d.paloCharge) });
       }
     }
   }
@@ -1006,7 +1041,41 @@ export class Game {
         this.lookTarget.copy(w.group.position).add(this.tmp.set(fz * 1.4, 1.0, -fx * 1.4));
         this.podiumFill.position.copy(w.group.position).add(this.tmp.set(fx * 2.2, 2.2, fz * 2.2));
       }
-    } else if (snap) {
+    }
+    let mode: typeof this.camMode = 'other';
+    let fov = 50;
+    let lag = this.tuning.cameraLag * (phase === 'lobby' ? 4 : 1);
+    const myView = this.tops.get(this.localId);
+    const mineTop = snap ? this.topOf(snap, this.localId) : undefined;
+    const seated = !!snap && snap.seats.includes(this.localId);
+    if (snap && seated && local && (phase === 'charge' || phase === 'countdown' || (phase === 'throw' && !mineTop?.[T_LAUNCHED]))) {
+      // First person: you're the one winding the string and casting it.
+      mode = 'fp';
+      fov = 65;
+      lag = 0.04;
+      const ry = local.group.rotation.y;
+      const fx = Math.sin(ry);
+      const fz = Math.cos(ry);
+      local.rig.head.getWorldPosition(this.camTarget);
+      this.camTarget.add(this.tmp.set(fx * 0.12, 0.34, fz * 0.12));
+      const down = phase === 'charge' ? 1.05 : 0.75;
+      this.lookTarget.copy(this.camTarget).add(this.tmp.set(fx * 1.3, -down, fz * 1.3));
+    } else if (snap && seated && myView && mineTop?.[T_LAUNCHED] && mineTop[T_ALIVE] && (phase === 'throw' || phase === 'fight')) {
+      // Ant cam: low behind your top, still on your seat's yaw so W stays "away from you".
+      const seat = snap.seats.indexOf(this.localId);
+      const s = slotPos(seat, snap.seats.length);
+      const len = Math.hypot(s.x, s.y) || 1;
+      const dx = s.x / len;
+      const dz = s.y / len;
+      const p = myView.group.position;
+      const c = this.battleInput.paloCharge;
+      mode = myView.flying ? 'ride' : 'ant';
+      fov = 62 - c * 10;
+      lag = myView.flying ? 0.09 : 0.06;
+      const back = 1.7 + c * 0.6;
+      this.camTarget.set(p.x + dx * back, Math.max(0.55 + c * 0.2, p.y + 0.35), p.z + dz * back);
+      this.lookTarget.set(p.x - dx * 1.1, Math.max(0.1, p.y), p.z - dz * 1.1);
+    } else if (snap && !(phase === 'roundEnd' || phase === 'podium' || free)) {
       // Behind your seat: W/tilt-forward steers away from you, as in paikutan. The camera never
       // rotates off that angle, so steering stays consistent; it only slides and zooms.
       const seat = snap.seats.indexOf(this.localId);
@@ -1041,15 +1110,32 @@ export class Game {
         this.lookTarget.set(0, 0.2, 0);
       }
     }
+    if (mode !== this.camMode) {
+      this.camMode = mode;
+      document.body.classList.toggle('fp', mode === 'fp');
+    }
+    // Your own head would fill the first-person view; your whole body would block the ant cam.
+    if (local) {
+      local.rig.head.visible = mode !== 'fp';
+      local.group.visible = mode !== 'ant' && mode !== 'ride';
+    }
+    const near = mode === 'other' ? 0.1 : 0.03;
+    if (Math.abs(this.camera.fov - fov) > 0.05 || this.camera.near !== near) {
+      this.camera.fov += (fov - this.camera.fov) * Math.min(1, dt * 6);
+      this.camera.near = near;
+      this.camera.updateProjectionMatrix();
+    }
 
     this.podiumFill.intensity = phase === 'podium' ? 4 : 0;
-    const k = this.snapCamera ? 1 : 1 - Math.exp(-dt / Math.max(0.01, this.tuning.cameraLag * (phase === 'lobby' ? 4 : 1)));
+    const k = this.snapCamera ? 1 : 1 - Math.exp(-dt / Math.max(0.01, lag));
     this.camera.position.lerp(this.camTarget, k);
     this.look.lerp(this.lookTarget, this.snapCamera ? 1 : Math.min(1, k * 1.5));
     this.snapCamera = false;
     if (this.shake > 0.001 && !this.reducedMotion) {
-      this.camera.position.x += (this.rng() - 0.5) * this.shake;
-      this.camera.position.y += (this.rng() - 0.5) * this.shake;
+      // Down at ant height the same shake reads several times bigger.
+      const amp = this.shake * (mode === 'ant' || mode === 'ride' ? 0.3 : 1);
+      this.camera.position.x += (this.rng() - 0.5) * amp;
+      this.camera.position.y += (this.rng() - 0.5) * amp;
       this.shake *= Math.exp(-dt * 7);
     }
     this.camera.lookAt(this.look);
@@ -1071,7 +1157,8 @@ export class Game {
         this.tmp.project(this.camera);
         const visible = this.tmp.z < 1 && dist < 32 && Math.abs(this.tmp.x) < 1.1 && Math.abs(this.tmp.y) < 1.1;
         const name = p.paired ? `📱 ${p.name}` : p.name;
-        this.ui.label(p.id, name, PLAYER_COLORS[p.color], (this.tmp.x * 0.5 + 0.5) * w, (-this.tmp.y * 0.5 + 0.5) * h, visible, dt);
+        const self = p.id === this.localId && this.camMode !== 'other';
+        this.ui.label(p.id, name, PLAYER_COLORS[p.color], (this.tmp.x * 0.5 + 0.5) * w, (-this.tmp.y * 0.5 + 0.5) * h, visible && !self, dt);
       }
     }
     this.ui.pruneLabels(alive);
@@ -1089,6 +1176,47 @@ export class Game {
     this.tmp.set(x, y, z).project(this.camera);
     if (this.tmp.z > 1) return;
     this.ui.floatText((this.tmp.x * 0.5 + 0.5) * this.canvas.clientWidth, (-this.tmp.y * 0.5 + 0.5) * this.canvas.clientHeight, text, color);
+  }
+
+  /** On-screen direction of the wind (radians, screen space, y down), or null. */
+  private windAngle(snap: Snapshot): number | null {
+    if (!snap.wind) return null;
+    const a = this.tmp.copy(this.look).project(this.camera);
+    const b = this.tmp2.set(this.look.x + snap.wind[0], this.look.y, this.look.z + snap.wind[1]).project(this.camera);
+    return Math.atan2(-(b.y - a.y), b.x - a.x);
+  }
+
+  /** Down at ant height you can't see who's coming: arrows on the screen edge for close rivals and mango shadows. */
+  private updateEdgeArrows(snap: Snapshot | null): void {
+    const items: { x: number; y: number; angle: number; color: string; danger: boolean }[] = [];
+    const mine = snap ? this.topOf(snap, this.localId) : undefined;
+    if (snap && mine && (this.camMode === 'ant' || this.camMode === 'ride')) {
+      const w = this.canvas.clientWidth;
+      const h = this.canvas.clientHeight;
+      const add = (x: number, z: number, color: string, danger: boolean) => {
+        this.tmp.set(x, 0.2, z).project(this.camera);
+        let sx = this.tmp.x;
+        let sy = this.tmp.y;
+        const behind = this.tmp.z > 1;
+        if (!behind && Math.abs(sx) < 0.9 && Math.abs(sy) < 0.9) return;
+        if (behind) {
+          sx = -sx;
+          sy = -sy;
+        }
+        const angle = Math.atan2(-sy, sx);
+        items.push({ x: w / 2 + Math.cos(angle) * (w / 2 - 36), y: h / 2 + Math.sin(angle) * (h / 2 - 36), angle, color, danger });
+      };
+      for (const t of snap.tops) {
+        if (t[0] === this.localId || !t[T_LAUNCHED] || !t[T_ALIVE]) continue;
+        if (Math.hypot(t[T_X] - mine[T_X], t[T_Z] - mine[T_Z]) > 2) continue;
+        const p = snap.players.find((pl) => pl.id === t[0]);
+        add(t[T_X], t[T_Z], PLAYER_COLORS[p?.color ?? 0], !!t[T_DASH]);
+      }
+      for (const m of snap.mangoes) {
+        if (m[2] < 0 && Math.hypot(m[0] - mine[T_X], m[1] - mine[T_Z]) < 1) add(m[0], m[1], '#f2c230', true);
+      }
+    }
+    this.ui.edgeArrows(items);
   }
 
   /** Ghostly tsinelas flicked by knocked-out players. */

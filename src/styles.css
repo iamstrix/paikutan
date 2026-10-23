@@ -1060,3 +1060,74 @@ button:focus-visible {
   pointer-events: none;
   white-space: nowrap;
 }
+
+/* --- POV + chaos pass: palo charge, wind arrow, edge arrows, first-person spin pad --- */
+#palo-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+#palo-row[hidden] {
+  display: none;
+}
+
+#spin-meter .bar.charge {
+  display: block;
+  width: 70px;
+}
+
+#spin-meter .bar.charge i {
+  background: #f2c230;
+  transition: none;
+}
+
+#spin-meter .bar.charge i.full {
+  background: #e8622c;
+  animation: pop 200ms ease-out infinite alternate;
+}
+
+#wind-arrow {
+  position: absolute;
+  top: 120px;
+  left: 50%;
+  margin-left: -28px;
+  width: 56px;
+  text-align: center;
+  font-size: 3rem;
+  line-height: 56px;
+  color: #fff6dc;
+  -webkit-text-stroke: 2px #2b1d12;
+  opacity: 0.6;
+  pointer-events: none;
+}
+
+#wind-arrow.blowing {
+  opacity: 1;
+  animation: pop 250ms ease-out infinite alternate;
+}
+
+.edge-arrow {
+  position: absolute;
+  translate: -50% -50%;
+  font-size: 1.6rem;
+  -webkit-text-stroke: 2px #2b1d12;
+  pointer-events: none;
+}
+
+.edge-arrow.danger {
+  animation: pop 220ms ease-out infinite alternate;
+}
+
+/* First person: keep the winding hands in view; the pad moves to the side. */
+body.fp #spin-panel {
+  left: auto;
+  right: 16px;
+  transform: none;
+  width: min(270px, calc(100vw - 32px));
+  background: rgba(255, 246, 220, 0.82);
+}
+
+body.fp #throw-panel {
+  bottom: 24px;
+}

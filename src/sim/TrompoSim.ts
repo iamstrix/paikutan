@@ -20,8 +20,8 @@ export const WORLD_SCALE = RING_RADIUS / ARENA_R;
 
 // tromPOW core-loop tuning on top of paikutan (see tests/balance.spec.ts for the targets).
 /** The circle starts shrinking at SQUEEZE_START and reaches SQUEEZE_MIN of its size at SQUEEZE_END. */
-export const SQUEEZE_START = 15;
-export const SQUEEZE_END = 35;
+export const SQUEEZE_START = 18;
+export const SQUEEZE_END = 38;
 export const SQUEEZE_MIN = 0.6;
 /** Palo: a dash-strike that costs spin and leaves you exposed for a moment afterwards. */
 export const PALO_SPEED = 4.5;
@@ -41,6 +41,30 @@ const DIP = 0.5;
 const KNOCKBACK = 1.0;
 /** Passive spin drain per second (paikutan: 0.03); the squeeze, not slow decay, should end rounds. */
 const BASE_DECAY = 0.02;
+/** Charged palo (c = 1): faster, harder, pricier, and you're open longer afterwards. */
+const PALO_MAX_SPEED = 7.5;
+const PALO_MAX_COST = 0.06;
+const PALO_MAX_DASH = 0.5;
+const PALO_MAX_HIT = 0.8;
+
+// Chaos and risk/reward (all seeded through this.rng, so online games stay in sync).
+/** Piso coins spawn near the rim: points and power charge for whoever dares the edge. */
+const COIN_EVERY = 4;
+const COIN_PICKUP = TOP_R + 0.3;
+const COIN_CHARGE = 0.25;
+/** Mangoes: a shadow warns, they drop, then lie there as a bump for a while. */
+export const MANGO_WARN = 1.1;
+const MANGO_HIT = 0.8;
+export const MANGO_R = 0.35;
+const MANGO_LIE = 5;
+/** Hangin: a telegraphed gust that shoves every top one way. */
+export const WIND_WARN = 1.2;
+const WIND_GUST = 1.6;
+const WIND_ACCEL = 3;
+/** Putik: a slippery puddle; fades in before it bites. */
+const MUD_R = 0.9;
+const MUD_EVERY = 12;
+export const MUD_FADE = 1;
 
 const clamp = (v: number, a: number, b: number) => Math.max(a, Math.min(b, v));
 
@@ -73,6 +97,8 @@ export type Top = {
   paloCd: number;
   /** Seconds left of the post-palo exposed window (lighter and takes more damage). */
   exposed: number;
+  /** Charge (0..1) of the palo dash in progress. */
+  paloC: number;
   grace: number;
   stun: number;
   lastHitBy: number;
@@ -89,7 +115,13 @@ export type SimEvent =
   | { type: 'ability'; id: number; power: string; x: number; z: number; tx: number; tz: number }
   | { type: 'out'; id: number; x: number; z: number; by: number }
   | { type: 'fall'; id: number; x: number; z: number; by: number }
-  | { type: 'palo'; id: number; x: number; z: number }
+  | { type: 'palo'; id: number; x: number; z: number; c: number }
+  | { type: 'coin'; id: number; x: number; z: number }
+  | { type: 'mangoWarn' }
+  | { type: 'mango'; x: number; z: number }
+  | { type: 'windWarn'; dx: number; dz: number }
+  | { type: 'wind' }
+  | { type: 'mud'; x: number; z: number }
   | { type: 'steal'; id: number; amount: number; x: number; z: number }
   | { type: 'strike'; id: number; target: number; x: number; z: number }
   | { type: 'flick'; by: number; x: number; z: number }
@@ -101,6 +133,12 @@ export type SimEvent =
 export type Dog = { x: number; z: number; vx: number; hit: Set<number> };
 /** A multo's flicked tsinelas: a small slider that bumps live tops; never scores. */
 export type Flick = { by: number; x: number; z: number; vx: number; vz: number; life: number; hit: Set<number> };
+/** t < 0: falling, seconds to impact. t > 0: lying on the ground, seconds left. */
+export type Mango = { x: number; z: number; t: number };
+/** t < 0: warning, seconds to the gust. t > 0: blowing, seconds left. */
+export type Wind = { dx: number; dz: number; t: number };
+/** t = age; slippery once t >= MUD_FADE. */
+export type Mud = { x: number; z: number; r: number; t: number };
 
 /** Player-local direction (x = right, y = away) to world x/z for a seat, and back. */
 export function toWorld(seat: number, x: number, y: number): [number, number] {
@@ -127,6 +165,14 @@ export class Battle {
   readonly flicks: Flick[] = [];
   /** Current circle radius (shrinks during the squeeze). */
   ring = ARENA_R;
+  readonly coins: { x: number; z: number }[] = [];
+  readonly mangoes: Mango[] = [];
+  wind: Wind | null = null;
+  mud: Mud | null = null;
+  private nextCoin = COIN_EVERY;
+  private nextMango = 8;
+  private nextWind = 10;
+  private nextMud = 6;
   over = false;
   winner = -1;
   reason = '';
@@ -163,6 +209,7 @@ export class Battle {
         dash: 0,
         paloCd: 0,
         exposed: 0,
+        paloC: 0,
         grace: 0,
         stun: 0,
         lastHitBy: -1,
@@ -214,10 +261,13 @@ export class Battle {
     }
   }
 
-  /** Palo: dash toward where you're steering (or the nearest rival). Costs spin; leaves you exposed after. */
-  palo(id: number): void {
+  /** Palo: dash toward where you're steering (or the nearest rival). Costs spin; leaves you exposed after.
+   * `c` (0..1) is how long it was charged: more speed and hit, more cost and exposure. */
+  palo(id: number, c = 0): void {
     const tp = this.top(id);
-    if (!tp || !tp.launched || !tp.alive || tp.paloCd > 0 || tp.spin < PALO_COST + 0.08 || tp.stun > 0) return;
+    c = clamp(Number.isFinite(c) ? c : 0, 0, 1);
+    const cost = PALO_COST + (PALO_MAX_COST - PALO_COST) * c;
+    if (!tp || !tp.launched || !tp.alive || tp.paloCd > 0 || tp.spin < cost + 0.08 || tp.stun > 0) return;
     let dx: number;
     let dz: number;
     if (Math.hypot(tp.sx, tp.sy) > 0.2) {
@@ -229,13 +279,15 @@ export class Battle {
       dz = op ? op.z - tp.z : -tp.z;
     }
     const d = Math.hypot(dx, dz) || 1;
-    tp.vx = (dx / d) * PALO_SPEED + tp.vx * 0.3;
-    tp.vz = (dz / d) * PALO_SPEED + tp.vz * 0.3;
-    tp.dash = Math.max(tp.dash, PALO_DASH);
+    const speed = PALO_SPEED + (PALO_MAX_SPEED - PALO_SPEED) * c;
+    tp.vx = (dx / d) * speed + tp.vx * 0.3;
+    tp.vz = (dz / d) * speed + tp.vz * 0.3;
+    tp.dash = Math.max(tp.dash, PALO_DASH + (PALO_MAX_DASH - PALO_DASH) * c);
+    tp.paloC = c;
     tp.exposed = 0;
-    tp.spin -= PALO_COST;
+    tp.spin -= cost;
     tp.paloCd = PALO_CD;
-    this.events.push({ type: 'palo', id, x: tp.x, z: tp.z });
+    this.events.push({ type: 'palo', id, x: tp.x, z: tp.z, c });
   }
 
   /** A knocked-out player's multo flicks a tsinelas from outside the circle toward (tx, tz). */
@@ -311,8 +363,10 @@ export class Battle {
       tp.invert = Math.max(0, tp.invert - dt);
       const wasDashing = tp.dash > 0;
       tp.dash = Math.max(0, tp.dash - dt);
-      if (wasDashing && tp.dash === 0 && tp.paloCd > 0) tp.exposed = EXPOSED;
-      else tp.exposed = Math.max(0, tp.exposed - dt);
+      if (wasDashing && tp.dash === 0 && tp.paloCd > 0) {
+        tp.exposed = EXPOSED * (1 + tp.paloC);
+        tp.paloC = 0;
+      } else tp.exposed = Math.max(0, tp.exposed - dt);
       tp.paloCd = Math.max(0, tp.paloCd - dt);
       tp.grace = Math.max(0, tp.grace - dt);
       tp.stun = Math.max(0, tp.stun - dt);
@@ -329,16 +383,21 @@ export class Battle {
         sy = -sy;
       }
       const [wx, wz] = toWorld(tp.seat, sx, sy);
-      const grip = 4.5 * (0.35 + 0.65 * tp.spin);
+      const muddy = this.inMud(tp);
+      const grip = 4.5 * (0.35 + 0.65 * tp.spin) * (muddy ? 0.35 : 1);
       // The ground dips slightly toward the middle, so tops keep meeting.
       let ax = wx * grip - tp.x * DIP;
       let az = wz * grip - tp.z * DIP;
+      if (this.wind && this.wind.t > 0) {
+        ax += this.wind.dx * WIND_ACCEL;
+        az += this.wind.dz * WIND_ACCEL;
+      }
       const wander = tp.wobble * 2.2;
       ax += Math.cos(this.t * 3 + tp.id * 2) * wander;
       az += Math.sin(this.t * 3 + tp.id * 2) * wander;
       tp.vx += ax * dt;
       tp.vz += az * dt;
-      const fr = Math.exp(-dt * (0.7 + 1.2 * (1 - tp.spin)));
+      const fr = Math.exp(-dt * (0.7 + 1.2 * (1 - tp.spin)) * (muddy ? 0.3 : 1));
       tp.vx *= fr;
       tp.vz *= fr;
       tp.x += tp.vx * dt;
@@ -361,6 +420,7 @@ export class Battle {
     }
     this.strayDog(dt);
     this.moveFlicks(dt);
+    this.chaos(dt);
 
     for (const tp of this.tops) {
       if (!tp.launched || !tp.alive) continue;
@@ -446,10 +506,11 @@ export class Battle {
     tp.lastHitAt = this.t;
   }
 
-  /** Spin and wobble damage to `tp` from `by`; mult > 1 when tp was the one hit, < 1 when tp did the hitting. */
-  private damage(tp: Top, by: Top, mult: number, force = false): number {
+  /** Spin and wobble damage to `tp` from `by`; mult > 1 when tp was the one hit, < 1 when tp did the hitting.
+   * `by` null = the barangay itself (mangoes): no KO credit changes hands. */
+  private damage(tp: Top, by: Top | null, mult: number, force = false): number {
     tp.charge = Math.min(1, tp.charge + 0.08);
-    this.credit(tp, by);
+    if (by) this.credit(tp, by);
     if (tp.grace > 0 && !force) return 0;
     const k = (tp.shield > 0 ? 0.3 : 1) * mult * (tp.exposed > 0 ? 1.3 : 1);
     const loss = Math.min(Math.max(0, tp.spin), 0.03 * k);
@@ -505,7 +566,9 @@ export class Battle {
     } else {
       const vic = atk === a ? b : a;
       const sign = atk === a ? 1 : -1;
-      const stolen = this.damage(vic, atk, 1.8 * i);
+      // A charged palo hits harder and shoves further (the ring-out pays double).
+      const pm = atk.dash > 0 ? 1 + atk.paloC * PALO_MAX_HIT : 1;
+      const stolen = this.damage(vic, atk, 1.8 * i * pm);
       this.damage(atk, vic, 0.5 * i);
       // Agaw-ikot: the attacker takes the spin the victim lost.
       if (stolen > 0) {
@@ -513,8 +576,8 @@ export class Battle {
         this.events.push({ type: 'steal', id: atk.id, amount: stolen, x: atk.x, z: atk.z });
       }
       const kb = vic.shield > 0 ? 0.4 : KNOCKBACK;
-      vic.vx += nx * sign * kb * i;
-      vic.vz += nz * sign * kb * i;
+      vic.vx += nx * sign * kb * i * pm;
+      vic.vz += nz * sign * kb * i * pm;
       // Agimat: attackers bounce off a shielded top.
       if (vic.shield > 0) {
         atk.vx -= nx * sign * 2.5 * i;
@@ -548,6 +611,130 @@ export class Battle {
       }
       if (f.life <= 0 || Math.hypot(f.x, f.z) > 9) this.flicks.splice(i, 1);
     }
+  }
+
+  private inMud(tp: Top): boolean {
+    const m = this.mud;
+    return !!m && m.t >= MUD_FADE && Math.hypot(tp.x - m.x, tp.z - m.z) < m.r;
+  }
+
+  /** Coins, mangoes, wind and mud: spawn on their timers, then act on live tops. */
+  private chaos(dt: number): void {
+    const live = this.tops.filter((t) => t.launched && t.alive);
+    if (!live.length) return;
+    const ang = () => this.rng() * Math.PI * 2;
+
+    // Piso at the rim.
+    if (this.t >= this.nextCoin) {
+      this.nextCoin = this.t + COIN_EVERY;
+      if (this.coins.length < 2) {
+        const a = ang();
+        const r = this.ring * (0.78 + this.rng() * 0.14);
+        this.coins.push({ x: Math.cos(a) * r, z: Math.sin(a) * r });
+      }
+    }
+    for (let i = this.coins.length - 1; i >= 0; i -= 1) {
+      const c = this.coins[i];
+      if (Math.hypot(c.x, c.z) > this.ring - TOP_R * 0.5) {
+        this.coins.splice(i, 1);
+        continue;
+      }
+      const tp = live.find((t) => Math.hypot(t.x - c.x, t.z - c.z) < COIN_PICKUP);
+      if (!tp) continue;
+      tp.charge = Math.min(1, tp.charge + COIN_CHARGE);
+      this.coins.splice(i, 1);
+      this.events.push({ type: 'coin', id: tp.id, x: c.x, z: c.z });
+    }
+
+    // Mangoes: a volley near random tops, more of them once the circle squeezes.
+    if (this.t >= this.nextMango) {
+      this.nextMango = this.t + 6 + this.rng() * 3;
+      const n = (this.ring < ARENA_R ? 3 : 2) + (this.rng() < 0.5 ? 1 : 0);
+      for (let k = 0; k < n; k += 1) {
+        const near = live[Math.floor(this.rng() * live.length)];
+        let x = near.x + (this.rng() - 0.5) * 2.4;
+        let z = near.z + (this.rng() - 0.5) * 2.4;
+        const d = Math.hypot(x, z);
+        const max = this.ring * 0.9;
+        if (d > max) {
+          x *= max / d;
+          z *= max / d;
+        }
+        this.mangoes.push({ x, z, t: -MANGO_WARN });
+      }
+      this.events.push({ type: 'mangoWarn' });
+    }
+    for (let i = this.mangoes.length - 1; i >= 0; i -= 1) {
+      const m = this.mangoes[i];
+      if (m.t < 0) {
+        m.t += dt;
+        if (m.t < 0) continue;
+        m.t = MANGO_LIE;
+        for (const tp of live) {
+          const dx = tp.x - m.x;
+          const dz = tp.z - m.z;
+          const d = Math.hypot(dx, dz);
+          if (d > MANGO_HIT) continue;
+          this.damage(tp, null, 0.6, true);
+          tp.wobble += 0.15;
+          tp.vx += (dx / (d || 1)) * 2.5;
+          tp.vz += (dz / (d || 1)) * 2.5;
+        }
+        this.events.push({ type: 'mango', x: m.x, z: m.z });
+        continue;
+      }
+      m.t -= dt;
+      if (m.t <= 0) {
+        this.mangoes.splice(i, 1);
+        continue;
+      }
+      // Lying mango: a bump that tops bounce off.
+      for (const tp of live) {
+        const dx = tp.x - m.x;
+        const dz = tp.z - m.z;
+        const d = Math.hypot(dx, dz);
+        if (d >= TOP_R + MANGO_R || d === 0) continue;
+        const nx = dx / d;
+        const nz = dz / d;
+        tp.x = m.x + nx * (TOP_R + MANGO_R);
+        tp.z = m.z + nz * (TOP_R + MANGO_R);
+        const vn = tp.vx * nx + tp.vz * nz;
+        if (vn < 0) {
+          tp.vx -= 1.6 * vn * nx;
+          tp.vz -= 1.6 * vn * nz;
+        }
+      }
+    }
+
+    // Hangin.
+    if (!this.wind && this.t >= this.nextWind) {
+      this.nextWind = this.t + 9 + this.rng() * 3;
+      const a = ang();
+      this.wind = { dx: Math.cos(a), dz: Math.sin(a), t: -WIND_WARN };
+      this.events.push({ type: 'windWarn', dx: this.wind.dx, dz: this.wind.dz });
+    } else if (this.wind) {
+      const w = this.wind;
+      if (w.t < 0) {
+        w.t += dt;
+        if (w.t >= 0) {
+          w.t = WIND_GUST;
+          this.events.push({ type: 'wind' });
+        }
+      } else {
+        w.t -= dt;
+        if (w.t <= 0) this.wind = null;
+      }
+    }
+
+    // Putik: one puddle that moves every so often.
+    if (this.t >= this.nextMud) {
+      this.nextMud = this.t + MUD_EVERY;
+      const a = ang();
+      const r = Math.sqrt(this.rng()) * this.ring * 0.6;
+      this.mud = { x: Math.cos(a) * r, z: Math.sin(a) * r, r: MUD_R, t: 0 };
+      this.events.push({ type: 'mud', x: this.mud.x, z: this.mud.z });
+    }
+    if (this.mud) this.mud.t += dt;
   }
 
   // Asong gala: a stray dog runs through once per round and bumps whatever it touches.

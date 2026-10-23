@@ -47,8 +47,9 @@
               <li>Step inside the <b>ring of stones</b> to start a match</li>
               <li><b>Spin:</b> draw fast circles on the ring for 3 seconds: speed = power, neatness = steadiness</li>
               <li><b>Throw:</b> drag the mouse up and let go (Space = medium throw)</li>
-              <li><b>Fight:</b> WASD steers, <b>Space / click</b> = PALO dash-strike (hits steal spin), <b>E / right-click</b> = power</li>
-              <li>Knock someone out = <b>+1</b>, last trompo spinning = <b>+3</b>. Out? Click the circle to flick your tsinelas!</li>
+              <li><b>Fight:</b> WASD steers, <b>Space / click</b> = PALO dash-strike (hold to charge it), <b>E / right-click</b> = power</li>
+              <li>Topple someone = <b>+1</b>, push them out = <b>+2</b>, grab a piso at the rim = <b>+1</b>, last trompo spinning = <b>+3</b>. Out? Click the circle to flick your tsinelas!</li>
+              <li>Watch out for falling mangoes, <b>hangin</b> gusts and the <b>putik</b> puddle.</li>
               <li>Last trompo spinning in the circle wins. <b>1–6</b> to taunt! <b>📱</b> uses your phone as the trompo.</li>
             </ul>
           </details>
@@ -89,7 +90,9 @@
           <span>WOBBLE</span>
           <div class="bar wobble"><i id="wobble-fill"></i></div>
           <small id="palo-ready">POWER ✓</small>
+          <span id="palo-row" hidden>PALO <span class="bar charge"><i id="palo-charge"></i></span></span>
         </div>
+        <div id="wind-arrow" hidden aria-label="Wind direction">➜</div>
         <div id="hint"></div>
         <div id="chat-legend"></div>
       </section>

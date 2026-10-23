@@ -13,6 +13,8 @@ export type Burst = {
   gravity?: number;
   /** Pick each particle's colour from this list instead of `color` (confetti). */
   palette?: string[];
+  /** Extra world x/z velocity for every particle (wind-swept dust). */
+  drift?: [number, number];
 };
 
 function spriteTexture(kind: 'soft' | 'spark'): THREE.CanvasTexture {
@@ -115,7 +117,7 @@ export class Particles {
       const a = rng() * Math.PI * 2;
       const s = b.speed * (0.4 + rng() * 0.6);
       this.pos.set([x, y, z], i * 3);
-      this.vel.set([Math.cos(a) * s, b.up * (0.5 + rng()), Math.sin(a) * s], i * 3);
+      this.vel.set([Math.cos(a) * s + (b.drift?.[0] ?? 0), b.up * (0.5 + rng()), Math.sin(a) * s + (b.drift?.[1] ?? 0)], i * 3);
       this.col.set([this.tmp.r, this.tmp.g, this.tmp.b], i * 3);
       this.life[i] = this.maxLife[i] = b.life * (0.6 + rng() * 0.4);
       this.baseSize[i] = b.size * (0.7 + rng() * 0.6);

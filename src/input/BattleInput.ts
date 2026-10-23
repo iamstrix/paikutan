@@ -17,8 +17,10 @@ export interface BattleInput {
   /** Steering in player-local space: x = right, y = away from the player. */
   onSteer(cb: (x: number, y: number) => void): void;
   onAbility(cb: () => void): void;
-  /** Palo: the dash-strike. */
-  onPalo(cb: () => void): void;
+  /** Palo: the dash-strike; `c` 0..1 is how long it was held (charged). */
+  onPalo(cb: (c: number) => void): void;
+  /** Charge of a palo being held right now (0 when not charging), for the HUD and camera. */
+  readonly paloCharge: number;
   /** Multo flick at a screen point (the game turns it into a spot on the ground). */
   onFlick(cb: (clientX: number, clientY: number) => void): void;
   update(dt: number): void;

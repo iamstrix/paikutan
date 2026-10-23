@@ -87,6 +87,12 @@ function start(): void {
             if (e.type === 'hit' && (e.a === pid || e.b === pid)) buzz(Math.round(30 + e.i * 60));
             if ((e.type === 'out' || e.type === 'fall') && e.id === pid) buzz(300);
             if (e.type === 'ko' && e.id === pid) buzz([60, 40, 60]);
+            if (e.type === 'coin' && e.id === pid) buzz([20, 30, 20]);
+            if (e.type === 'windWarn') buzz([80, 60, 80]);
+            if (e.type === 'mango') {
+              const t = myTop();
+              if (t && t[T_ALIVE] && Math.hypot(t[T_X] - e.x, t[T_Z] - e.z) < 0.6) buzz(120);
+            }
             if (e.type === 'roundWin' && e.id === pid) buzz(150);
           }
         };
@@ -317,7 +323,7 @@ function fightView(p: PlayerInfo): void {
     `<div class="fight">
       <div class="meter big"><span>Spin</span><i><b data-spin></b></i></div>
       <div class="warn" data-warn hidden>BAKUNAWA! Steering reversed!</div>
-      <div class="joy"><div class="joy-knob"></div><span>${motion.hasTilt ? 'Tilt to steer · TAP here = PALO dash' : 'Drag to steer · TAP = PALO dash'}</span></div>
+      <div class="joy"><div class="joy-knob"></div><span>${motion.hasTilt ? 'Tilt to steer · TAP = PALO · HOLD = charged PALO' : 'Drag to steer · TAP = PALO · HOLD = charged'}</span></div>
       <button class="pill" data-center>Re-center tilt</button>
       <button class="power" data-power style="--c1:${t.colors[0]};--c2:${t.colors[1]}">
         <svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="44" class="track"/><circle cx="50" cy="50" r="44" class="fill" data-ring/></svg>
@@ -361,12 +367,20 @@ function fightView(p: PlayerInfo): void {
         joy = [x, y];
         knob.style.translate = `${x * 40}px ${-y * 40}px`;
       };
+      // Held without dragging = charging; a quick tap stays a plain palo (same curve as desktop).
+      const charge = () => {
+        const held = (performance.now() - downAt) / 1000;
+        return held < 0.15 ? 0 : Math.min(1, (held - 0.15) / 0.65);
+      };
+      let fullBuzzed = false;
       pad.onpointerup = pad.onpointercancel = (e) => {
-        // A quick tap (no drag) is the palo dash-strike.
-        if (e.type === 'pointerup' && origin && moved < 12 && performance.now() - downAt < 250) {
-          send({ t: 'palo' });
-          buzz(25);
+        if (e.type === 'pointerup' && origin && moved < 12) {
+          const c = charge();
+          send({ t: 'palo', c: Math.round(c * 100) / 100 });
+          buzz(c > 0.5 ? 60 : 25);
         }
+        fullBuzzed = false;
+        knob.style.scale = '';
         origin = null;
         joy = null;
         knob.style.translate = '';
@@ -374,6 +388,14 @@ function fightView(p: PlayerInfo): void {
       const tick = () => {
         const v = joy ?? motion.steer();
         const now = performance.now();
+        if (origin && moved < 12) {
+          const c = charge();
+          knob.style.scale = String(1 + c * 0.9);
+          if (c >= 1 && !fullBuzzed) {
+            fullBuzzed = true;
+            buzz(30);
+          }
+        }
         // Only send changes (and a keep-alive), as paikutan's controller does.
         if (Math.abs(v[0] - last[0]) + Math.abs(v[1] - last[1]) > 0.06 || now - lastAt > 800) {
           last = v;
@@ -459,6 +481,27 @@ function outView(): void {
           g.fill();
           g.strokeStyle = '#2b1d12';
           g.stroke();
+        }
+        if (snap?.mud) {
+          const [x, y] = at(snap.mud[0], snap.mud[1]);
+          g.fillStyle = `rgba(74,52,32,${0.6 * snap.mud[3]})`;
+          g.beginPath();
+          g.arc(x, y, snap.mud[2] * f.k, 0, 7);
+          g.fill();
+        }
+        g.fillStyle = 'rgba(43,29,18,0.35)';
+        for (const [mx, mz, mt] of snap?.mangoes ?? []) {
+          const [x, y] = at(mx, mz);
+          g.beginPath();
+          g.arc(x, y, mt < 0 ? 10 : 6, 0, 7);
+          g.fill();
+        }
+        g.fillStyle = '#f2c230';
+        for (const [cx, cz] of snap?.coins ?? []) {
+          const [x, y] = at(cx, cz);
+          g.beginPath();
+          g.arc(x, y, 7, 0, 7);
+          g.fill();
         }
         g.fillStyle = '#c9c2e8';
         for (const [fx, fz] of snap?.flicks ?? []) {

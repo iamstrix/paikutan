@@ -8,10 +8,19 @@ import { createSeededRandom } from '../src/utils/random';
 // playing beats hiding, ring-outs are a real way to win, rounds have a middle,
 // the opening isn't a lottery, and no power dominates. No browser is opened.
 
-type Opts = { n: number; seed: number; passive0?: boolean; randomInputs?: boolean };
-type Result = { winner: number; t: number; deaths: { t: number; how: 'out' | 'fall' }[]; powers: string[]; inputs: number[] };
+type Opts = { n: number; seed: number; passive0?: boolean; randomInputs?: boolean; risk0?: number };
+type Result = {
+  winner: number;
+  t: number;
+  deaths: { t: number; how: 'out' | 'fall' }[];
+  powers: string[];
+  inputs: number[];
+  /** Match points per seat, scored as RoundManager does: KO 1, ring-out 2, coin 1, last spinning 3. */
+  points: number[];
+  seen: Set<string>;
+};
 
-function playRound({ n, seed, passive0, randomInputs }: Opts): Result {
+function playRound({ n, seed, passive0, randomInputs, risk0 }: Opts): Result {
   const rng = createSeededRandom(seed);
   const b = new Battle(
     Array.from({ length: n }, (_, i) => ({ id: i, char: 'tanod', power: TOPS[(i + seed) % TOPS.length].id, seat: (i / n) * Math.PI * 2 + Math.PI / 2 })),
@@ -25,6 +34,8 @@ function playRound({ n, seed, passive0, randomInputs }: Opts): Result {
     b.launch(t.id, { spinPower: s.power, steadiness: s.stability, throwPower: th.power, angle: th.angle });
   }
   const deaths: Result['deaths'] = [];
+  const points = b.tops.map(() => 0);
+  const seen = new Set<string>();
   let lastDown: number[] = [];
   let timer = 0;
   while (!b.over) {
@@ -33,10 +44,10 @@ function playRound({ n, seed, passive0, randomInputs }: Opts): Result {
       timer = 0.2;
       for (const t of b.alive()) {
         if (passive0 && t.id === 0) continue;
-        const d = botSteer(b, t, rng);
+        const d = botSteer(b, t, rng, t.id === 0 && risk0 !== undefined ? risk0 : 0.5);
         b.steer(t.id, d.x, d.y);
         if (d.ability) b.ability(t.id);
-        if (d.palo) b.palo(t.id);
+        if (d.palo) b.palo(t.id, d.paloCharge);
       }
     }
     const before = b.alive().map((t) => t.id);
@@ -44,9 +55,17 @@ function playRound({ n, seed, passive0, randomInputs }: Opts): Result {
     const down = before.filter((id) => !b.top(id)!.alive);
     if (down.length) lastDown = down;
     b.settle(lastDown);
-    for (const e of b.drainEvents()) if (e.type === 'out' || e.type === 'fall') deaths.push({ t: b.t, how: e.type });
+    for (const e of b.drainEvents()) {
+      seen.add(e.type);
+      if (e.type === 'coin') points[e.id] += 1;
+      if (e.type === 'out' || e.type === 'fall') {
+        deaths.push({ t: b.t, how: e.type });
+        if (e.by >= 0 && e.by !== e.id) points[e.by] += e.type === 'out' ? 2 : 1;
+      }
+    }
   }
-  return { winner: b.winner, t: b.t, deaths, powers: b.tops.map((t) => t.power), inputs };
+  if (b.winner >= 0) points[b.winner] += 3;
+  return { winner: b.winner, t: b.t, deaths, powers: b.tops.map((t) => t.power), inputs, points, seen };
 }
 
 const rounds = (opts: Omit<Opts, 'seed'>, count: number) => Array.from({ length: count }, (_, i) => playRound({ ...opts, seed: i + 1 }));
@@ -75,7 +94,7 @@ test('rounds have a middle, ring-outs are a real way to win, and the opening is 
   expect(ringOuts).toBeGreaterThanOrEqual(15);
   expect(roundLen).toBeGreaterThanOrEqual(18);
   expect(roundLen).toBeLessThanOrEqual(35);
-  expect(firstElim6).toBeGreaterThanOrEqual(4);
+  expect(firstElim6).toBeGreaterThanOrEqual(4 - STEP); // sim time accumulates float error; allow one step
 });
 
 test('no power dominates and the circle drawing still matters', () => {
@@ -102,4 +121,17 @@ test('no power dominates and the circle drawing still matters', () => {
   }
   for (let i = 1; i < 4; i += 1) expect(quartileWin[i]).toBeGreaterThanOrEqual(quartileWin[i - 1] - 2);
   expect(quartileWin[3]).toBeGreaterThan(quartileWin[0] + 10);
+});
+
+test('risk pays: a bot that chases rim coins and charges its palo outscores a cautious one', () => {
+  const bold = rounds({ n: 4, risk0: 1 }, 1200);
+  const safe = rounds({ n: 4, risk0: 0 }, 1200);
+  const avg = (rs: Result[]) => rs.reduce((a, r) => a + r.points[0], 0) / rs.length;
+  const coins = bold.reduce((a, r) => a + (r.seen.has('coin') ? r.points.reduce((x, y) => x + y, 0) : 0), 0);
+  const coinRounds = pct(bold.filter((r) => r.seen.has('coin')).length, bold.length);
+  const chaos = ['mango', 'wind', 'mud'].map((k) => `${k} ${pct(bold.filter((r) => r.seen.has(k)).length, bold.length).toFixed(0)}%`);
+  console.log(`points/round bold ${avg(bold).toFixed(2)} vs safe ${avg(safe).toFixed(2)} | rounds with a coin taken ${coinRounds.toFixed(0)}% | ${chaos.join(' ')}`, coins > 0 ? '' : '');
+  expect(avg(bold)).toBeGreaterThan(avg(safe) + 0.15);
+  expect(coinRounds).toBeGreaterThanOrEqual(50);
+  for (const k of ['mango', 'wind', 'mud']) expect(pct(bold.filter((r) => r.seen.has(k)).length, bold.length)).toBeGreaterThanOrEqual(60);
 });

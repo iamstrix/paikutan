@@ -305,11 +305,52 @@ export class Ui {
     const name = $('#power-name');
     if (name.textContent !== t.name) name.textContent = t.name;
     const ready = charge >= 1;
-    $('#power-state').textContent = ready ? 'READY! (Space)' : 'charging…';
+    $('#power-state').textContent = ready ? 'READY! (E)' : 'charging…';
     if (ready && !this.powerBtn.classList.contains('ready')) this.animate(this.powerBtn, [{ scale: '1.25' }, { scale: '1' }], 400);
     this.powerBtn.classList.toggle('ready', ready);
     ($('#power-ring') as unknown as SVGCircleElement).style.strokeDashoffset = String(276.5 * (1 - Math.min(1, charge)));
     $('#palo-ready').textContent = ready ? 'POWER ✓' : '';
+  }
+
+  /** The held palo's charge (null hides the meter). */
+  paloCharge(c: number | null): void {
+    const row = $('#palo-row');
+    row.hidden = c === null;
+    if (c === null) return;
+    const fill = $('#palo-charge');
+    fill.style.width = `${c * 100}%`;
+    fill.classList.toggle('full', c >= 1);
+  }
+
+  /** Hangin: an arrow showing which way the gust pushes on screen; pulses while it blows. */
+  windArrow(angle: number | null, blowing: boolean): void {
+    const el = $('#wind-arrow');
+    el.hidden = angle === null;
+    if (angle === null) return;
+    el.style.rotate = `${angle}rad`;
+    el.classList.toggle('blowing', blowing);
+  }
+
+  private readonly arrows: HTMLElement[] = [];
+  /** Arrows pinned to the screen edge, pointing at things you can't see. */
+  edgeArrows(items: { x: number; y: number; angle: number; color: string; danger: boolean }[]): void {
+    while (this.arrows.length < items.length) {
+      const el = document.createElement('div');
+      el.className = 'edge-arrow';
+      el.textContent = '▲';
+      this.labels.append(el);
+      this.arrows.push(el);
+    }
+    this.arrows.forEach((el, i) => {
+      const it = items[i];
+      el.hidden = !it;
+      if (!it) return;
+      el.style.left = `${it.x}px`;
+      el.style.top = `${it.y}px`;
+      el.style.rotate = `${it.angle + Math.PI / 2}rad`;
+      el.style.color = it.color;
+      el.classList.toggle('danger', it.danger);
+    });
   }
 
   /** A label that floats up and fades at a screen point. */

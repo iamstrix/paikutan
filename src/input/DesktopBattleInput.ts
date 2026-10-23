@@ -4,7 +4,7 @@ import { CircleTracker, readSwipe, SPIN_SECONDS, type SpinResult, type ThrowResu
 /**
  * Desktop fallbacks for paikutan's phone controls:
  * spin = draw circles with the mouse on the pad; throw = drag up and let go
- * (Space for a medium throw); fight = WASD/arrows steer, Space/left-click palo,
+ * (Space for a medium throw); fight = WASD/arrows steer, hold Space/left-click to charge palo,
  * E/right-click power; out = left-click the ground to flick your multo.
  */
 export class DesktopBattleInput implements BattleInput {
@@ -14,7 +14,9 @@ export class DesktopBattleInput implements BattleInput {
   private throwCb: (r: ThrowResult) => void = () => {};
   private steerCb: (x: number, y: number) => void = () => {};
   private abilityCb: () => void = () => {};
-  private paloCb: () => void = () => {};
+  private paloCb: (c: number) => void = () => {};
+  /** When the palo button went down (ms), or null. */
+  private chargeAt: number | null = null;
   private flickCb: (x: number, y: number) => void = () => {};
   private readonly keys = new Set<string>();
   private tracker: CircleTracker | null = null;
@@ -35,7 +37,7 @@ export class DesktopBattleInput implements BattleInput {
     if (e.repeat) return;
     if (this.stage === 'fight' && e.code === 'Space') {
       e.preventDefault();
-      this.paloCb();
+      this.chargeAt = performance.now();
     } else if (this.stage === 'fight' && e.code === 'KeyE') {
       this.abilityCb();
     } else if (this.stage === 'throw' && e.code === 'Space') {
@@ -43,7 +45,10 @@ export class DesktopBattleInput implements BattleInput {
       this.throwCb({ power: 0.5, angle: 0 });
     }
   };
-  private readonly onKeyUp = (e: KeyboardEvent) => this.keys.delete(e.code);
+  private readonly onKeyUp = (e: KeyboardEvent) => {
+    this.keys.delete(e.code);
+    if (e.code === 'Space') this.releasePalo();
+  };
   private readonly onPadDown = (e: PointerEvent) => {
     e.preventDefault();
     this.pad.setPointerCapture(e.pointerId);
@@ -63,7 +68,7 @@ export class DesktopBattleInput implements BattleInput {
   };
   private readonly onDown = (e: PointerEvent) => {
     if (this.stage === 'throw' && e.button === 0) this.swipe = [e.clientX, e.clientY, performance.now()];
-    else if (this.stage === 'fight' && e.button === 0) this.paloCb();
+    else if (this.stage === 'fight' && e.button === 0) this.chargeAt = performance.now();
     else if (this.stage === 'fight' && e.button === 2) this.abilityCb();
     else if (this.stage === 'out' && e.button === 0) this.flickCb(e.clientX, e.clientY);
   };
@@ -74,6 +79,7 @@ export class DesktopBattleInput implements BattleInput {
     if (this.swipe) this.aim = Math.max(-0.6, Math.min(0.6, Math.atan2(e.clientX - this.swipe[0], this.swipe[1] - e.clientY)));
   };
   private readonly onUp = (e: PointerEvent) => {
+    if (e.button === 0) this.releasePalo();
     if (!this.swipe) return;
     const t = readSwipe(this.swipe[0], this.swipe[1], this.swipe[2], e.clientX, e.clientY, performance.now());
     this.swipe = null;
@@ -101,6 +107,7 @@ export class DesktopBattleInput implements BattleInput {
     this.stage = stage;
     this.aim = 0;
     this.swipe = null;
+    this.chargeAt = null;
     if (stage === 'spin') {
       this.tracker = null;
       this.spinDone = false;
@@ -121,8 +128,22 @@ export class DesktopBattleInput implements BattleInput {
   onAbility(cb: () => void): void {
     this.abilityCb = cb;
   }
-  onPalo(cb: () => void): void {
+  onPalo(cb: (c: number) => void): void {
     this.paloCb = cb;
+  }
+
+  get paloCharge(): number {
+    if (this.chargeAt === null) return 0;
+    // A quick tap stays a plain palo; holding builds to full in 0.8 s.
+    const held = (performance.now() - this.chargeAt) / 1000;
+    return held < 0.15 ? 0 : Math.min(1, (held - 0.15) / 0.65);
+  }
+
+  private releasePalo(): void {
+    if (this.chargeAt === null || this.stage !== 'fight') return;
+    const c = this.paloCharge;
+    this.chargeAt = null;
+    this.paloCb(c);
   }
   onFlick(cb: (x: number, y: number) => void): void {
     this.flickCb = cb;
