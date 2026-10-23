@@ -19,6 +19,21 @@ export function topIcon(topId, size = 56) {
   return `<div class="top-icon" style="width:${size}px;height:${size}px;--c1:${t.colors[0]};--c2:${t.colors[1]}"></div>`;
 }
 
+// Two-block character figure (head with the emoji face, body in the character colour).
+export function charFigure(charId, size = 124) {
+  const c = byId(CHARACTERS, charId);
+  return `<div class="char-fig" style="--c:${c.color};width:${size * 0.62}px;height:${size}px;font-size:${size * 0.3}px"><div class="head">${c.emoji}</div><div class="body"></div></div>`;
+}
+
+const topItem = t => topIcon(t.id, 124);
+const topDetails = t => {
+  const strong = TOPS.find(x => x.id === t.strong);
+  return `<b class="car-name">${t.name}</b><small>${t.power}</small>
+    ${statBars(t)}<p>${t.desc}</p>${strong ? `<p class="car-strong">Strong against <b>${strong.name}</b></p>` : ''}`;
+};
+const charItem = c => charFigure(c.id, 124);
+const charDetails = c => `<b class="car-name">${c.name}</b><small>${c.title}</small><p>${c.blurb}</p>`;
+
 export function charIcon(charId, size = 56) {
   const c = byId(CHARACTERS, charId);
   return `<div class="char-icon" style="width:${size}px;height:${size}px;background:${c.color};font-size:${size * 0.55}px">${c.emoji}</div>`;
@@ -55,17 +70,17 @@ export function createController(root, { mode = 'phone', send, myId, sounds = mo
     return true;
   }
 
-  // Trumpo picker: a strip that follows the finger pixel by pixel, then eases to the nearest trumpo.
-  // pos is a fractional index; the trumpo nearest to it sits in the middle, biggest.
-  function carousel(el, startId, onChange) {
-    const n = TOPS.length, wrap = v => ((v % n) + n) % n;
-    let pos = Math.max(0, TOPS.findIndex(t => t.id === startId)), goal = pos, shown = -1, picked = TOPS[pos].id;
+  // Picker strip (trumpos or players): follows the finger pixel by pixel, then eases to the nearest item.
+  // pos is a fractional index; the item nearest to it sits in the middle, biggest.
+  function carousel(el, list, startId, onChange, item, details) {
+    const n = list.length, wrap = v => ((v % n) + n) % n;
+    let pos = Math.max(0, list.findIndex(t => t.id === startId)), goal = pos, shown = -1, picked = list[pos].id;
     let anim = 0, drag = null;
     el.innerHTML = `
       <div class="carousel">
-        <button class="car-arrow" data-d="-1" aria-label="Previous trumpo">◀</button>
-        <div class="car-stage">${TOPS.map(t => `<div class="car-item">${topIcon(t.id, 124)}</div>`).join('')}</div>
-        <button class="car-arrow" data-d="1" aria-label="Next trumpo">▶</button>
+        <button class="car-arrow" data-d="-1" aria-label="Previous">◀</button>
+        <div class="car-stage">${list.map(t => `<div class="car-item">${item(t)}</div>`).join('')}</div>
+        <button class="car-arrow" data-d="1" aria-label="Next">▶</button>
       </div>
       <div class="car-dots"></div>
       <div class="car-info"></div>`;
@@ -86,11 +101,9 @@ export function createController(root, { mode = 'phone', send, myId, sounds = mo
       if (idx !== shown) { shown = idx; info(); }
     }
     function info() {
-      const t = TOPS[shown], strong = TOPS.find(x => x.id === t.strong);
       items.forEach((it, k) => it.classList.toggle('main', k === shown));
-      el.querySelector('.car-dots').innerHTML = TOPS.map((x, k) => `<i class="${k === shown ? 'on' : ''}"></i>`).join('');
-      el.querySelector('.car-info').innerHTML = `<b class="car-name">${t.name}</b><small>${t.power}</small>
-        ${statBars(t)}<p>${t.desc}</p>${strong ? `<p class="car-strong">Strong against <b>${strong.name}</b></p>` : ''}`;
+      el.querySelector('.car-dots').innerHTML = list.map((x, k) => `<i class="${k === shown ? 'on' : ''}"></i>`).join('');
+      el.querySelector('.car-info').innerHTML = details(list[shown]);
     }
     // Ease out from wherever the strip is (even halfway between two trumpos) to a whole index.
     function settle(target) {
@@ -104,7 +117,7 @@ export function createController(root, { mode = 'phone', send, myId, sounds = mo
         if (k < 1) { anim = requestAnimationFrame(tick); return; }
         pos = goal = wrap(target);
         layout();
-        if (TOPS[shown].id !== picked) { picked = TOPS[shown].id; if (sounds) audio.click(); onChange(picked); }
+        if (list[shown].id !== picked) { picked = list[shown].id; if (sounds) audio.click(); onChange(picked); }
       };
       anim = requestAnimationFrame(tick);
     }
@@ -141,7 +154,7 @@ export function createController(root, { mode = 'phone', send, myId, sounds = mo
     });
     stage.addEventListener('pointercancel', () => { drag = null; settle(Math.round(pos)); });
     layout();
-    return { get id() { return TOPS[shown].id; } };
+    return { get id() { return list[shown].id; } };
   }
 
   // ---------- views ----------
@@ -178,34 +191,19 @@ export function createController(root, { mode = 'phone', send, myId, sounds = mo
       });
       return;
     }
-    const fresh = show('pick', `
+    show('pick', `
       <div class="panel pick">
         <h2>Pick your player</h2>
-        <div class="cards" data-list="char">${CHARACTERS.map(c => `
-          <button class="card" data-id="${c.id}">
-            ${charIcon(c.id, 54)}
-            <div class="card-body"><b>${c.name}</b><small>${c.title}</small><p>${c.blurb}</p></div>
-          </button>`).join('')}</div>
+        <div data-car="char"></div>
         <h2>Pick your trumpo</h2>
-        <div data-car></div>
+        <div data-car="top"></div>
         <button class="btn big" data-act="ready">Ready!</button>
       </div>`, () => {
-      root.querySelectorAll('[data-list] .card').forEach(b => {
-        b.onclick = () => {
-          const list = b.parentElement.dataset.list;
-          sel[list] = b.dataset.id;
-          if (sounds) audio.click();
-          mark();
-          send('pick', { ...sel, ready: false });
-        };
-      });
-      carousel(root.querySelector('[data-car]'), sel.top, id => { sel.top = id; send('pick', { ...sel, ready: false }); });
+      const pick = k => id => { sel[k] = id; send('pick', { ...sel, ready: false }); };
+      carousel(root.querySelector('[data-car=char]'), CHARACTERS, sel.char, pick('char'), charItem, charDetails);
+      carousel(root.querySelector('[data-car=top]'), TOPS, sel.top, pick('top'), topItem, topDetails);
       root.querySelector('[data-act=ready]').onclick = () => { if (sounds) audio.click(); send('pick', { ...sel, ready: true }); };
     });
-    if (fresh) mark();
-    function mark() {
-      root.querySelectorAll('[data-list] .card').forEach(b => b.classList.toggle('on', sel[b.parentElement.dataset.list] === b.dataset.id));
-    }
   }
 
   function viewVs() {
@@ -487,7 +485,7 @@ export function createController(root, { mode = 'phone', send, myId, sounds = mo
       </div>`, () => {
       const btn = root.querySelector('[data-act=confirm]');
       const label = id => { btn.textContent = id === cur ? `Keep ${byId(TOPS, cur).name}` : `Switch to ${byId(TOPS, id).name}`; };
-      const car = carousel(root.querySelector('[data-car]'), cur, label);
+      const car = carousel(root.querySelector('[data-car]'), TOPS, cur, label, topItem, topDetails);
       label(cur);
       btn.onclick = () => { if (sounds) audio.click(); btn.disabled = true; send('counter', { top: car.id }); };
     });

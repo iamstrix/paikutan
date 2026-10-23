@@ -2,7 +2,7 @@
 // Used by the desktop spectator and the phones (which follow host snapshots).
 import * as THREE from 'three';
 import { ARENA_R, LAUNCH_Z } from './sim.js';
-import { TOPS, PLAYER_COLORS, byId } from './data.js';
+import { TOPS, CHARACTERS, PLAYER_COLORS, byId } from './data.js';
 
 const rand = (a, b) => a + Math.random() * (b - a);
 
@@ -79,6 +79,31 @@ function makeTop(topId, slot, low) {
   arrow.position.y = 0.025; arrow.visible = false; arrow.add(arrowMesh);
   root.add(ring, shield, arrow);
   return { root, precess, tilt, spinner, ring, shield, arrow, prec: rand(0, 6), drop: 0, state: null, target: null, wasLaunched: false, fallT: 0 };
+}
+
+// A player as two blocks: a head with the emoji face, and a body in the character colour.
+function makePerson(charId, slot) {
+  const c = byId(CHARACTERS, charId);
+  const root = new THREE.Group(), pose = new THREE.Group();
+  root.add(pose);
+  const skin = new THREE.MeshLambertMaterial({ color: '#d9a066' });
+  const face = new THREE.MeshLambertMaterial({ map: canvasTex(128, 128, (g, w, h) => {
+    g.fillStyle = '#d9a066'; g.fillRect(0, 0, w, h);
+    g.font = '96px sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle';
+    g.fillText(c.emoji, w / 2, h / 2 + 6);
+  }) });
+  const body = new THREE.Mesh(new THREE.BoxGeometry(0.7, 1.0, 0.42), new THREE.MeshLambertMaterial({ color: c.color }));
+  body.position.y = 0.5;
+  // Box faces: +x, -x, +y, -y, +z (front, the face), -z.
+  const head = new THREE.Mesh(new THREE.BoxGeometry(0.56, 0.56, 0.56), [skin, skin, skin, skin, face, skin]);
+  head.position.y = 1.32;
+  pose.add(body, head);
+  root.traverse(o => { if (o.isMesh) o.castShadow = true; });
+  // Beside their own throwing line, on their right, facing the circle.
+  const sz = slot === 0 ? 1 : -1;
+  root.position.set(-sz * 1.9, 0, sz * (LAUNCH_Z + 1.3));
+  root.rotation.y = slot === 0 ? Math.PI : 0;
+  return { root, pose, threw: 0 };
 }
 
 function makeDog() {
@@ -325,6 +350,7 @@ export function createScene(canvas, { low = false } = {}) {
 
   let tops = [null, null];
   let topIds = [null, null];
+  let people = [null, null], charIds = [null, null];
   let shake = 0, eclipse = 0, time = 0;
   let view = 'spectator';
   // Spectator camera: 'auto', 'top' (top-down), 'close' (low, wheel-height chase), 'orbit'.
@@ -344,6 +370,14 @@ export function createScene(canvas, { low = false } = {}) {
       topIds[s] = id;
       tops[s] = id ? makeTop(id, s, low) : null;
       if (tops[s]) { tops[s].root.visible = false; scene.add(tops[s].root); }
+    }
+    for (const s of [0, 1]) {
+      const id = players[s] && players[s].char;
+      if (id === charIds[s]) continue;
+      if (people[s]) scene.remove(people[s].root);
+      charIds[s] = id;
+      people[s] = id ? makePerson(id, s) : null;
+      if (people[s]) scene.add(people[s].root);
     }
   }
 
@@ -378,6 +412,7 @@ export function createScene(canvas, { low = false } = {}) {
         break;
       case 'launch':
         burst(e.x, 0.05, e.z, 18, '#d8b98c', 2.5, 1.2);
+        if (people[e.slot]) people[e.slot].threw = 1;
         break;
       case 'steal':
         // Sparks in the thief's colour, from the leader toward the thief.
@@ -543,6 +578,18 @@ export function createScene(canvas, { low = false } = {}) {
       dog.userData.legs.forEach((l, i) => { l.rotation.z = Math.sin(time * 22 + (i % 2) * Math.PI) * 0.7; });
       dog.userData.tail.rotation.x = Math.sin(time * 30) * 0.5;
     } else dog.visible = false;
+    people.forEach((p, s) => {
+      if (!p) return;
+      // Idle sway; lean in on the throw; the round winner bounces and the loser slumps.
+      p.threw = Math.max(0, p.threw - dt * 2);
+      let lean = Math.sin(p.threw * Math.PI) * 0.45, y = Math.abs(Math.sin(time * 2 + s)) * 0.03;
+      if (party) {
+        if (party.slot === s) y = Math.abs(Math.sin(time * 7)) * 0.45;
+        else lean = -0.25;
+      }
+      p.pose.rotation.x = lean;
+      p.pose.position.y = y;
+    });
     plaza.flags.forEach(f => { f.rotation.x = Math.sin(time * 2.2 + f.userData.phase) * 0.35; });
     updateParticles(dt);
     updateWaves(dt);
