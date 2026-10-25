@@ -3,6 +3,7 @@
 // scene.js still animates it from our snapshots. Built in his units; callers scale it.
 import * as THREE from 'three';
 import { outline } from '../world/kit.js';
+import { buildSigil, MYTHIC } from './mythic.js';
 
 const PROFILE = [
   [0.0, 0.0],
@@ -148,15 +149,21 @@ function fxTextures() {
 
 // body: the spinning wood and tip. blur: the disc round its widest point (parent it where it leans
 // but doesn't spin). blob: the ground shadow. All three in tromPOW units.
-export function buildTrompo(colors, low = false) {
+export function buildTrompo(def, low = false) {
+  const { id } = def;
+  const theme = MYTHIC[id] || MYTHIC.kidlat;
   const body = new THREE.Group();
+  // Distinct shoulder profiles reinforce the crown silhouettes from oblique cameras.
+  const width = { kidlat: 1, tikbalang: 1.06, agimat: 1.12, diwata: 0.92, bakunawa: 0.94 }[id] || 1;
+  const segments = id === 'agimat' ? (low ? 6 : 12) : (low ? 16 : 28);
+  const profile = PROFILE.map(p => new THREE.Vector2(p.x * width, p.y));
   const wood = new THREE.Mesh(
-    new THREE.LatheGeometry(PROFILE, low ? 14 : 20),
+    new THREE.LatheGeometry(profile, segments),
     // Hero material: lacquered paint over turned wood.
     new THREE.MeshPhysicalMaterial({
-      map: swirlTexture(colors),
+      map: swirlTexture([theme.base, theme.metal]),
       normalMap: grainNormalMap(),
-      normalScale: new THREE.Vector2(0.7, 0.7),
+      normalScale: new THREE.Vector2(0.3, 0.3),
       roughness: 0.55,
       clearcoat: 0.6,
       clearcoatRoughness: 0.28,
@@ -169,15 +176,29 @@ export function buildTrompo(colors, low = false) {
   body.add(wood, tip);
   body.position.y = 0.015;
 
+  // Large horizontal relief, rather than side-only decoration, reads from above.
+  const crown = buildSigil(id, low);
+  crown.position.y = 0.38;
+  body.add(crown);
+  const collar = new THREE.Mesh(new THREE.CylinderGeometry(0.057, 0.065, 0.027, id === 'agimat' ? 3 : 12),
+    new THREE.MeshStandardMaterial({ color: theme.metal, roughness: 0.35, metalness: 0.7 }));
+  collar.position.y = 0.4;
+  body.add(collar);
+
   // Spin blur: streaked disc round the widest point, opacity follows spin speed.
   const tex = fxTextures();
   const blur = new THREE.Mesh(
-    new THREE.CircleGeometry(0.25, 24),
-    new THREE.MeshBasicMaterial({ map: tex.blur, color: new THREE.Color(colors[0]).lerp(new THREE.Color('#ffffff'), 0.5), transparent: true, depthWrite: false, opacity: 0 }),
+    new THREE.CircleGeometry(0.28, 24),
+    new THREE.MeshBasicMaterial({ map: tex.blur, color: theme.glow, transparent: true, depthWrite: false, opacity: 0, toneMapped: false }),
   );
   blur.rotation.x = -Math.PI / 2;
   blur.position.y = 0.26;
   const blob = new THREE.Mesh(new THREE.CircleGeometry(0.34, 16), new THREE.MeshBasicMaterial({ map: tex.blob, transparent: true, depthWrite: false }));
   blob.rotation.x = -Math.PI / 2;
-  return { body, blur, blob };
+  // A slow independent aura keeps the theme readable without stopping the wooden top.
+  const aura = buildSigil(id, low, true);
+  aura.position.y = 0.12;
+  aura.scale.setScalar(1.18);
+  aura.traverse(o => { if (o.isMesh) { o.material.transparent = true; o.material.opacity = 0.16; o.material.depthWrite = false; } });
+  return { body, blur, blob, aura, crown };
 }

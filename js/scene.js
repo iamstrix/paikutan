@@ -1,11 +1,12 @@
 // three.js view: the barangay around the chalk circle, the trumpos, the players and effects.
 // Used by the desktop spectator and the phones (which follow host snapshots).
 import * as THREE from 'three';
-import { ARENA_R, LAUNCH_Z, EGG_WARN, EGG_R } from './sim.js';
+import { ARENA_R, TOP_R, LAUNCH_Z, EGG_WARN, EGG_R } from './sim.js';
 import { TOPS, CHARACTERS, PLAYER_COLORS, byId } from './data.js';
 import { buildBarangay, WORLD_SCALE } from './world/barangay.js';
 import { createAtmosphere } from './world/atmosphere.js';
 import { buildTrompo } from './entities/trompo.js';
+import { buildSigil } from './entities/mythic.js';
 import { Avatar } from './entities/avatar.js';
 import { Critters, chicken } from './entities/critters.js';
 import { Effects, CLASH_WORDS, POWER_WORDS } from './fx/effects.js';
@@ -42,20 +43,27 @@ function makeTop(topId, slot, low) {
   const def = byId(TOPS, topId);
   const root = new THREE.Group(), precess = new THREE.Group(), tilt = new THREE.Group(), spinner = new THREE.Group();
   root.add(precess); precess.add(tilt); tilt.add(spinner);
-  // tromPOW's trompo, at his 1.35x readability boost, scaled into our world like the barangay.
-  const model = buildTrompo(def.colors, low);
-  const size = 1.35 * WORLD_SCALE;
+  const model = buildTrompo(def, low);
+  // The old world-art scale made bodies less than half their actual hit radius.
+  // Crown tips now reach the collision boundary, making clashes visually honest.
+  const size = TOP_R / 0.25;
   model.body.scale.setScalar(size);
   model.blur.scale.setScalar(size); model.blur.position.y *= size;
-  model.blob.scale.setScalar(WORLD_SCALE); model.blob.position.y = 0.015;
+  model.blob.scale.setScalar(size * 1.2); model.blob.position.y = 0.015;
   spinner.add(model.body);
   tilt.add(model.blur);
+  model.aura.scale.multiplyScalar(size); model.aura.position.y *= size;
+  tilt.add(model.aura);
   root.add(model.blob);
   // Coloured chalk ring under each top shows whose it is.
   const ring = new THREE.Mesh(new THREE.RingGeometry(0.5, 0.6, 40), new THREE.MeshBasicMaterial({ color: PLAYER_COLORS[slot], transparent: true, opacity: 0.85 }));
   ring.rotation.x = -Math.PI / 2; ring.position.y = 0.02;
-  const shield = new THREE.Mesh(new THREE.SphereGeometry(0.78, 24, 16), new THREE.MeshBasicMaterial({ color: '#7fffd4', transparent: true, opacity: 0.22, depthWrite: false }));
+  const shield = new THREE.Mesh(new THREE.SphereGeometry(0.64, low ? 12 : 20, 12), new THREE.MeshBasicMaterial({ color: '#7fffd4', transparent: true, opacity: 0.12, depthWrite: false }));
   shield.position.y = 0.45; shield.visible = false;
+  const ward = buildSigil('agimat', low, true);
+  ward.scale.setScalar(2.8); ward.position.y = 0.13; ward.visible = false;
+  const curse = buildSigil('bakunawa', low, true);
+  curse.scale.setScalar(2.8); curse.position.y = 0.22; curse.visible = false;
   // Ground arrow showing where the player is steering.
   const shape = new THREE.Shape();
   shape.moveTo(-0.07, 0.65); shape.lineTo(0.07, 0.65); shape.lineTo(0.07, 1.2); shape.lineTo(0.2, 1.2);
@@ -64,8 +72,8 @@ function makeTop(topId, slot, low) {
   arrowMesh.rotation.x = -Math.PI / 2;
   const arrow = new THREE.Group();
   arrow.position.y = 0.025; arrow.visible = false; arrow.add(arrowMesh);
-  root.add(ring, shield, arrow);
-  return { root, precess, tilt, spinner, ring, shield, arrow, blur: model.blur, blob: model.blob, prec: rand(0, 6), drop: 0, state: null, target: null, wasLaunched: false, fallT: 0 };
+  root.add(ring, shield, ward, curse, arrow);
+  return { root, precess, tilt, spinner, ring, shield, ward, curse, arrow, aura: model.aura, topId, vfxTime: 0, auraMaterials: [...new Set(model.aura.children.map(o => o.material))], blur: model.blur, blob: model.blob, prec: rand(0, 6), drop: 0, state: null, target: null, wasLaunched: false, fallT: 0 };
 }
 
 // Our characters wear tromPOW's closest outfits: Tambay is his Mang Totoy, Aling Nena his Tita Marites.
@@ -204,7 +212,15 @@ export function createScene(canvas, { low = false } = {}) {
     for (const s of [0, 1]) {
       const id = players[s] && players[s].top;
       if (id === topIds[s]) continue;
-      if (tops[s]) scene.remove(tops[s].root);
+      if (tops[s]) {
+        scene.remove(tops[s].root);
+        tops[s].root.traverse(o => {
+          if (!o.isMesh) return;
+          o.geometry.dispose();
+          // Painted maps and the outline shader are shared by the other player's model.
+          if (!o.material.isShaderMaterial) o.material.dispose();
+        });
+      }
       topIds[s] = id;
       tops[s] = id ? makeTop(id, s, low) : null;
       if (tops[s]) { tops[s].root.visible = false; scene.add(tops[s].root); }
@@ -221,11 +237,12 @@ export function createScene(canvas, { low = false } = {}) {
 
   // Hide both tops between rounds.
   function reset() {
-    for (const t of tops) if (t) { t.root.visible = false; t.state = t.target = null; t.wasLaunched = false; t.fallT = 0; t.dir = null; }
+    for (const t of tops) if (t) { t.root.visible = false; t.state = t.target = null; t.wasLaunched = false; t.fallT = 0; t.dir = null; t.vfxTime = 0; }
     dog.visible = false; dogTarget = null; lane.visible = false;
     for (const v of eggViews.values()) scene.remove(v.group);
     eggViews.clear(); eggSnap = [];
     party = null;
+    effects.reset(); eclipse = 0;
   }
 
   function makeEggView(e) {
@@ -342,27 +359,29 @@ export function createScene(canvas, { low = false } = {}) {
         effects.puff(x, 0.05, z, { n: 8, size: 0.3, color: '#fff3c8' });
         break;
       case 'ability': {
-        const color = PLAYER_COLORS[e.slot];
+        const source = tops[e.slot];
+        if (source) source.vfxTime = e.top === 'tikbalang' ? 0.8 : 1.2;
+        const strike = e.top === 'kidlat' || e.top === 'bakunawa';
+        effects.manifest(e.top, strike ? tx : x, strike ? tz : z, Math.atan2(tx - x, tz - z));
         if (e.top === 'kidlat') {
           effects.lightning(tx, tz);
           pop(e.tx, e.tz, '#e8f4ff', 60); shake = 0.9;
         } else if (e.top === 'tikbalang') {
           effects.puff(x, 0.05, z, { n: 12, speed: 2.2, size: 0.45 });
-          effects.ring(x, z, color, 1.1, 0.4);
+          effects.ring(x, z, '#e63946', 1.1, 0.4);
           pop(e.x, e.z, '#ff6b3d', 40); shake = Math.max(shake, 0.5);
         } else if (e.top === 'agimat') {
-          effects.ring(x, z, '#5ff2d6', 1.0, 0.6);
+          effects.ring(x, z, '#e9c46a', 1.0, 0.6);
           pop(e.x, e.z, '#7fffd4', 40); shake = Math.max(shake, 0.3);
         } else if (e.top === 'diwata') {
           effects.sparkle(x, z);
           pop(e.x, e.z, '#ffb3e0', 50);
         } else if (e.top === 'bakunawa') {
           eclipse = 5;
-          effects.ring(tx, tz, '#3a1f6b', 1.6, 0.8);
-          effects.puff(tx, 0.05, tz, { n: 10, color: '#3a2a5a', size: 0.5 });
+          effects.ring(tx, tz, '#5bc0be', 1.6, 0.8);
+          effects.puff(tx, 0.05, tz, { n: 10, color: '#137d89', size: 0.5 });
           shake = Math.max(shake, 0.5);
         }
-        const strike = e.top === 'kidlat' || e.top === 'bakunawa';
         effects.pow(strike ? tx : x, 1.2, strike ? tz : z, POWER_WORDS[e.top] ?? 'POW!', 1.2);
         break;
       }
@@ -397,7 +416,8 @@ export function createScene(canvas, { low = false } = {}) {
       t.prec += dt * (2 + 7 * st.wobble);
       t.precess.rotation.y = t.prec;
       t.tilt.rotation.x = 0.03 + st.wobble * 0.5;
-      t.spinner.rotation.y -= Math.min(st.spin * 40, 30) * dt;
+      // Stylized stroboscopic spin: broad crown shapes remain readable at phone size.
+      t.spinner.rotation.y -= Math.min(st.spin * 16, 12) * dt;
     } else {
       // Toppled: roll onto its side and settle.
       t.fallT = Math.min(1, t.fallT + dt * 2.5);
@@ -423,9 +443,25 @@ export function createScene(canvas, { low = false } = {}) {
     t.blob.position.y = 0.015 - t.root.position.y;
     t.blob.material.opacity = 1 / (1 + t.root.position.y * 2);
     t.shield.visible = st.shield && st.alive;
-    t.shield.material.opacity = 0.18 + Math.sin(time * 8) * 0.06;
-    t.ring.material.color.set(st.invert ? '#9b5de5' : PLAYER_COLORS[slot]);
-    if (st.dash && st.alive && Math.random() < 0.6) effects.puff(u(st.x), 0.05, u(st.z), { n: 2, size: 0.4, speed: 0.6 });
+    t.shield.material.opacity = 0.09 + Math.sin(time * 8) * 0.035;
+    t.ward.visible = t.shield.visible;
+    t.ward.rotation.y = time * 0.45;
+    t.curse.visible = st.invert && st.alive;
+    t.curse.rotation.y = -time * 1.6;
+    t.ring.material.color.set(st.invert ? '#5bc0be' : PLAYER_COLORS[slot]);
+    t.vfxTime = Math.max(0, t.vfxTime - dt);
+    t.aura.visible = st.alive;
+    t.aura.rotation.y -= dt * (t.topId === 'bakunawa' ? -0.55 : 0.4);
+    const auraAlpha = 0.1 + 0.05 * Math.sin(time * 3) + 0.17 * Math.min(1, st.charge || 0) + (t.vfxTime > 0 ? 0.2 : 0);
+    for (const m of t.auraMaterials) m.opacity = auraAlpha;
+    // Time-based trails stay equally dense on 30 Hz phones and fast desktop screens.
+    if (st.alive && t.topId === 'tikbalang' && st.dash) {
+      t.trailT = (t.trailT || 0) + dt;
+      if (t.trailT >= 0.045) {
+        t.trailT %= 0.045;
+        effects.puff(u(st.x), 0.12, u(st.z), { n: low ? 2 : 4, color: '#e63946', size: 0.22, speed: 0.5, life: 0.45, gravity: -0.2 });
+      }
+    } else t.trailT = 0;
     if (st.alive && st.wobble > 0.55 && Math.random() < st.wobble * 0.3) effects.puff(u(st.x), 0.04, u(st.z), { n: 1, size: 0.22, speed: 0.3, up: 0.3, life: 0.7 });
   }
 
@@ -552,7 +588,7 @@ export function createScene(canvas, { low = false } = {}) {
     shake = Math.max(0, shake - dt * 1.5);
     flash.intensity = Math.max(0, flash.intensity - dt * 150);
     eclipse = Math.max(0, eclipse - dt);
-    const dark = Math.min(1, eclipse * 1.5) * 0.75;
+    const dark = Math.min(1, eclipse * 1.5) * 0.35;
     atmosphere.setClock(CLOCK, dark);
     updateCamera(dt);
     effects.update(dt, camera, canvas.clientHeight);
