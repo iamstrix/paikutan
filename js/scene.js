@@ -515,9 +515,9 @@ export function createScene(canvas, { low = false, cue = () => {} } = {}) {
     // Side-on for the slow-motion hit, panning to follow the pin into the air.
     if (c < STRIKE.land + 0.2) return [alley(7.6, 1, 6.8), l.clone().setY(l.y + 1), 42];
     // Hero shot: low, looking up at the bowler.
-    if (c < STRIKE.end) return [alley(2.2, 0.7, 1.6), w.clone().setY(2.4), 45];
+    if (c < STRIKE.end) return [alley(5, 0.8, 2.4), w.clone().setY(2), 42];
     // The aftermath, held until the rematch: the whole alley from the side.
-    return [alley(6, 3.4, 9), alley(6.2, 0.8), 50];
+    return [alley(6.4, 3, 13), alley(6.4, 1.3), 50];
   }
 
   function makeEggView(e) {
@@ -776,7 +776,7 @@ export function createScene(canvas, { low = false, cue = () => {} } = {}) {
   function updateCamera(dt) {
     const a = camera.aspect;
     let pos, look;
-    if (strike && view === 'spectator' && people[strike.win] && people[strike.lose]) {
+    if (strike && people[strike.win] && people[strike.lose]) {
       let fov;
       [pos, look, fov] = strikeShot();
       camera.fov = fov; camera.near = 0.1;
@@ -788,7 +788,14 @@ export function createScene(canvas, { low = false, cue = () => {} } = {}) {
       return;
     }
     const winding = people[chargeSlot];
-    if (winding) {
+    // The match-end scenes only run on the host's screen, and take its camera even when the host plays a seat.
+    if (podium) {
+      // Front on to the podium with the plaza behind, swaying a little; it rises with the steps.
+      const ang = Math.sin(time * 0.2) * 0.22, rise = Math.min(1, podium.t / 1.6);
+      // Aimed high so the podium sits under the Kampeon banner.
+      look = new THREE.Vector3(0, 1.6 + rise * 1.4, 0);
+      pos = new THREE.Vector3(Math.sin(ang) * 12, 2 + rise * 2, Math.cos(ang) * 12);
+    } else if (winding) {
       // Look through the chosen character's eyes at their hands and the arena beyond.
       const yaw = winding.root.rotation.y, fx = Math.sin(yaw), fz = Math.cos(yaw);
       pos = winding.avatar.rig.head.getWorldPosition(new THREE.Vector3());
@@ -804,12 +811,6 @@ export function createScene(canvas, { low = false, cue = () => {} } = {}) {
       const sway = Math.sin(time * 0.1) * 0.6;
       pos = new THREE.Vector3(1 + sway, 6, 15);
       look = new THREE.Vector3(-4 + sway, 0.5, -2);
-    } else if (podium) {
-      // Front on to the podium with the plaza behind, swaying a little; it rises with the steps.
-      const ang = Math.sin(time * 0.2) * 0.22, rise = Math.min(1, podium.t / 1.6);
-      // Aimed high so the podium sits under the Kampeon banner.
-      look = new THREE.Vector3(0, 1.6 + rise * 1.4, 0);
-      pos = new THREE.Vector3(Math.sin(ang) * 12, 2 + rise * 2, Math.cos(ang) * 12);
     } else if (party && tops[party.slot] && tops[party.slot].state) {
       // Winner close-up: slow orbit around the trumpo still spinning.
       const w = tops[party.slot].state, ang = party.t * 0.6 + 0.8;
@@ -838,7 +839,7 @@ export function createScene(canvas, { low = false, cue = () => {} } = {}) {
         look.set(mx * 0.3, 0, mz * 0.3);
       }
     }
-    const tight = view === 'spectator' && (podium || party || camMode === 'close' || camMode === 'menu');
+    const tight = podium || (view === 'spectator' && (party || camMode === 'close' || camMode === 'menu'));
     camera.fov = winding ? 60 : tight ? 40 : 48;
     if (!winding && !tight) {
       const offset = pos.clone().sub(look);
