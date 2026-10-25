@@ -1,0 +1,185 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Trumpo Clash Favicon Renderer</title>
+<script type="importmap">{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+  }
+}</script>
+<style>
+  body { margin: 0; background: #0c0817; display: grid; place-items: center; height: 100vh; overflow: hidden; font-family: sans-serif; color: #fff; }
+  #canvas-container { position: relative; width: 512px; height: 512px; box-shadow: 0 10px 40px rgba(0,0,0,0.8); border-radius: 64px; overflow: hidden; background: #1b1430; }
+  canvas { width: 512px; height: 512px; display: block; }
+  #ctrls { position: fixed; bottom: 20px; display: flex; gap: 12px; }
+  button { padding: 10px 18px; border-radius: 999px; border: 0; font-weight: bold; background: #ffd23f; color: #222; cursor: pointer; }
+</style>
+</head>
+<body>
+<div id="canvas-container">
+  <canvas id="view" width="512" height="512"></canvas>
+</div>
+<div id="ctrls">
+  <button id="btn-dl">Download favicon.png</button>
+</div>
+
+<script type="module">
+import * as THREE from 'three';
+import { buildTrompo } from './js/entities/trompo.js';
+import { byId, TOPS } from './js/data.js';
+import { TOP_R } from './js/sim.js';
+import { Effects } from './js/fx/effects.js';
+
+const canvas = document.getElementById('view');
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true, preserveDrawingBuffer: true });
+renderer.setSize(512, 512);
+renderer.setPixelRatio(1);
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.25;
+
+const scene = new THREE.Scene();
+
+// Subtle rounded dark background gradient for the icon matching game theme
+const bgGeo = new THREE.PlaneGeometry(10, 10);
+const bgMat = new THREE.ShaderMaterial({
+  depthWrite: false,
+  vertexShader: `varying vec2 vUv; void main() { vUv = uv; gl_Position = vec4(position.xy, 0.999, 1.0); }`,
+  fragmentShader: `varying vec2 vUv; void main() {
+    float d = distance(vUv, vec2(0.5, 0.52));
+    vec3 col = mix(vec3(0.20, 0.14, 0.35), vec3(0.09, 0.06, 0.17), smoothstep(0.0, 0.7, d));
+    // Warm radial glow at center clash
+    float glow = exp(-d * 4.2) * 0.42;
+    col += vec3(1.0, 0.75, 0.35) * glow;
+    gl_FragColor = vec4(col, 1.0);
+  }`
+});
+const bgMesh = new THREE.Mesh(bgGeo, bgMat);
+scene.add(bgMesh);
+
+const camera = new THREE.PerspectiveCamera(34, 1, 0.1, 50);
+camera.position.set(0, 0.48, 2.35);
+camera.lookAt(0, 0.48, 0);
+
+// Studio Lighting
+const ambient = new THREE.AmbientLight('#ffffff', 1.2);
+const keyLight = new THREE.DirectionalLight('#fff8e8', 3.8);
+keyLight.position.set(2, 4, 3.5);
+const rimRed = new THREE.DirectionalLight('#ff4757', 3.6);
+rimRed.position.set(-3.5, 1.5, -0.5);
+const rimBlue = new THREE.DirectionalLight('#3a86ff', 4.0);
+rimBlue.position.set(3.5, 1.5, -0.5);
+const fillLight = new THREE.DirectionalLight('#ffd48a', 1.8);
+fillLight.position.set(0, -2, 2.5);
+scene.add(ambient, keyLight, rimRed, rimBlue, fillLight);
+
+const scale = TOP_R / 0.25; // exact canonical scale from scene.js
+
+// Left Top: Tikbalang (Red & Hardwood)
+const defL = byId(TOPS, 'tikbalang');
+const modelL = buildTrompo(defL, false);
+modelL.body.scale.setScalar(scale);
+modelL.aura.scale.multiplyScalar(scale);
+modelL.aura.position.y *= scale;
+
+const groupL = new THREE.Group();
+groupL.add(modelL.body);
+groupL.position.set(-0.31, 0.08, 0);
+groupL.rotation.z = -0.34; // tilted right towards center (matching user sketch)
+groupL.rotation.x = 0.12;
+groupL.rotation.y = 0.75;
+scene.add(groupL);
+
+// Right Top: Kidlat (Navy & Gold Lightning)
+const defR = byId(TOPS, 'kidlat');
+const modelR = buildTrompo(defR, false);
+modelR.body.scale.setScalar(scale);
+modelR.aura.scale.multiplyScalar(scale);
+modelR.aura.position.y *= scale;
+
+const groupR = new THREE.Group();
+groupR.add(modelR.body);
+groupR.position.set(0.31, 0.08, 0);
+groupR.rotation.z = 0.34; // tilted left towards center (matching user sketch)
+groupR.rotation.x = -0.12;
+groupR.rotation.y = -0.75;
+scene.add(groupR);
+
+// Impact Clash Starburst & Sparks right between them at contact point
+const starCanvas = document.createElement('canvas');
+starCanvas.width = starCanvas.height = 256;
+const sCtx = starCanvas.getContext('2d');
+sCtx.translate(128, 128);
+sCtx.fillStyle = '#ffffff';
+sCtx.beginPath();
+for (let i = 0; i < 16; i++) {
+  const a = (i / 16) * Math.PI * 2;
+  const r = i % 2 === 0 ? 124 : (i % 4 === 1 ? 28 : 10);
+  sCtx.lineTo(Math.cos(a) * r, Math.sin(a) * r);
+}
+sCtx.closePath();
+sCtx.fill();
+const starTex = new THREE.CanvasTexture(starCanvas);
+
+const starMat = new THREE.SpriteMaterial({ map: starTex, blending: THREE.AdditiveBlending, color: '#fffbe0' });
+const starSprite = new THREE.Sprite(starMat);
+starSprite.position.set(0, 0.52, 0.25);
+starSprite.scale.set(0.78, 0.78, 1);
+scene.add(starSprite);
+
+// Soft glowing round spark texture
+const sparkCanvas = document.createElement('canvas');
+sparkCanvas.width = sparkCanvas.height = 64;
+const spCtx = sparkCanvas.getContext('2d');
+const spGrad = spCtx.createRadialGradient(32, 32, 0, 32, 32, 32);
+spGrad.addColorStop(0, 'rgba(255,255,255,1)');
+spGrad.addColorStop(0.35, 'rgba(255,220,100,0.85)');
+spGrad.addColorStop(1, 'rgba(255,140,40,0)');
+spCtx.fillStyle = spGrad;
+spCtx.fillRect(0, 0, 64, 64);
+const sparkTex = new THREE.CanvasTexture(sparkCanvas);
+
+// Explosive sparks radiating outwards
+const sparkCount = 42;
+const pGeo = new THREE.BufferGeometry();
+const pPos = new Float32Array(sparkCount * 3);
+const pCol = new Float32Array(sparkCount * 3);
+for (let i = 0; i < sparkCount; i++) {
+  const ang = (i / sparkCount) * Math.PI * 2 + (Math.random() - 0.5) * 0.35;
+  const dist = 0.08 + Math.random() * 0.38;
+  pPos[i * 3] = Math.cos(ang) * dist * 1.25;
+  pPos[i * 3 + 1] = 0.52 + Math.sin(ang) * dist;
+  pPos[i * 3 + 2] = 0.25 + (Math.random() - 0.5) * 0.08;
+  const isGold = Math.random() > 0.35;
+  pCol[i * 3] = 1.0;
+  pCol[i * 3 + 1] = isGold ? 0.9 : 0.45;
+  pCol[i * 3 + 2] = isGold ? 0.4 : 0.25;
+}
+pGeo.setAttribute('position', new THREE.BufferAttribute(pPos, 3));
+pGeo.setAttribute('color', new THREE.BufferAttribute(pCol, 3));
+const sparkMat = new THREE.PointsMaterial({
+  size: 0.09,
+  map: sparkTex,
+  transparent: true,
+  vertexColors: true,
+  blending: THREE.AdditiveBlending,
+  depthWrite: false
+});
+const sparks = new THREE.Points(pGeo, sparkMat);
+scene.add(sparks);
+
+renderer.render(scene, camera);
+
+// Auto-save download trigger
+document.getElementById('btn-dl').onclick = () => {
+  const link = document.createElement('a');
+  link.download = 'favicon.png';
+  link.href = canvas.toDataURL('image/png');
+  link.click();
+};
+
+window.__RENDER_READY = true;
+</script>
+</body>
+</html>

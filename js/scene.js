@@ -131,6 +131,7 @@ function buildCircle(scene) {
     line.rotation.x = -Math.PI / 2; line.position.set(0, 0.013, (s === 0 ? 1 : -1) * (LAUNCH_Z + 0.6));
     scene.add(line);
   });
+  return chalk;
 }
 
 export function createScene(canvas, { low = false } = {}) {
@@ -165,7 +166,9 @@ export function createScene(canvas, { low = false } = {}) {
   camera.add(peeker);
   scene.add(camera);
   let peekIn = rand(3, 6);
-  buildCircle(scene);
+  // The chalk line follows the sim's circle, which shrinks late in a round (Sikip na!).
+  const chalk = buildCircle(scene);
+  let ringR = ARENA_R;
   const dog = makeDog();
   scene.add(dog);
   // The dog's lane across the circle: red chevrons pointing the way it will run, shown while it waits.
@@ -240,7 +243,7 @@ export function createScene(canvas, { low = false } = {}) {
     for (const t of tops) if (t) { t.root.visible = false; t.state = t.target = null; t.wasLaunched = false; t.fallT = 0; t.dir = null; t.vfxTime = 0; }
     dog.visible = false; dogTarget = null; lane.visible = false;
     for (const v of eggViews.values()) scene.remove(v.group);
-    eggViews.clear(); eggSnap = [];
+    eggViews.clear(); eggSnap = []; ringR = ARENA_R;
     party = null;
     effects.reset(); eclipse = 0;
   }
@@ -304,6 +307,7 @@ export function createScene(canvas, { low = false } = {}) {
     snap.tops.forEach((s, i) => { if (tops[i]) tops[i].target = s; });
     dogTarget = snap.dog;
     eggSnap = snap.eggs || [];
+    ringR = snap.ring || ARENA_R;
   }
 
   function fx(e) {
@@ -357,6 +361,13 @@ export function createScene(canvas, { low = false } = {}) {
         break;
       case 'hatch':
         effects.puff(x, 0.05, z, { n: 8, size: 0.3, color: '#fff3c8' });
+        break;
+      case 'stomp':
+        // The end of a Tikbalang stampede: hooves come down.
+        effects.puff(x, 0.05, z, { n: 18, speed: 2.4, size: 0.5 });
+        effects.ring(x, z, '#e63946', u(2), 0.5); // the stomp's 2 m reach
+        effects.pow(x, 1.0, z, 'BLAG!', 1.2);
+        shake = Math.max(shake, 0.5);
         break;
       case 'ability': {
         const source = tops[e.slot];
@@ -561,6 +572,8 @@ export function createScene(canvas, { low = false } = {}) {
       }
     } else { dog.visible = false; lane.visible = false; }
     updateEggs(dt);
+    chalk.scale.setScalar(ringR / ARENA_R);
+    chalk.material.color.set(ringR < ARENA_R - 0.01 ? '#ff8a7a' : '#fbf6ea');
     people.forEach((p, s) => {
       if (!p) return;
       // Watch your own top, slump when it falls; the round winner cheers. The throw plays out on its own.

@@ -1,6 +1,6 @@
 // Desktop page: title screen with a CPU demo, online host/spectator, and practice vs CPU.
 import { Engine, WIN_ROUNDS } from './engine.js';
-import { decodeSnap, LATE_T } from './sim.js';
+import { decodeSnap } from './sim.js';
 import { createScene } from './scene.js';
 import { createController, charIcon, topIcon } from './controller.js';
 import { connect, makeRoomCode, isLocalNet } from './net.js';
@@ -14,7 +14,7 @@ const scene = createScene($('#view'));
 let engine = null, net = null, ctrl = null, mode = 'title';
 const CAMS = ['auto', 'top', 'close', 'orbit'];
 let camIdx = 0;
-let state = null, snap = null, lastNetSnap = 0, lastPhase = '', lateSaid = false, bannerUntil = 0;
+let state = null, snap = null, lastNetSnap = 0, lastPhase = '', bannerUntil = 0, squeezeUntil = 0;
 
 const REASON = { fall: 'Natumba! Toppled over.', out: 'Labas! Out of the circle.', time: 'Time! Faster spinner wins.', draw: 'Tabla! Replay the round.' };
 const nameOf = s => (state && state.players[s] ? state.players[s].name : `P${s + 1}`);
@@ -99,7 +99,7 @@ function onState(s) {
   if (ctrl) ctrl.setState(s);
   if (net) net.send('state', s);
   if (s.phase !== lastPhase) {
-    if (s.phase === 'countdown') { scene.reset(); lateSaid = false; }
+    if (s.phase === 'countdown') scene.reset();
     if (s.phase === 'throw' && mode !== 'title') audio.beep(true);
     if ((s.phase === 'roundEnd' || s.phase === 'matchEnd') && s.result && s.result.winner >= 0 && mode !== 'title') audio.win();
     if (s.phase === 'roundEnd' && s.result && s.result.winner >= 0) scene.celebrate(s.result.winner, Math.max(...s.scores) >= WIN_ROUNDS);
@@ -161,7 +161,6 @@ function updateHud() {
     el.classList.toggle('ready', !!(tp && tp.charge >= 1 && tp.alive));
     el.classList.toggle('inverted', !!(tp && tp.invert));
   });
-  if (fighting && snap.t > LATE_T && !lateSaid && ph === 'fight') { lateSaid = true; say('Pagod na! Spin now drains twice as fast.'); }
   renderBanner();
 }
 
@@ -186,7 +185,10 @@ function renderBanner() {
     }
     case 'countdown': big = ['', 'Isa…', 'Dalawa…', 'Tatlo…'][4 - Math.min(3, Math.max(1, t))]; small = 'Get ready to throw'; break;
     case 'throw': big = 'BITAW!'; break;
-    case 'fight': if (performance.now() < bannerUntil) big = 'LABAN!'; break;
+    case 'fight':
+      if (performance.now() < bannerUntil) big = 'LABAN!';
+      else if (performance.now() < squeezeUntil) { big = 'SIKIP NA!'; small = 'The circle is shrinking'; }
+      break;
     case 'roundEnd': {
       const r = state.result;
       big = r.winner < 0 ? 'Tabla!' : `${nameOf(r.winner)} wins round ${state.round}`;
@@ -218,7 +220,7 @@ function commentary(e) {
       const o = n(1 - e.slot);
       say({
         kidlat: `KIDLAT! ${n(e.slot)} calls lightning down on ${o}!`,
-        tikbalang: `${n(e.slot)} charges like a Tikbalang!`,
+        tikbalang: `Tikbalang stampede! ${n(e.slot)} breaks through anything in the way!`,
         agimat: `${n(e.slot)}'s agimat glows. Hits barely hurt now!`,
         diwata: `A diwata blesses ${n(e.slot)}'s trumpo!`,
         bakunawa: `Bakunawa swallows the moon! ${o} steers in reverse!`,
@@ -229,6 +231,7 @@ function commentary(e) {
     case 'bark': say(`Arf! The dog knocks ${n(e.slot)} aside!`); break;
     case 'eggWarn': say('Putak! A hen is running into the circle…'); break;
     case 'crack': say(`${n(e.slot)} smashes the egg!`); break;
+    case 'squeeze': say('Sikip na! The circle is shrinking!'); squeezeUntil = performance.now() + 1800; break;
     case 'fall': say(`${n(e.slot)}'s trumpo topples. Natumba!`); break;
     case 'out': say(`${n(e.slot)} is knocked out of the circle. Labas!`); break;
   }

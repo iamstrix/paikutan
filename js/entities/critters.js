@@ -30,7 +30,9 @@ export class Critters {
     this.chickens = [];
     for (let i = 0; i < count; i += 1) {
       const g = chicken(i);
-      g.position.set((this.rng() - 0.5) * 30, 0, -3 + this.rng() * 12);
+      // Start outside the bilog: a hen placed inside could never walk out (see update).
+      const start = this.pick();
+      g.position.set(start.x, 0, start.y);
       this.group.add(g);
       this.chickens.push({ group: g, head: g.userData.head, target: this.pick(), peck: this.rng() * 3 });
     }

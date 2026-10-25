@@ -202,6 +202,20 @@ export const audio = {
       noise(t + d, { vol: 0.15, decay: 0.08, freq: 900 });
     });
   },
+  // The end of a Tikbalang stampede: a heavy hoof thud.
+  stomp() {
+    if (!ctx) return;
+    const t = ctx.currentTime;
+    tone(90, t, { vol: 0.45, decay: 0.35, slideTo: 40 });
+    noise(t, { vol: 0.3, decay: 0.25, type: 'lowpass', freq: 500 });
+  },
+  // Sikip na!: a falling warning gong as the circle starts to shrink.
+  squeeze() {
+    if (!ctx) return;
+    const t = ctx.currentTime;
+    gong(392, t, 0.25, 1.2);
+    gong(294, t + 0.25, 0.25, 1.4);
+  },
   // Hen running in: a quick "bok-bok-bok".
   cluck() {
     if (!ctx) return;
@@ -249,6 +263,8 @@ export function playFx(e) {
     case 'egg': audio.click(); break;
     case 'crack': audio.crack(); break;
     case 'hatch': audio.chirp(); break;
+    case 'stomp': audio.stomp(); break;
+    case 'squeeze': audio.squeeze(); break;
     case 'ability': {
       const f = { kidlat: audio.kidlat, tikbalang: audio.dash, agimat: audio.shield, diwata: audio.heal, bakunawa: audio.eclipse }[e.top];
       if (f) f();

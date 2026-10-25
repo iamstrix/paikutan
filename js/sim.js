@@ -6,7 +6,8 @@ export const ARENA_R = 5;        // chalk circle radius
 export const TOP_R = 0.42;       // trumpo body radius
 export const STEP = 1 / 60;
 export const LAUNCH_Z = 4.2;     // where each player stands (slot 0 at +z, slot 1 at -z)
-export const LATE_T = 35;        // after this, spin drains twice as fast
+// Sikip na!: from SQUEEZE_T the circle shrinks to SQUEEZE_R over SQUEEZE_DUR seconds, so every round ends.
+export const SQUEEZE_T = 20, SQUEEZE_DUR = 15, SQUEEZE_R = 3;
 export const MAX_T = 70;
 export const BOOST_CD = 2.5;     // seconds between dashes
 const BOOST_V = 6, BOOST_COST = 0.04;
@@ -14,6 +15,9 @@ export const DOG_WARN = 2;       // seconds the dog's lane shows before it runs
 export const EGG_WARN = 1.6;     // the hen's run in, from the warning ring to the laid egg
 export const EGG_R = 0.3;
 const EGG_LIE = 10, EGG_BREAK = 3.5, EGG_MAX = 2;
+// Tikbalang Stampede: a steerable charge at double weight that gets through most of a shield,
+// ending in a stomp that shoves anything within STOMP_R.
+const STAMPEDE_T = 2, STOMP_R = 2;
 
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 
@@ -27,14 +31,14 @@ export function makeTop(slot, charId, topId) {
     launched: false, alive: true, out: false,
     x: 0, z: slot === 0 ? LAUNCH_Z : -LAUNCH_Z, vx: 0, vz: 0,
     spin: 0, wobble: 0, steady: 1,
-    charge: 0, shield: 0, invert: 0, dash: 0, hitCd: 0, boostCd: 0,
+    charge: 0, shield: 0, invert: 0, dash: 0, stampede: 0, hitCd: 0, boostCd: 0,
     sx: 0, sy: 0, wantAbility: false, wantBoost: false,
   };
 }
 
 export function createWorld(p0, p1, rand = Math.random) {
   return {
-    t: 0, rand, events: [], over: false, winner: -1, reason: '',
+    t: 0, rand, events: [], over: false, winner: -1, reason: '', ring: ARENA_R, squeezed: false,
     tops: [makeTop(0, p0.char, p0.top), makeTop(1, p1.char, p1.top)],
     // Rounds often end inside 10 s, so the barangay shows up early: the dog by 6-12 s, hens from 3.5 s.
     dog: null, dogDone: false, dogAt: 6 + rand() * 6,
@@ -75,7 +79,7 @@ function useAbility(w, tp, opp) {
   switch (tp.top) {
     case 'kidlat':
       if (live) {
-        const k = opp.shield > 0 ? 0.3 : 1;
+        const k = opp.shield > 0 ? 0.45 : 1;
         opp.spin -= 0.07 * k;
         opp.wobble += 0.12 * k;
         opp.vx += (dx / d) * 3 * k;
@@ -83,19 +87,28 @@ function useAbility(w, tp, opp) {
       }
       break;
     case 'tikbalang':
-      tp.vx = (dx / d) * 8;
-      tp.vz = (dz / d) * 8;
-      tp.dash = 0.8;
+      // Stampede: still steerable, so it can chase; dash marks it heavy for clashes and the dust trail.
+      tp.vx = (dx / d) * 5;
+      tp.vz = (dz / d) * 5;
+      tp.stampede = tp.dash = STAMPEDE_T;
       break;
     case 'agimat':
       tp.shield = 5;
       break;
     case 'diwata':
-      tp.spin = Math.min(1, tp.spin + 0.07);
-      tp.wobble = Math.max(0, tp.wobble - 0.3);
+      // The blessing also lifts Bakunawa's curse and gives back some of the spin it took.
+      tp.spin = Math.min(1, tp.spin + 0.07 + (tp.invert > 0 ? 0.03 : 0));
+      tp.wobble = Math.max(0, tp.wobble - 0.22);
+      tp.invert = 0;
       break;
     case 'bakunawa':
-      if (live) { opp.invert = 5; opp.spin -= 0.06; }
+      if (live) {
+        // An agimat wards off most of the curse; the eclipse also cuts a Tikbalang's stampede short.
+        const warded = opp.shield > 0;
+        opp.invert = warded ? 2 : 5;
+        if (!warded) opp.spin -= 0.06;
+        if (opp.stampede > 0.5) opp.stampede = opp.dash = 0.5;
+      }
       break;
   }
   ev(w, 'ability', { slot: tp.slot, top: tp.top, x: tp.x, z: tp.z, tx: opp.x, tz: opp.z });
@@ -116,14 +129,29 @@ function boost(w, tp, wx, wz) {
   ev(w, 'boost', { slot: tp.slot, x: tp.x, z: tp.z, dx, dz });
 }
 
-// Dashing or shielded tops count as heavier in a clash.
-const weight = tp => tp.mass * (tp.dash > 0 ? 1.8 : 1) * (tp.shield > 0 ? 1.5 : 1);
+// Stampeding or shielded tops count as heavier in a clash; a shield's extra weight doesn't hold
+// against a stampede.
+const weight = (tp, vs) => tp.mass * (tp.dash > 0 ? 1.8 : 1) * (tp.shield > 0 && !(vs && vs.stampede > 0) ? 1.5 : 1);
+
+// The end of a stampede: a stomp that shoves a nearby rival away and rattles it.
+function stomp(w, tp, opp) {
+  ev(w, 'stomp', { slot: tp.slot, x: tp.x, z: tp.z });
+  if (!opp.launched || !opp.alive) return;
+  const dx = opp.x - tp.x, dz = opp.z - tp.z, d = Math.hypot(dx, dz) || 1;
+  if (d > STOMP_R) return;
+  const k = (1 - d / STOMP_R) * (opp.shield > 0 ? 0.6 : 1);
+  opp.vx += (dx / d) * 4 * k;
+  opp.vz += (dz / d) * 4 * k;
+  opp.wobble += 0.2 * k * wobbleGain(opp);
+}
 
 function hitTop(tp, by, intensity) {
-  const k = (tp.shield > 0 ? 0.3 : 1) * intensity * weight(by) / weight(tp);
+  // A shield takes 70% off a hit, but a stampede gets 60% through.
+  const guard = tp.shield > 0 ? (by.stampede > 0 ? 0.6 : 0.3) : 1;
+  const k = guard * intensity * weight(by, tp) / weight(tp, by);
   tp.spin -= 0.03 * k;
   // A slow top is much easier to knock over.
-  tp.wobble += 0.25 * k * wobbleGain(tp) * (1.6 - tp.spin);
+  tp.wobble += 0.13 * k * wobbleGain(tp) * (1.6 - tp.spin);
   tp.charge = Math.min(1, tp.charge + 0.08);
   tp.hitCd = 0.35;
 }
@@ -134,7 +162,7 @@ function collide(w) {
   const dx = b.x - a.x, dz = b.z - a.z, d = Math.hypot(dx, dz);
   if (d >= TOP_R * 2 || d === 0) return;
   const nx = dx / d, nz = dz / d;
-  const ia = 1 / weight(a), ib = 1 / weight(b);
+  const ia = 1 / weight(a, b), ib = 1 / weight(b, a);
   const push = (TOP_R * 2 - d) / (ia + ib);
   a.x -= nx * push * ia; a.z -= nz * push * ia;
   b.x += nx * push * ib; b.z += nz * push * ib;
@@ -206,7 +234,7 @@ function hens(w, dt) {
     w.nextEgg = w.t + 5 + w.rand() * 3;
     for (let k = 0; k < 8 && w.eggs.length < EGG_MAX; k++) {
       // Somewhere inside the circle, clear of both tops.
-      const a = w.rand() * Math.PI * 2, r = 1 + w.rand() * (ARENA_R - 2);
+      const a = w.rand() * Math.PI * 2, r = 1 + w.rand() * Math.max(0.5, w.ring - 2);
       const x = Math.cos(a) * r, z = Math.sin(a) * r;
       if (live.every(tp => Math.hypot(tp.x - x, tp.z - z) > 1.5)) {
         w.eggs.push({ id: ++w.eggId, x, z, t: -EGG_WARN });
@@ -245,13 +273,20 @@ function hens(w, dt) {
 export function step(w, dt = STEP) {
   if (w.over) return;
   w.t += dt;
-  const late = w.t > LATE_T ? 2 : 1;
+  if (w.t > SQUEEZE_T) {
+    if (!w.squeezed) { w.squeezed = true; ev(w, 'squeeze', {}); }
+    w.ring = Math.max(SQUEEZE_R, ARENA_R - (w.t - SQUEEZE_T) / SQUEEZE_DUR * (ARENA_R - SQUEEZE_R));
+  }
   for (const tp of w.tops) {
     if (!tp.launched || !tp.alive) continue;
     const opp = w.tops[1 - tp.slot];
     tp.shield = Math.max(0, tp.shield - dt);
     tp.invert = Math.max(0, tp.invert - dt);
     tp.dash = Math.max(0, tp.dash - dt);
+    if (tp.stampede > 0) {
+      tp.stampede -= dt;
+      if (tp.stampede <= 0) stomp(w, tp, opp);
+    }
     tp.hitCd = Math.max(0, tp.hitCd - dt);
     tp.boostCd = Math.max(0, tp.boostCd - dt);
 
@@ -265,7 +300,7 @@ export function step(w, dt = STEP) {
       tp.wantBoost = false;
       if (tp.boostCd <= 0) boost(w, tp, wx, wz);
     }
-    const grip = 7 * (0.35 + 0.65 * tp.spin);
+    const grip = 7 * (0.35 + 0.65 * tp.spin) * (tp.stampede > 0 ? 1.4 : 1);
     // The ground dips slightly toward the middle, so tops keep meeting.
     let ax = wx * grip - tp.x * 0.35, az = wz * grip - tp.z * 0.35;
     const wander = tp.wobble * 2.2;
@@ -277,7 +312,7 @@ export function step(w, dt = STEP) {
     tp.x += tp.vx * dt; tp.z += tp.vz * dt;
 
     // Steering is not free: it costs a little spin.
-    tp.spin -= dt * (0.04 * tp.decay * late + Math.min(1, m) * 0.012);
+    tp.spin -= dt * (0.024 * tp.decay + Math.min(1, m) * 0.012);
     const target = clamp((0.45 - tp.spin) / 0.45, 0, 1) * 0.85;
     if (tp.wobble < target) tp.wobble += (target - tp.wobble) * dt;
     else tp.wobble = Math.max(target, tp.wobble - dt * (0.015 + 0.012 * tp.sta));
@@ -293,9 +328,12 @@ export function step(w, dt = STEP) {
   strayDog(w, dt);
   hens(w, dt);
 
+  // How much fight each top had left as it went down, for the tiebreak below.
+  const stand = [0, 0];
   for (const tp of w.tops) {
     if (!tp.launched || !tp.alive) continue;
-    if (Math.hypot(tp.x, tp.z) > ARENA_R + TOP_R * 0.5) {
+    stand[tp.slot] = tp.spin - 0.3 * tp.wobble;
+    if (Math.hypot(tp.x, tp.z) > w.ring + TOP_R * 0.5) {
       tp.alive = false; tp.out = true;
       ev(w, 'out', { slot: tp.slot, x: tp.x, z: tp.z });
     } else if (tp.spin <= 0.03 || tp.wobble >= 1) {
@@ -306,8 +344,10 @@ export function step(w, dt = STEP) {
   const dead = w.tops.filter(tp => tp.launched && !tp.alive);
   if (dead.length) {
     w.over = true;
-    if (dead.length === 2) { w.winner = -1; w.reason = 'draw'; }
-    else { w.winner = 1 - dead[0].slot; w.reason = dead[0].out ? 'out' : 'fall'; }
+    // Both down on the same step (usually one big clash): more spin left wins. A real tie is a draw.
+    const loser = dead.length === 1 ? dead[0] : Math.abs(stand[0] - stand[1]) < 0.01 ? null : w.tops[stand[0] < stand[1] ? 0 : 1];
+    if (!loser) { w.winner = -1; w.reason = 'draw'; }
+    else { w.winner = 1 - loser.slot; w.reason = loser.out ? 'out' : 'fall'; }
   } else if (w.t > MAX_T) {
     w.over = true;
     const [a, b] = w.tops;
@@ -323,7 +363,7 @@ const r3 = v => Math.round(v * 1000) / 1000;
 // Compact network form of the world, decoded by decodeSnap.
 export function snapshot(w) {
   return {
-    t: r2(w.t),
+    t: r2(w.t), ring: r2(w.ring),
     tops: w.tops.map(tp => [r2(tp.x), r2(tp.z), r3(Math.max(0, tp.spin)), r3(tp.wobble),
       +tp.launched, +tp.alive, +tp.out, r2(tp.charge), +(tp.shield > 0), +(tp.invert > 0), +(tp.dash > 0), r2(tp.wx || 0), r2(tp.wz || 0), r2(tp.boostCd)]),
     dog: w.dog ? [r2(w.dog.x), r2(w.dog.z), Math.sign(w.dog.vx), r2(Math.max(0, w.dog.warn))] : null,
@@ -334,7 +374,7 @@ export function snapshot(w) {
 
 export function decodeSnap(s) {
   return {
-    t: s.t,
+    t: s.t, ring: s.ring || ARENA_R,
     tops: s.tops.map(a => ({ x: a[0], z: a[1], spin: a[2], wobble: a[3], launched: !!a[4], alive: !!a[5],
       out: !!a[6], charge: a[7], shield: !!a[8], invert: !!a[9], dash: !!a[10], wx: a[11] || 0, wz: a[12] || 0, boostCd: a[13] || 0 })),
     dog: s.dog && { x: s.dog[0], z: s.dog[1], dir: s.dog[2], warn: s.dog[3] || 0 },

@@ -219,18 +219,43 @@ export class Engine {
       const ang = Math.atan2(me.z, me.x) + 0.8;
       tx = Math.cos(ang) * 2.5 - me.x; tz = Math.sin(ang) * 2.5 - me.z;
     }
-    if (Math.hypot(me.x, me.z) > 3.8) { tx = -me.x; tz = -me.z; }
-    const m = Math.hypot(tx, tz) || 1;
+    let m = Math.hypot(tx, tz) || 1;
+    tx /= m; tz /= m;
+    // Steer round eggs (and where a hen is about to lay one) when they are close.
+    for (const egg of w.eggs) {
+      const ex = me.x - egg.x, ez = me.z - egg.z, d = Math.hypot(ex, ez) || 1;
+      if (d < 1.6) { tx += (ex / d) * (1.6 - d); tz += (ez / d) * (1.6 - d); }
+    }
+    // Get out of the stray dog's lane while it waits, and while it is still coming.
+    const dog = w.dog;
+    let dodging = false;
+    if (dog && (dog.warn > 0 || Math.sign(me.x - dog.x) === Math.sign(dog.vx)) && Math.abs(me.z - dog.z) < 1.5) {
+      tx = 0; tz = Math.sign(me.z - dog.z || -me.z || 1);
+      dodging = true;
+    }
+    // The edge is relative to the circle, which shrinks late in the round.
+    const edge = Math.hypot(me.x, me.z) / w.ring;
+    if (edge > 0.76) { tx = -me.x; tz = -me.z; }
+    m = Math.hypot(tx, tz) || 1;
     const [lx, ly] = toLocal(s, tx / m, tz / m);
-    me.sx = lx * 0.8; me.sy = ly * 0.8;
-    // Dash back from the edge, or to press an attack when ahead on spin.
+    // Under Bakunawa's eclipse a person catches on after a second or so and steers the other way.
+    const flip = me.invert > 0 && me.invert < 3.5 ? -1 : 1;
+    me.sx = lx * 0.8 * flip; me.sy = ly * 0.8 * flip;
+    // Dash back from the edge, out of the dog's way, or to press an attack when ahead on spin.
     if (me.boostCd <= 0 && me.spin > 0.35) {
       const near = op.launched && op.alive && Math.hypot(op.x - me.x, op.z - me.z) < 2.2;
-      if (Math.hypot(me.x, me.z) > 4 || (near && me.spin > op.spin - 0.05 && Math.random() < 0.3)) me.wantBoost = true;
+      if (edge > 0.8 || (dodging && dog.warn < 0.8) || (near && me.spin > op.spin - 0.05 && Math.random() < 0.3)) me.wantBoost = true;
     }
     if (me.charge >= 1 && Math.random() < 0.25) {
       const d = Math.hypot(op.x - me.x, op.z - me.z);
-      if (me.top !== 'tikbalang' || d < 3.5) me.wantAbility = true;
+      // Time the powers the way a person would: Tikbalang when close, Diwata when cursed or shaky,
+      // Bakunawa to break a stampede, never into a shield.
+      const go = {
+        tikbalang: d < 3.5,
+        diwata: me.invert > 0 || me.wobble > 0.4 || me.spin < op.spin - 0.08,
+        bakunawa: op.dash > 0 || op.shield <= 0,
+      }[me.top];
+      if (go !== false) me.wantAbility = true;
     }
   }
 }

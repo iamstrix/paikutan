@@ -17,14 +17,14 @@ export const CHARACTERS = [
 export const TOPS = [
   { id: 'kidlat', name: 'Kidlat', power: 'Lightning Strike', strong: 'diwata', str: 4, lon: 2, sta: 3, colors: ['#ffd23f', '#1d3557'],
     desc: 'A bolt from the sky zaps your rival: knockback and lost spin.' },
-  { id: 'tikbalang', name: 'Tikbalang', power: 'Tikbalang Dash', strong: 'agimat', str: 5, lon: 2, sta: 2, colors: ['#8d5524', '#e63946'],
-    desc: 'Charge straight at your rival with extra weight. Aim matters.' },
+  { id: 'tikbalang', name: 'Tikbalang', power: 'Tikbalang Stampede', strong: 'agimat', str: 5, lon: 2, sta: 2, colors: ['#8d5524', '#e63946'],
+    desc: 'Stampede for 2 seconds: steerable, heavy, and it breaks through shields. Ends in a stomp that shoves anyone close.' },
   { id: 'agimat', name: 'Agimat', power: 'Amulet Shield', strong: 'kidlat', str: 2, lon: 3, sta: 4, colors: ['#2a9d8f', '#e9c46a'],
-    desc: 'For 5 seconds, hits barely hurt and you are harder to push.' },
+    desc: 'For 5 seconds, hits barely hurt and you are harder to push. It also wards off most of an eclipse.' },
   { id: 'diwata', name: 'Diwata', power: "Diwata's Blessing", strong: 'bakunawa', str: 2, lon: 4, sta: 3, colors: ['#f6bdc0', '#7b2cbf'],
-    desc: 'Restores spin and steadies your wobble.' },
+    desc: 'Restores spin, steadies your wobble, and lifts an eclipse curse.' },
   { id: 'bakunawa', name: 'Bakunawa', power: 'Eclipse', strong: 'tikbalang', str: 3, lon: 3, sta: 3, colors: ['#0b132b', '#5bc0be'],
-    desc: 'The sea serpent swallows the moon: rival steering is reversed for 5 seconds.' },
+    desc: 'The sea serpent swallows the moon: rival steering is reversed for 5 seconds, and a stampede is cut short.' },
 ];
 
 export const PLAYER_COLORS = ['#e63946', '#3a86ff'];
