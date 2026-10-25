@@ -11,7 +11,7 @@ import { requestMotion } from './input.js';
 const $ = s => document.querySelector(s);
 // Canvas signs and POW! bursts letter in Lilita One; give it a moment to load so they don't bake in a fallback.
 await Promise.race([document.fonts.load('64px "Lilita One"').catch(() => {}), new Promise(r => setTimeout(r, 1500))]);
-const scene = createScene($('#view'));
+const scene = createScene($('#view'), { low: matchMedia('(pointer: coarse)').matches });
 let engine = null, net = null, ctrl = null, mode = 'title', brawl = false;
 const CAMS = ['auto', 'top', 'close', 'orbit'];
 let camIdx = 0;
@@ -34,7 +34,7 @@ function start(newMode, { matchMode = '1v1' } = {}) {
   audio.stop();
   document.body.dataset.mode = mode;
   document.body.classList.remove('lobby-open');
-  document.body.classList.remove('host-playing', 'host-room-open');
+  document.body.classList.remove('host-playing', 'host-room-open', 'host-phone');
   $('#btn-exit').hidden = !['host', 'practice', 'demo'].includes(mode);
   $('#btn-room').hidden = true;
   $('#lobby').hidden = mode !== 'host';
@@ -358,14 +358,15 @@ $('#btn-host-play').onclick = async () => {
   try { localStorage.setItem('paikutan-name', name); } catch { /* optional */ }
   ctrl = createController($('#ctrl'), { mode: phone ? 'phone' : 'desktop', myId: HOST_ID, sounds: false, send: (ev, p) => engine.handle(HOST_ID, ev, p) });
   document.body.classList.add('host-playing');
-  if (engine.join(HOST_ID, name, 'local') < 0) { ctrl.destroy(); ctrl = null; document.body.classList.remove('host-playing'); return; }
+  document.body.classList.toggle('host-phone', phone);
+  if (engine.join(HOST_ID, name, 'local') < 0) { ctrl.destroy(); ctrl = null; document.body.classList.remove('host-playing', 'host-phone'); return; }
   ctrl.setState(engine.state());
   if (phone) scene.setView(ctrl.slot);
   $('#btn-room').hidden = false;
 };
 $('#btn-host-spectate').onclick = () => {
   if (ctrl) { ctrl.destroy(); ctrl = null; }
-  document.body.classList.remove('host-playing', 'host-room-open');
+  document.body.classList.remove('host-playing', 'host-room-open', 'host-phone');
   $('#btn-room').hidden = true;
   scene.setView('spectator'); scene.setLocalSteer(-1, null); scene.setCharge(-1);
   engine.leave(HOST_ID);

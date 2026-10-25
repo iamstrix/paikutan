@@ -347,12 +347,15 @@ body.brawl .pcard { display: none; }
 
 /* Room navigation and controls stay reachable through every match phase. */
 .match-exit { position: fixed; z-index: 35; top: max(10px, env(safe-area-inset-top)); left: 12px; }
-body:not(.phone-page) .match-exit { top: auto; bottom: 16px; left: 50%; transform: translateX(-50%); }
+body:not(.phone-page) .match-exit { top: auto; bottom: 16px; left: 16px; }
+body:not([data-mode=title]) #ticker { bottom: 66px; }
 .phone-page #leave { z-index: 45; }
 .phone-page #corner { top: max(8px, env(safe-area-inset-top)); }
 #lost { top: 48px; font-size: 0.8rem; }
 .ctrl:empty { pointer-events: none; }
+#corner { z-index: 36; }
 .ctrl .panel { padding-top: 62px; padding-bottom: 74px; }
+.ctrl[data-view^=lobby] .panel { justify-content: flex-start; }
 #title { overflow-y: auto; }
 #menu-join label { font-weight: 800; }
 #join-code, #host-name { font: inherit; border: 2px solid #71637f; border-radius: 12px; background: #211831; color: var(--ink); padding: 10px 12px; min-width: 0; }
@@ -365,13 +368,17 @@ body:not(.phone-page) .match-exit { top: auto; bottom: 16px; left: 50%; transfor
 .remove-cpu { border: 1px solid #bba9c9; border-radius: 999px; background: transparent; color: var(--ink); padding: 7px 9px; font: inherit; font-size: 0.75rem; cursor: pointer; }
 #lobby { max-height: calc(100dvh - 32px); overflow-y: auto; }
 #btn-room { position: fixed; z-index: 36; top: 10px; right: 12px; }
+@media (min-width: 901px) { #btn-room { display: none; } }
+body.host-phone .match-exit { top: max(10px, env(safe-area-inset-top)); bottom: auto; left: 12px; }
+body.host-phone #corner { top: 8px; bottom: auto; right: 78px; gap: 4px; }
+body.host-phone #corner button { width: 32px; height: 32px; font-size: 0.9rem; }
 body.host-playing.lobby-open #ctrl { right: 372px; }
 body.host-playing #lobby { z-index: 31; }
 body.host-playing #end-bar { bottom: 72px; }
 @media (max-width: 900px) {
   body.host-playing.lobby-open #ctrl { right: 0; }
   body.host-playing #lobby { display: none; }
-  body.host-playing.host-room-open #lobby { display: block; top: 54px; bottom: auto; max-height: calc(100dvh - 112px); }
+  body.host-playing.host-room-open #lobby { display: block; top: 54px; bottom: auto; max-height: calc(100dvh - 112px); background: var(--bg); }
   #title { justify-content: flex-start; padding-top: max(24px, 5vh); padding-bottom: 58px; }
   #title .logo { font-size: clamp(2.5rem, 9vw, 4rem); }
   .menu { gap: 10px; margin-top: 1em; }

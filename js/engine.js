@@ -36,6 +36,7 @@ export class Engine {
     this.cpuN = 0;
     this.switched = null; // last counterpick: { slot, from, to }
     this.elapsed = 0;
+    this.session = Math.random().toString(36).slice(2);
     this.fxSeq = 0;
     this.snapSeq = 0;
     this.effects = [];
@@ -49,7 +50,7 @@ export class Engine {
 
   state() {
     return {
-      mode: this.mode, phase: this.phase, timer: Math.max(0, Math.round(this.timer * 10) / 10), round: this.round,
+      session: this.session, mode: this.mode, phase: this.phase, timer: Math.max(0, Math.round(this.timer * 10) / 10), round: this.round,
       rounds: this.brawl ? BRAWL_ROUNDS : WIN_ROUNDS * 2 - 1,
       scores: this.scores, points: this.points, result: this.result, switched: this.switched,
       fx: this.recentEffects(),
@@ -279,7 +280,7 @@ export class Engine {
       this.acc += dt;
       while (this.acc >= STEP) { step(this.world, STEP); this.acc -= STEP; }
       if (this.world.events.length) { this.emitEffects(this.world.events); this.world.events = []; }
-      this.emit('snap', { ...snapshot(this.world), seq: ++this.snapSeq, fx: this.recentEffects() });
+      this.emit('snap', { ...snapshot(this.world), session: this.session, round: this.round, seq: ++this.snapSeq, fx: this.recentEffects() });
       if (this.world.over) this.go('roundEnd');
     }
   }

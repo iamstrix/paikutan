@@ -9,9 +9,11 @@ export function pacedTransport(kind, sendRaw, closeRaw) {
   const queue = [];
   const continuous = new Set(['steer', 'prog', 'snap', 'state', 'hello']);
   let closed = false;
+  const transmit = (ev, p) => Promise.resolve().then(() => sendRaw(ev, p)).catch(() => {});
+  const disconnect = () => Promise.resolve().then(closeRaw).catch(() => {});
   const timer = setInterval(() => {
     const message = queue.shift();
-    if (message) Promise.resolve(sendRaw(message.ev, message.p)).catch(() => {});
+    if (message) transmit(message.ev, message.p);
   }, 50);
   return {
     kind,
@@ -25,8 +27,8 @@ export function pacedTransport(kind, sendRaw, closeRaw) {
       if (closed) return;
       closed = true; clearInterval(timer); queue.length = 0;
       // A final leave/roomClosed must reach the socket before removing its channel.
-      if (ev) Promise.resolve(sendRaw(ev, p)).catch(() => {}).finally(closeRaw);
-      else closeRaw();
+      if (ev) transmit(ev, p).then(disconnect);
+      else disconnect();
     },
   };
 }

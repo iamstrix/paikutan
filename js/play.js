@@ -103,6 +103,7 @@ function onMessage(ev, p) {
   lastMsg = performance.now();
   if (ev === 'state') {
     if (!ctrl) return;
+    if (state?.session !== p.session) { effects.reset(); lastSnapSeq = 0; snap = null; scene.reset(); }
     state = p;
     const mine = p.players.some(x => x && x.id === myId);
     if (!mine) return;
@@ -121,6 +122,7 @@ function onMessage(ev, p) {
     if (!solo) effects.receive(p.fx);
   } else if (ev === 'snap') {
     if (!ctrl || !state?.players.some(x => x?.id === myId)) return;
+    if (p.session !== state.session || p.round !== state.round) return;
     if (p.seq && p.seq <= lastSnapSeq) return;
     lastSnapSeq = p.seq || lastSnapSeq;
     snap = decodeSnap(p);
