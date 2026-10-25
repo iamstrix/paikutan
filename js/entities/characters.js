@@ -21,6 +21,12 @@ function pivot(parent, x, y, z = 0) {
 }
 
 function face(head, r, opts = {}) {
+  // The skull sits r * 0.9 above the head pivot. tromPOW laid the features out round the pivot,
+  // which put them down at the neck, so they hang off an anchor at the skull's centre instead.
+  const anchor = new THREE.Group();
+  anchor.position.y = r * 0.9;
+  head.add(anchor);
+  head = anchor;
   const ex = r * 0.36;
   const ey = r * 0.05;
   const ez = r * 0.92;
@@ -69,6 +75,7 @@ function face(head, r, opts = {}) {
   box(sad, [0.06, 0.02, 0.02], '#7a3b2e', [0.025, my, r * 0.88], [0, 0, -0.4]);
   box(dizzy, [0.05, 0.05, 0.02], '#3a1612', [0, my, r * 0.88]);
   happy.visible = sad.visible = dizzy.visible = false;
+  bakeChildren(anchor);
   return { neutral, happy, sad, dizzy };
 }
 

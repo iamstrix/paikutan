@@ -27,6 +27,7 @@ function start(newMode) {
   state = snap = null; lastPhase = '';
   scene.reset();
   scene.setLocalSteer(-1, null);
+  scene.setCam(mode === 'title' ? 'menu' : CAMS[camIdx]);
   engine = new Engine(onEngine);
   $('#ticker').innerHTML = '';
   if (mode === 'title' || mode === 'demo') {
@@ -255,7 +256,7 @@ addEventListener('keydown', e => {
   if (e.code === 'KeyM') $('#btn-mute').click();
   if (e.code === 'KeyN') $('#btn-music').click();
   // B-roll helpers: C cycles the spectator camera, H hides the HUD for clean footage.
-  if (e.code === 'KeyC' && mode !== 'practice') {
+  if (e.code === 'KeyC' && (mode === 'host' || mode === 'demo')) {
     camIdx = (camIdx + 1) % CAMS.length;
     scene.setCam(CAMS[camIdx]);
   }

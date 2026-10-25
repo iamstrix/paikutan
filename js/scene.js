@@ -7,6 +7,7 @@ import { buildBarangay, WORLD_SCALE } from './world/barangay.js';
 import { createAtmosphere } from './world/atmosphere.js';
 import { buildTrompo } from './entities/trompo.js';
 import { Avatar } from './entities/avatar.js';
+import { Critters, chicken } from './entities/critters.js';
 
 const CLOCK = 15 * 60 + 30; // merienda time: warm light, lamps still off
 
@@ -143,6 +144,18 @@ export function createScene(canvas, { low = false } = {}) {
   // Sunk a little so its ground decals stay under our circle's layers.
   world.group.position.y = -0.04;
   scene.add(world.group);
+  // Chickens roam in barangay metres, so they live in its (scaled) group.
+  const critters = new Critters(Math.random, low ? 4 : 6);
+  world.group.add(critters.group);
+  // Title screen: now and then a manok wanders up to the lens from the bottom-right corner.
+  const PEEK_DIST = 2.5;
+  const peeker = chicken(1);
+  peeker.scale.setScalar(1.6);
+  peeker.traverse(o => { o.castShadow = false; });
+  peeker.visible = false;
+  camera.add(peeker);
+  scene.add(camera);
+  let peekIn = rand(3, 6);
   buildCircle(scene);
   const dog = makeDog();
   scene.add(dog);
@@ -406,6 +419,11 @@ export function createScene(canvas, { low = false } = {}) {
       // Phones: stand behind your own throwing line; pull back in portrait so the circle fits.
       pos = new THREE.Vector3(0, a < 1 ? 10 : 8, sz * (a < 1 ? 9 : 9.5));
       look = new THREE.Vector3(0, 0, -sz * 0.6);
+    } else if (camMode === 'menu') {
+      // Title screen: the circle on the right with the sari-sari store behind, room on the left for the menu.
+      const sway = Math.sin(time * 0.1) * 0.6;
+      pos = new THREE.Vector3(1 + sway, 6, 15);
+      look = new THREE.Vector3(-4 + sway, 0.5, -2);
     } else if (party && tops[party.slot] && tops[party.slot].state) {
       // Winner close-up: slow orbit around the trumpo still spinning.
       const w = tops[party.slot].state, ang = party.t * 0.6 + 0.8;
@@ -437,7 +455,7 @@ export function createScene(canvas, { low = false } = {}) {
     // Widen the lens until the whole circle fits across the screen (portrait phones need more).
     const dist = pos.distanceTo(look);
     const fov = THREE.MathUtils.radToDeg(2 * Math.atan(Math.tan(Math.atan((ARENA_R + (a < 1 ? 2.5 : 1)) / dist)) / a));
-    const tight = view === 'spectator' && (party || camMode === 'close');
+    const tight = view === 'spectator' && (party || camMode === 'close' || camMode === 'menu');
     camera.fov = tight ? 40 : THREE.MathUtils.clamp(fov, 42, 80);
     camera.updateProjectionMatrix();
     const k = 1 - Math.exp(-dt * (tight ? 5 : 3));
@@ -446,6 +464,24 @@ export function createScene(canvas, { low = false } = {}) {
     camera.position.copy(camPos);
     if (shake > 0) camera.position.add(new THREE.Vector3(rand(-1, 1), rand(-1, 1), rand(-1, 1)).multiplyScalar(shake * 0.3));
     camera.lookAt(camLook);
+  }
+
+  function updatePeek(dt) {
+    peeker.visible = false;
+    if (camMode !== 'menu' || view !== 'spectator') return;
+    peekIn -= dt;
+    if (peekIn > 0) return;
+    const t = -peekIn, stay = 4.5;
+    if (t > stay) { peekIn = rand(7, 14); return; }
+    // Slide in from past the right edge, look around, peck at the lens, slide back out.
+    const k = Math.min(1, t / 0.6, (stay - t) / 0.6), e = k * k * (3 - 2 * k);
+    const halfH = Math.tan(THREE.MathUtils.degToRad(camera.fov / 2)) * PEEK_DIST, halfW = halfH * camera.aspect;
+    peeker.visible = true;
+    peeker.position.set(halfW + 0.5 - e * 0.95, -halfH - 0.15, -PEEK_DIST);
+    peeker.rotation.set(0, Math.atan2(-0.45, -1), 0);
+    const head = peeker.userData.head;
+    head.rotation.x = Math.sin(t * 3) * 0.35;
+    head.rotation.z = t > 2.2 && t < 3 ? -0.7 * Math.max(0, Math.sin((t - 2.2) * 12)) : 0;
   }
 
   function render(dt) {
@@ -470,6 +506,8 @@ export function createScene(canvas, { low = false } = {}) {
       a.update(dt, time);
     });
     world.update(time);
+    critters.update(dt, time);
+    updatePeek(dt);
     updateParticles(dt);
     updateWaves(dt);
     if (party) {
