@@ -1,0 +1,23 @@
+<!doctype html><html><head><meta charset="utf-8">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bungee&family=Lilita+One&family=Nunito:wght@400;700;800&display=swap">
+<link rel="stylesheet" href="css/style.css">
+<script type="importmap">{ "imports": { "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js", "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/" } }</script>
+</head><body data-phase="matchEnd" data-mode="host">
+<canvas id="view"></canvas>
+<div id="banner"><h1>KAMPEON: Kulas!</h1><p>2 – 1</p></div>
+<script type="module">
+import { createScene } from './js/scene.js';
+await document.fonts.load('64px "Lilita One"').catch(() => {});
+const q = new URLSearchParams(location.search);
+const scene = createScene(document.querySelector('#view'), { cue: (n, a) => console.log('PODIUM cue ' + n + ' ' + (a ?? '')) });
+scene.setPlayers([{ name: 'Kulas', char: 'kapitana', top: 'kidlat' }, { name: 'Ising', char: 'lola', top: 'diwata' }]);
+const win = +(q.get('w') || 0);
+scene.showStrike(win, 1 - win);
+// Advance in fixed steps up to real time t, then freeze there for the screenshot.
+let first = true;
+(function loop() {
+  if (first) { first = false; let left = +(q.get('t') || 0); while (left > 0) { const dt = Math.min(0.05, left); left -= dt; scene.render(dt); } console.log('PODIUM at ' + q.get('t') + ' cutscene=' + document.body.classList.contains('cutscene')); }
+  scene.render(0);
+  requestAnimationFrame(loop);
+})();
+</script></body></html>

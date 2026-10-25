@@ -7,7 +7,7 @@ import { buildBarangay, WORLD_SCALE } from './world/barangay.js';
 import { buildPodium } from './world/podium.js';
 import { createAtmosphere } from './world/atmosphere.js';
 import { buildTrompo } from './entities/trompo.js';
-import { Avatar } from './entities/avatar.js';
+import { Avatar, BOWL_RELEASE } from './entities/avatar.js';
 import { Critters, chicken } from './entities/critters.js';
 import { Effects, CLASH_WORDS } from './fx/effects.js';
 import { SkillEffects } from './fx/skills.js';
@@ -148,7 +148,12 @@ function buildCircle(scene) {
   return chalk;
 }
 
-export function createScene(canvas, { low = false } = {}) {
+// 1v1 match end, in cutscene seconds: the ball hits the pin, the pin lands, the banner comes back.
+// Between the two slow times everything runs at the slow rate, so the whole thing takes about 4.8 s.
+const STRIKE = { hit: 2.5, land: 3.4, end: 4.2, slowFrom: 2.25, slowTo: 2.55, slow: 0.35 };
+
+// cue(name, arg): sound for the match-end cutscene, as a method name on the audio object.
+export function createScene(canvas, { low = false, cue = () => {} } = {}) {
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: !low, powerPreference: 'high-performance' });
   renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, low ? 1.5 : 2));
   renderer.shadowMap.enabled = !low;
@@ -241,6 +246,8 @@ export function createScene(canvas, { low = false } = {}) {
   let podium = null; // { places: [slot, ...] best first, crowd: [slot, ...], t }
   const podiumTags = new Map();
   const names = [];
+  // 1v1 match end: the winner bowls their trumpo down an alley through the circle, the loser is the pin.
+  let strike = null; // { win, lose, o: alley start [x, z], f: alley direction [x, z], c: cutscene time, ... }
   const localSteer = []; // this device's own steering, drawn without waiting for the host
   let own = -1; // slot this device plays; -1 for a spectator screen, which shows both arrows
   let chargeSlot = -1, chargeFeedback = null, windingTime = 0;
@@ -299,20 +306,33 @@ export function createScene(canvas, { low = false } = {}) {
     bubbles.forEach(b => b.el.remove()); bubbles.clear();
     youTag.hidden = true;
     clearPodium();
+    clearStrike();
+  }
+
+  // After a match-end scene, everyone back to their own spot, standing up.
+  function sendHome() {
+    people.forEach(p => { if (p) { p.root.position.copy(p.home[0]); p.root.rotation.set(0, p.home[1], 0); p.root.visible = true; } });
   }
 
   function clearPodium() {
     if (!podium) return;
     podium = null;
     stand.group.visible = false;
-    people.forEach(p => { if (p) { p.root.position.copy(p.home[0]); p.root.rotation.y = p.home[1]; p.root.visible = true; } });
+    sendHome();
     tops.forEach(t => t && t.root.scale.setScalar(1));
     podiumTags.forEach(el => el.remove()); podiumTags.clear();
   }
 
-  // standings: every seat from first place down, or null to take the podium away.
+  function clearStrike() {
+    if (!strike) return;
+    strike = null;
+    sendHome();
+    tops.forEach(t => { if (t) t.ring.visible = true; });
+    document.body.classList.remove('cutscene');
+  }
+
+  // standings: every seat from first place down.
   function showPodium(standings) {
-    if (!standings) { if (podium) reset(); return; }
     reset();
     podium = { places: standings.slice(0, 3), crowd: standings.slice(3), t: 0 };
     stand.group.visible = true;
@@ -395,6 +415,109 @@ export function createScene(canvas, { low = false } = {}) {
       el.style.left = `${(bubblePoint.x + 1) * 50}%`;
       el.style.top = `${(1 - bubblePoint.y) * 50}%`;
     }
+  }
+
+  // A point on the bowling alley: metres along it from the bowler's spot, up, and to its side.
+  function alley(along, up = 0, side = 0) {
+    const { o, f } = strike;
+    return new THREE.Vector3(o[0] + f[0] * along - f[1] * side, up, o[1] + f[1] * along + f[0] * side);
+  }
+
+  function showStrike(win, lose) {
+    reset();
+    if (!people[win] || !people[lose] || !tops[win]) return;
+    // From just behind the winner's own throwing line, straight across the circle.
+    const [sx, sz] = seatDir(win);
+    strike = { win, lose, o: [sx * 5.6, sz * 5.6], f: [-sx, -sz], c: 0, dc: 0, along: 0, ball: new THREE.Vector3(), dust: 0, released: false, hit: false, done: false };
+    for (const s of [win, lose]) people[s].root.rotation.order = 'YXZ'; // so the pin flips end over end along the alley
+    const bowler = people[win].avatar, held = tops[win].held;
+    if (bowler.held !== held) { bowler.rig.hand.add(held); bowler.held = held; }
+    tops[win].ring.visible = false;
+    document.body.classList.add('cutscene');
+  }
+
+  function updateStrike(dt) {
+    const S = strike;
+    S.dc = dt * (S.c > STRIKE.slowFrom && S.c < STRIKE.slowTo ? STRIKE.slow : 1);
+    S.c += S.dc;
+    const c = S.c, w = people[S.win], l = people[S.lose], top = tops[S.win];
+    if (!w || !l || !top) return;
+    const yaw = Math.atan2(S.f[0], S.f[1]);
+    // The bowler: a couple of steps up, the delivery, and a celebration once the pin is down.
+    w.root.position.copy(alley(0.6 * Math.min(1, c / BOWL_RELEASE)));
+    w.root.rotation.y = yaw;
+    w.avatar.bowlT = c;
+    w.avatar.mode = c < STRIKE.hit + 0.3 ? 'bowl' : 'cheer';
+    // The pin: panics as it comes, then flies back end over end and lands flat out, seeing stars.
+    const fly = THREE.MathUtils.clamp((c - STRIKE.hit) / (STRIKE.land - STRIKE.hit), 0, 1);
+    l.root.position.copy(alley(10 + 2.6 * fly, 9.6 * fly * (1 - fly) + 0.35 * fly));
+    l.root.rotation.y = yaw + Math.PI;
+    l.root.rotation.x = -Math.PI * 2.5 * (1 - (1 - fly) ** 2);
+    l.avatar.mode = fly >= 1 ? 'ko' : c > 1.5 ? 'panic' : 'idle';
+    tops.forEach((t, s) => { if (t && s !== S.win) t.root.visible = false; });
+    // The ball: leaves the hand, weaves a little down the alley, and keeps spinning where it struck.
+    top.root.visible = c >= BOWL_RELEASE;
+    if (c >= BOWL_RELEASE) {
+      if (!S.released) {
+        S.released = true;
+        cue('throw');
+        const p = alley(0.9);
+        effects.puff(u(p.x), 0.05, u(p.z), { n: 10, speed: 1.3 });
+      }
+      const run = Math.min(1, (c - BOWL_RELEASE) / (STRIKE.hit - BOWL_RELEASE));
+      S.along = c < STRIKE.hit ? 0.9 + 8.6 * run : 9.5 + 0.9 * (1 - Math.exp(-(c - STRIKE.hit) * 3));
+      S.ball.copy(alley(S.along, 0, Math.sin(run * Math.PI * 3) * 0.3 * (1 - run)));
+      top.root.position.copy(S.ball);
+      top.spinner.rotation.y -= S.dc * 90;
+      top.prec += S.dc * 6;
+      top.precess.rotation.y = top.prec;
+      top.tilt.rotation.x = 0.12;
+      top.blur.material.opacity = 0.4;
+      top.blur.rotation.z -= S.dc * 90;
+      top.blob.position.y = 0.015; top.blob.material.opacity = 1;
+      top.arrow.visible = false;
+      top.aura.visible = true;
+      S.dust -= S.dc;
+      if (S.dust <= 0 && c < STRIKE.hit + 0.4) {
+        S.dust = 0.04;
+        effects.puff(u(S.ball.x), 0.04, u(S.ball.z), { n: 2, size: 0.3, speed: 0.5, up: 0.4, life: 0.6 });
+      }
+    }
+    if (c >= STRIKE.hit && !S.hit) {
+      S.hit = true;
+      const p = alley(9.8);
+      effects.pow(u(p.x), 1.6, u(p.z), 'STRIKE!', 1.6);
+      effects.spark(u(p.x), 0.6, u(p.z), 30, 3);
+      effects.ring(u(p.x), u(p.z), '#ffd23f', 2, 0.6);
+      effects.puff(u(p.x), 0.05, u(p.z), { n: 16, speed: 2, size: 0.5 });
+      shake = 0.9;
+      pop(p.x, p.z, '#ffcf5a', 45);
+      cue('hit', 1);
+      cue('fall');
+    }
+    if (c > STRIKE.land && Math.random() < 0.35) {
+      const p = w.root.position;
+      effects.confetti(u(p.x + rand(-1, 1)), 2.2, u(p.z + rand(-1, 1)), 5);
+    }
+    // Then the Kampeon banner, the HUD and the rematch buttons come back.
+    if (c >= STRIKE.end && !S.done) { S.done = true; document.body.classList.remove('cutscene'); }
+  }
+
+  // The cutscene's cuts: [camera position, look-at point, fov]. Hard cuts, no easing between shots.
+  function strikeShot() {
+    const S = strike, c = S.c, w = people[S.win].root.position, l = people[S.lose].root.position;
+    // Over the bowler's shoulder, down the alley at the pin, pushing in.
+    if (c < BOWL_RELEASE) return [alley(-7 + 1.2 * c / BOWL_RELEASE, 2.4, 2.8), alley(5, 1.3), 45];
+    // Chasing the ball at trumpo height.
+    if (c < 1.9) return [alley(S.along - 1.8, 0.7, 0.25), alley(S.along + 3, 0.9), 65];
+    // Reaction shot: close on the loser's face as they see it coming.
+    if (c < STRIKE.slowFrom) return [alley(8, 1.6, 1.8), alley(10, 2.3), 40];
+    // Side-on for the slow-motion hit, panning to follow the pin into the air.
+    if (c < STRIKE.land + 0.2) return [alley(7.6, 1, 6.8), l.clone().setY(l.y + 1), 42];
+    // Hero shot: low, looking up at the bowler.
+    if (c < STRIKE.end) return [alley(2.2, 0.7, 1.6), w.clone().setY(2.4), 45];
+    // The aftermath, held until the rematch: the whole alley from the side.
+    return [alley(6, 3.4, 9), alley(6.2, 0.8), 50];
   }
 
   function makeEggView(e) {
@@ -653,6 +776,17 @@ export function createScene(canvas, { low = false } = {}) {
   function updateCamera(dt) {
     const a = camera.aspect;
     let pos, look;
+    if (strike && view === 'spectator' && people[strike.win] && people[strike.lose]) {
+      let fov;
+      [pos, look, fov] = strikeShot();
+      camera.fov = fov; camera.near = 0.1;
+      camera.updateProjectionMatrix();
+      camPos.copy(pos); camLook.copy(look);
+      camera.position.copy(camPos);
+      if (shake > 0) camera.position.add(new THREE.Vector3(rand(-1, 1), rand(-1, 1), rand(-1, 1)).multiplyScalar(shake * 0.3));
+      camera.lookAt(camLook);
+      return;
+    }
     const winding = people[chargeSlot];
     if (winding) {
       // Look through the chosen character's eyes at their hands and the arena beyond.
@@ -662,7 +796,7 @@ export function createScene(canvas, { low = false } = {}) {
       look = pos.clone().add(new THREE.Vector3(fx * 1.3, -1.05, fz * 1.3).multiplyScalar(WORLD_SCALE));
     } else if (typeof view === 'number' && view >= 0) {
       const [sx, sz] = seatDir(view), back = a < 1 ? 9 : 9.5;
-      // Phones: stand behind your own throwing line; pull back in portrait so the circle fits.
+      // Players stand behind their own throwing line on every device; fit portrait too.
       pos = new THREE.Vector3(sx * back, a < 1 ? 10 : 8, sz * back);
       look = new THREE.Vector3(-sx * 0.6, 0, -sz * 0.6);
     } else if (camMode === 'menu') {
@@ -741,7 +875,8 @@ export function createScene(canvas, { low = false } = {}) {
 
   function render(dt) {
     time += dt;
-    if (!podium) tops.forEach((t, i) => t && updateTop(t, dt, i));
+    if (strike) updateStrike(dt);
+    else if (!podium) tops.forEach((t, i) => t && updateTop(t, dt, i));
     if (dogTarget) {
       if (!dog.visible) dog.position.x = dogTarget.x;
       dog.visible = true;
@@ -768,8 +903,9 @@ export function createScene(canvas, { low = false } = {}) {
       if (!p) return;
       // Watch your own top, slump when it falls; the round winner cheers. The throw plays out on its own.
       const a = p.avatar, st = tops[s] && tops[s].state;
+      // The match-end scenes pose everyone themselves.
       if (podium) a.mode = podium.places[0] === s ? 'cheer' : 'clap';
-      else if (a.mode !== 'release') {
+      else if (!strike && a.mode !== 'release') {
         a.mode = s === chargeSlot ? 'wind' : party ? (party.slot === s ? 'cheer' : 'sad')
           : st && st.launched ? (st.alive ? 'watch' : 'sad') : 'idle';
       }
@@ -778,7 +914,8 @@ export function createScene(canvas, { low = false } = {}) {
         windingTime += dt * Math.min(3, speed * 0.8);
         if (a.held) a.held.rotation.y += dt * speed * Math.PI * 2;
         a.update(dt, windingTime);
-      } else a.update(dt, time);
+      } else if (strike) a.update(strike.dc, strike.c); // slow motion too
+      else a.update(dt, time);
     });
     world.update(time);
     critters.update(dt, time);
@@ -814,7 +951,7 @@ export function createScene(canvas, { low = false } = {}) {
     }
     // Spectator screens (own < 0) have no single "you", so the tag only shows on a player's device.
     const mine = own >= 0 ? tops[own] : null;
-    youTag.hidden = !(mine && mine.state && mine.root.visible && !party && !podium);
+    youTag.hidden = !(mine && mine.state && mine.root.visible && !party && !podium && !strike);
     if (!youTag.hidden) {
       // Anchor on the near edge of the ownership ring, so the tag sits just under the top on screen.
       const p = mine.root.position;
@@ -834,5 +971,5 @@ export function createScene(canvas, { low = false } = {}) {
   window.addEventListener('resize', resize);
   resize();
   setView('spectator');
-  return { setPlayers, applySnap, fx, render, resize, setView, reset, celebrate, showPodium, setCam, setLocalSteer, setCharge };
+  return { setPlayers, applySnap, fx, render, resize, setView, reset, celebrate, showPodium, showStrike, setCam, setLocalSteer, setCharge };
 }

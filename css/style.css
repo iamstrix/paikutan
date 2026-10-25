@@ -227,31 +227,37 @@ body.phone-page:not(.show-scene) .you-tag { display: none; }
 body.phone-page.show-scene .ctrl .panel:not(.throw) { background: var(--panel-soft); }
 /* Winding is a first-person view; the gesture guide floats over the hands and trumpo. */
 .ctrl[data-view=spin] .panel.spin {
+  position: relative;
   max-width: none; width: 100%; height: 100%; max-height: none;
   padding: max(18px, env(safe-area-inset-top)) max(18px, env(safe-area-inset-right)) max(18px, env(safe-area-inset-bottom)) max(18px, env(safe-area-inset-left));
   background: transparent; border-radius: 0; box-shadow: none; overflow: hidden;
-  display: grid; grid-template-columns: minmax(0, 1fr) minmax(280px, 380px);
+  display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 380px) minmax(0, 1fr);
   grid-template-rows: auto minmax(0, 1fr) auto auto;
   text-shadow: 0 2px 5px #21170f, 0 0 14px #21170f;
 }
 .ctrl[data-view=spin] .spin > * { grid-column: 2; }
+.ctrl[data-view=spin] .spin-head { grid-row: 1; }
+.ctrl[data-view=spin] .spin > p { grid-row: 4; }
 .ctrl[data-view=spin] .spin-head h2 { color: var(--yellow); font-size: clamp(1.6rem, 4vw, 2.4rem); }
 .ctrl[data-view=spin] .spin-head p, .ctrl[data-view=spin] .spin > p, .ctrl[data-view=spin] .meter { color: var(--ink); }
-.ctrl[data-view=spin] .pad { min-height: 0; height: 100%; background: transparent; border-radius: 0; }
-.ctrl[data-view=spin] .meters { padding: 10px 14px; border-radius: 12px; background: rgba(27, 20, 48, 0.24); }
+.ctrl[data-view=spin] .pad {
+  grid-column: auto;
+  position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%);
+  width: min(calc(100% - 36px), 520px); height: clamp(140px, calc(100% - 280px), 520px);
+  min-height: 0; background: transparent; border-radius: 0;
+}
+.ctrl[data-view=spin] .meters { grid-row: 3; padding: 10px 14px; border-radius: 12px; background: rgba(27, 20, 48, 0.24); }
 .ctrl[data-view=spunWait] .panel.spin-wait {
   max-width: 560px; background: transparent; box-shadow: none;
   text-shadow: 0 2px 5px #21170f, 0 0 14px #21170f;
 }
 .ctrl[data-view=spunWait] .spin-wait .muted, .ctrl[data-view=spunWait] .spin-wait .meter { color: var(--ink); }
-body[data-mode=practice][data-phase=charge] #banner { display: none; }
+body[data-phase=charge]:is([data-mode=practice], .host-playing) #banner { display: none; }
 @media (max-aspect-ratio: 1/1) {
-  .ctrl[data-view=spin] .panel.spin { display: flex; padding-top: max(100px, env(safe-area-inset-top)); }
-  .ctrl[data-view=spin] .pad { flex: 1; min-height: 140px; height: 0; }
-  .ctrl[data-view=spin] .spin-head { max-width: 380px; align-self: center; }
+  .ctrl[data-view=spin] .panel.spin { padding-top: max(100px, env(safe-area-inset-top)); }
 }
 @media (orientation: landscape) and (max-height: 500px) {
-  .ctrl[data-view=spin] .panel.spin { grid-template-columns: minmax(0, 1fr) minmax(220px, 32vw); gap: 4px; padding: 10px 18px; }
+  .ctrl[data-view=spin] .panel.spin { gap: 4px; padding: 10px 18px; }
   .ctrl[data-view=spin] .spin-head h2 { font-size: 1.4rem; margin: 0; }
   .ctrl[data-view=spin] .spin-head p { font-size: 0.8rem; margin: 2px 0; }
   .ctrl[data-view=spin] .meters { padding: 4px 10px; }
@@ -446,4 +452,11 @@ body.host-playing #end-bar { bottom: 72px; }
 .podium-tag[data-place="3"] b { background: #e09a5c; }
 .podium-tag[hidden] { display: none; }
 body.brawl[data-phase=matchEnd] #banner { top: 5%; }
+/* 1v1 match-end cutscene: letterbox bars, and nothing else on screen until it ends. */
+body.cutscene::before, body.cutscene::after { content: ''; position: fixed; left: 0; right: 0; height: 11vh; background: #000; z-index: 30; pointer-events: none; animation: letterbox 0.35s ease-out; }
+body.cutscene::before { top: 0; }
+body.cutscene::after { bottom: 0; }
+@keyframes letterbox { from { height: 0; } }
+body.cutscene #banner, body.cutscene #hud, body.cutscene #ticker, body.cutscene #ctrl, body.cutscene .you-tag { display: none !important; }
+body.cutscene #end-bar { display: none !important; }
 @media (max-width: 360px) { .quick-chat button { padding: 9px 8px; font-size: 0.72rem; } }

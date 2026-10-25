@@ -40,7 +40,11 @@ const server = http.createServer(async (req, res) => {
     if (!path.startsWith(root + sep) || url.pathname.includes('/.git')) throw Error('Forbidden');
     let content = await readFile(path);
     // Software WebGL needs fewer pixels; keep camera geometry and CSS at real device sizes.
-    if (url.pathname === '/js/scene.js') content = Buffer.from(content.toString().replace('renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, low ? 1.5 : 2))', 'renderer.setPixelRatio(0.5)'));
+    if (url.pathname === '/js/scene.js') content = Buffer.from(content.toString()
+      .replace('renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, low ? 1.5 : 2))', 'renderer.setPixelRatio(0.5)')
+      // Observe the actual camera without adding production debug APIs.
+      .replace(/const camera = new THREE\.PerspectiveCamera\([^;]+;/, '$& window.auditCamera = camera;')
+      .replace(/function setView\(v\) \{\s*view = v;/, '$& window.auditView = v;'));
     if (extname(path) === '.html') content = Buffer.from(content.toString()
       .replaceAll('https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js', '/node_modules/.trumpo-check/vendor/three.module.js')
       .replaceAll('https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/', '/node_modules/.trumpo-check/vendor/')
@@ -119,11 +123,13 @@ try {
   await host.until(`typeof document.querySelector('#btn-host')?.onclick === 'function'`);
   await host.evaluate(`document.querySelector('#btn-host').click();document.querySelector('#btn-host-brawl').click()`);
   await host.until(`document.querySelector('#net-status').textContent.includes('Local test')`);
+  assert.equal(await host.evaluate(`window.auditView`), 'spectator');
   const room = await host.evaluate(`document.querySelector('#room-code').textContent`);
   await host.evaluate(`document.querySelector('#btn-add-cpu').click();document.querySelector('[data-remove-cpu]').click()`);
   assert.equal(await host.evaluate(`document.querySelectorAll('[data-remove-cpu]').length`), 0);
   await host.evaluate(`document.querySelector('#host-name').value='Host';document.querySelector('#btn-host-play').click()`);
   await host.until(`document.body.classList.contains('host-playing')`);
+  assert.equal(await host.evaluate(`window.auditView`), 0, 'desktop host inherits its player-seat camera');
   assert(await host.evaluate(`document.querySelector('#ctrl .visual-howto').querySelectorAll('svg').length===5`));
   await host.screenshot('desktop-lobby.png');
 
@@ -140,6 +146,18 @@ try {
   await phone.evaluate(`document.querySelector('[data-act=ready]').click()`);
   await host.until(`document.body.dataset.phase==='charge'`);
   console.log('CHECK: charge phase');
+  await host.until(`window.auditCamera?.fov===60 && window.auditCamera.near===.03`);
+  assert.equal(await host.evaluate(`getComputedStyle(document.querySelector('#banner')).display`), 'none', 'charge banner leaves the winding ring clear');
+  const centeredSpinner = async client => {
+    const bounds = await client.evaluate(`(()=>{const r=document.querySelector('#ctrl .pad').getBoundingClientRect();return {x:r.x+r.width/2,y:r.y+r.height/2,w:innerWidth,h:innerHeight,width:r.width,height:r.height}})()`);
+    assert(Math.abs(bounds.x-bounds.w/2)<1 && Math.abs(bounds.y-bounds.h/2)<1, 'winding ring is centered in the viewport: '+JSON.stringify(bounds));
+    assert(bounds.width>=140 && bounds.height>=140, 'winding pad has usable dimensions');
+  };
+  await centeredSpinner(host);
+  await phone.until(`document.querySelector('#ctrl').dataset.view==='spin'`);
+  await centeredSpinner(phone);
+  await host.screenshot('desktop-spin.png');
+  await phone.screenshot('mobile-spin.png');
   await host.until(`window.roomState?.phase==='charge'`);
   await host.evaluate(`roomState.players.filter(Boolean).forEach(p=>observer.postMessage({ev:'spin',p:{id:p.id,power:.9,stability:.9}}))`);
   await host.until(`document.body.dataset.phase==='throw'`);
@@ -157,6 +175,8 @@ try {
   await phone.evaluate(`document.querySelector('#leave').click()`);
   await phone.until(`!document.querySelector('#join-screen').hidden`);
   await host.until(`document.body.dataset.phase==='lobby'`);
+  await host.evaluate(`document.querySelector('#btn-host-spectate').click()`);
+  assert.equal(await host.evaluate(`window.auditView`), 'spectator', 'leaving a player seat restores the spectator camera');
   await phone.evaluate(`document.querySelector('#name').value='Rejoined';document.querySelector('#join').click()`);
   await phone.until(`document.querySelector('#join-screen').hidden`);
   await host.evaluate(`document.querySelector('#btn-exit').click()`);
@@ -179,9 +199,22 @@ try {
   assert(await host.evaluate(`getComputedStyle(document.querySelector('#lobby')).display!=='none'`));
   await host.screenshot('mobile-host.png');
   await host.evaluate(`document.querySelector('#btn-exit').click()`);
+  await send('Emulation.setTouchEmulationEnabled', { enabled: false }, host.sessionId);
+  await send('Emulation.setDeviceMetricsOverride', { width: 1280, height: 900, deviceScaleFactor: 1, mobile: false }, host.sessionId);
+  await send('Page.navigate', { url: base + '/index.html?net=local&practice=1' }, host.sessionId);
+  await host.until(`document.querySelector('[data-act=ready]')`);
+  assert.equal(await host.evaluate(`window.auditView`), 0, 'desktop practice inherits its player-seat camera');
+  await host.evaluate(`document.querySelector('[data-act=ready]').click()`);
+  await host.until(`document.querySelector('#ctrl').dataset.view==='spin' && window.auditCamera?.fov===60`);
+  await centeredSpinner(host);
+  await send('Emulation.setDeviceMetricsOverride', { width: 844, height: 390, deviceScaleFactor: 1, mobile: false }, host.sessionId);
+  await centeredSpinner(host);
+  await host.screenshot('landscape-spin.png');
+  await host.evaluate(`document.querySelector('#btn-exit').click()`);
+  console.log('PASS: desktop player and practice cameras; spectator restoration; centered desktop, portrait, and landscape winding rings');
   const failures = errors.filter(e => !e.includes('WebGL context was lost'));
   assert.deepEqual(failures, [], 'no browser runtime errors');
-  await writeFile(resolve(output, 'result.json'), JSON.stringify({ passed: true, screenshots: ['mobile-controls.png','desktop-lobby.png','mobile-waiting.png','mobile-match.png','mobile-host.png'], errors }, null, 2));
+  await writeFile(resolve(output, 'result.json'), JSON.stringify({ passed: true, screenshots: ['mobile-controls.png','desktop-lobby.png','mobile-waiting.png','desktop-spin.png','mobile-spin.png','mobile-match.png','mobile-host.png','landscape-spin.png'], errors }, null, 2));
   console.log('PASS: main-menu room-code entry; no browser runtime errors');
 } finally {
   socket?.close();

@@ -2,6 +2,13 @@ import * as THREE from 'three';
 import { buildCharacter } from './characters.js';
 
 const TUMBLE_TIME = 1.3;
+/** Seconds into the 'bowl' pose when the trompo leaves the hand. */
+export const BOWL_RELEASE = 1.1;
+
+const smooth = (t, a, b) => {
+  const k = Math.min(1, Math.max(0, (t - a) / (b - a)));
+  return k * k * (3 - 2 * k);
+};
 
 /** Procedural tween animation on a character rig. No skeletons, no clips. */
 export class Avatar {
@@ -13,6 +20,8 @@ export class Avatar {
   held = null;
   phase = 0;
   releaseT = 0;
+  /** Seconds into the 'bowl' pose, set by whoever drives it. */
+  bowlT = 0;
   tumbleT = 0;
   target = new THREE.Vector3();
   targetRy = 0;
@@ -64,7 +73,9 @@ export class Avatar {
   update(dt, elapsed) {
     const r = this.rig;
     this.setExpression(
-      this.tumbleT > 0 ? 'dizzy' : this.mode === 'cheer' || this.mode === 'clap' || this.mode === 'release' ? 'happy' : this.mode === 'sad' ? 'sad' : 'neutral',
+      this.tumbleT > 0 || this.mode === 'ko' ? 'dizzy'
+        : ['cheer', 'clap', 'release', 'bowl'].includes(this.mode) ? 'happy'
+        : this.mode === 'sad' || this.mode === 'panic' ? 'sad' : 'neutral',
     );
     const ease = (o, x, z = 0, k = 14) => {
       o.rotation.x += (x - o.rotation.x) * Math.min(1, dt * k);
@@ -152,6 +163,35 @@ export class Avatar {
         bob = k * 0.03;
         break;
       }
+      case 'bowl': {
+        // A bowler's delivery: backswing, swing through, then hold the follow-through leaning in.
+        const back = smooth(this.bowlT, 0.15, 0.75), through = smooth(this.bowlT, 0.8, BOWL_RELEASE);
+        ease(r.armR, 1.7 * back - 3 * through, 0.15, 30);
+        ease(r.armL, -0.3 - 0.6 * through, -0.9, 20);
+        ease(r.legL, -0.8 * through, 0, 20);
+        ease(r.legR, 0.3 + 0.4 * through, 0, 20);
+        ease(r.head, 0.15);
+        r.body.rotation.x = 0.35 * through;
+        bob = -0.12 * through;
+        break;
+      }
+      case 'panic':
+        // Arms up, knees knocking: something is coming.
+        ease(r.armL, -2.6 + Math.sin(elapsed * 30) * 0.4, -0.7, 30);
+        ease(r.armR, -2.6 - Math.sin(elapsed * 30) * 0.4, 0.7, 30);
+        ease(r.legL, Math.sin(elapsed * 25) * 0.15, 0.1);
+        ease(r.legR, -Math.sin(elapsed * 25) * 0.15, -0.1);
+        ease(r.head, -0.15);
+        bob = Math.abs(Math.sin(elapsed * 25)) * 0.03;
+        break;
+      case 'ko':
+        // Flat out, arms and legs spread like a fallen bowling pin.
+        ease(r.armL, 0, -1.3);
+        ease(r.armR, 0, 1.3);
+        ease(r.legL, 0, -0.35);
+        ease(r.legR, 0, 0.35);
+        ease(r.head, 0);
+        break;
       case 'sad':
         ease(r.armL, 0.1, -0.05);
         ease(r.armR, 0.1, 0.05);
@@ -170,7 +210,7 @@ export class Avatar {
       }
     }
     r.body.position.y = bob;
-    if (this.held) this.held.visible = mode === 'wind' || (mode === 'release' && this.releaseT < 0.12);
+    if (this.held) this.held.visible = mode === 'wind' || (mode === 'release' && this.releaseT < 0.12) || (mode === 'bowl' && this.bowlT < BOWL_RELEASE);
   }
 
   dispose() {

@@ -11,7 +11,10 @@ import { requestMotion } from './input.js';
 const $ = s => document.querySelector(s);
 // Canvas signs and POW! bursts letter in Lilita One; give it a moment to load so they don't bake in a fallback.
 await Promise.race([document.fonts.load('64px "Lilita One"').catch(() => {}), new Promise(r => setTimeout(r, 1500))]);
-const scene = createScene($('#view'), { low: matchMedia('(pointer: coarse)').matches });
+const scene = createScene($('#view'), {
+  low: matchMedia('(pointer: coarse)').matches,
+  cue: (name, arg) => { if (mode !== 'title') audio[name]?.(arg); },
+});
 let engine = null, net = null, ctrl = null, mode = 'title', brawl = false;
 const CAMS = ['auto', 'top', 'close', 'orbit'];
 let camIdx = 0;
@@ -126,6 +129,8 @@ function onState(s) {
   scene.setPlayers(s.players);
   audio.setMatchState(s, { silent: mode === 'title', slot: ctrl ? s.players.findIndex(p => p?.id === (mode === 'practice' ? 'me' : HOST_ID)) : -1 });
   if (ctrl) ctrl.setState(s);
+  // The occupied seat determines the camera on both mouse and touch clients.
+  scene.setView(ctrl && ctrl.slot >= 0 ? ctrl.slot : 'spectator');
   if (net) net.send('state', s);
   if (s.phase !== lastPhase) {
     if (s.phase === 'charge') scene.reset();
@@ -135,9 +140,11 @@ function onState(s) {
     if (s.phase === 'roundEnd' && s.result && s.result.winner >= 0) {
       scene.celebrate(s.result.winner, brawl ? s.round >= BRAWL_ROUNDS : Math.max(...s.scores) >= WIN_ROUNDS);
     }
-    // Brawl match end: the top three take the podium; it comes down when the next match starts.
+    // Match end: the top three take the podium in a brawl; in 1v1 the winner bowls the loser over.
+    // Either one clears when the next match starts.
     if (s.phase === 'matchEnd' && brawl && s.result && s.result.standings) scene.showPodium(s.result.standings);
-    else if (lastPhase === 'matchEnd') scene.showPodium(null);
+    else if (s.phase === 'matchEnd' && !brawl && s.result && mode !== 'title') scene.showStrike(s.result.champion, 1 - s.result.champion);
+    else if (lastPhase === 'matchEnd') scene.reset();
     if (s.phase === 'roundEnd' && brawl && s.result && s.result.winner >= 0) {
       const kos = (s.result.kos || []).filter(e => e.by === s.result.winner).length;
       say(`${tag(s.result.winner)} is the last trumpo spinning! +${BRAWL_WIN_PTS}${kos ? ` and ${kos} knockout${kos > 1 ? 's' : ''}` : ''}.`);
@@ -369,7 +376,6 @@ $('#btn-host-play').onclick = async () => {
   document.body.classList.toggle('host-phone', phone);
   if (engine.join(HOST_ID, name, 'local') < 0) { ctrl.destroy(); ctrl = null; document.body.classList.remove('host-playing', 'host-phone'); return; }
   ctrl.setState(engine.state());
-  if (phone) scene.setView(ctrl.slot);
   $('#btn-room').hidden = false;
 };
 $('#btn-host-spectate').onclick = () => {
