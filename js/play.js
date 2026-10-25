@@ -14,7 +14,7 @@ const myId = solo ? 'me' : playerId();
 // Canvas signs and POW! bursts letter in Lilita One; give it a moment to load so they don't bake in a fallback.
 await Promise.race([document.fonts.load('64px "Lilita One"').catch(() => {}), new Promise(r => setTimeout(r, 1500))]);
 const scene = createScene($('#view'), { low: true });
-const SCENE_PHASES = ['countdown', 'throw', 'fight', 'roundEnd'];
+const SCENE_PHASES = ['charge', 'countdown', 'throw', 'fight', 'roundEnd'];
 let ctrl = null, net = null, engine = null, state = null, lastPhase = '', lastMsg = 0, snap = null;
 
 $('#room').value = (params.get('room') || '').toUpperCase();
@@ -67,7 +67,7 @@ function onMessage(ev, p) {
     if (!mine) return;
     $('#join-screen').hidden = true;
     if (p.phase !== lastPhase) {
-      if (p.phase === 'countdown') scene.reset();
+      if (p.phase === 'charge' || p.phase === 'countdown') scene.reset();
       if (solo) audio.music(true, SCENE_PHASES.includes(p.phase) ? 0.1 : 0.25);
       lastPhase = p.phase;
     }
@@ -108,6 +108,8 @@ function frame(now) {
   last = now;
   if (engine) engine.update(dt);
   if (ctrl && ctrl.slot >= 0) scene.setLocalSteer(ctrl.slot, ctrl.localSteer());
+  const charging = state && state.phase === 'charge' && ctrl && state.players[ctrl.slot]?.inRound;
+  scene.setCharge(charging ? ctrl.slot : -1, charging ? ctrl.localSpin() : null);
   if (document.body.classList.contains('show-scene')) scene.render(dt);
   if (solo && snap && state) {
     const on = ['throw', 'fight'].includes(state.phase);

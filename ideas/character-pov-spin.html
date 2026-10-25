@@ -1,0 +1,163 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Character POV &amp; Transparent Spin Overlay - Paikutan Feature Proposal</title>
+</head>
+<body>
+  <h1>Character POV Winding &amp; Transparent Spin Overlay</h1>
+  <p>Feature Adaptation from JMDGG's <em>tromPOW</em> Repository for <strong>Paikutan: Trumpo Showdown</strong></p>
+  <p>Category: Immersion, Mobile UX, &amp; Visual Fidelity (DOST Level Up 3.0)</p>
+
+  <hr>
+
+  <h2>1. Concept Origin &amp; Problem Statement</h2>
+  <p>
+    In teammate JMDGG's original <em>tromPOW</em> prototype, players viewed their avatar from a dedicated first-person perspective while preparing the top.
+    Currently in <em>Paikutan</em>, the phone controller displays an abstract 2D circular canvas during the <strong>Paikot!</strong> (winding) phase, separating the player's tactile touch from the 3D world.
+  </p>
+  <p>
+    This proposal adapts JMDGG's POV concept into a unified <strong>Diegetic First-Person Winding Rig</strong> with a semi-transparent HUD overlay. 
+    Instead of drawing on an isolated flat graphic, players look through the eyes of their chosen character (Bata, Lola Basyang, Tambay, or Kapitana) as their hands physically wind the cord (<em>pisi</em>) around their chosen trumpo.
+  </p>
+
+  <hr>
+
+  <h2>2. Core Mechanic &amp; Visual Experience</h2>
+  <ol>
+    <li>
+      <strong>First-Person Camera Setup (POV Rig):</strong>
+      <ul>
+        <li>Camera positioned at character chest height (y &approx; 1.35m), angled 30 degrees downward.</li>
+        <li>The chosen 3D trumpo rests in the character's left palm, with the right hand holding the red nylon cord (<em>pisi</em>).</li>
+        <li>Background shows the edge of the chalk circle, asphalt pavement, and the player's toes behind the throwing line.</li>
+      </ul>
+    </li>
+    <li>
+      <strong>Transparent Touch Overlay (HUD):</strong>
+      <ul>
+        <li>A minimalist, semi-transparent circular guide ring floats directly over the 3D hands on the smartphone screen.</li>
+        <li>Opacity is tuned to 40%–60%, keeping the 3D wood grain, metallic crown, and hand movements completely visible beneath the touch path.</li>
+        <li>A luminous tracer bead tracks the player's thumb/finger as they draw circular revolutions.</li>
+      </ul>
+    </li>
+    <li>
+      <strong>Synchronous Hand &amp; String Animation:</strong>
+      <ul>
+        <li>Each completed circular stroke on the touchscreen wraps one layer of <em>pisi</em> tightly up the tapered body of the trumpo.</li>
+        <li>The character's wrist and fingers animate in sync with stroke velocity.</li>
+        <li>As rotational velocity reaches high RPM (80%+ spin meter), friction dust particles and elemental aura sparks emanate directly from the tip and crown.</li>
+      </ul>
+    </li>
+  </ol>
+
+  <hr>
+
+  <h2>3. Three-Phase Camera Choreography</h2>
+  <table border="1" cellpadding="8" cellspacing="0">
+    <thead>
+      <tr>
+        <th>Phase</th>
+        <th>Camera Perspective</th>
+        <th>Visual Action &amp; Transition</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>1. Paikot! (Winding)</strong></td>
+        <td>First-Person Close-Up (POV)</td>
+        <td>Camera focused tightly on the hands and trumpo. Transparent circular HUD active. String wraps tighter with each circle.</td>
+      </tr>
+      <tr>
+        <td><strong>2. Bitaw! (Throw / Release)</strong></td>
+        <td>Dynamic Tilt &amp; Push-Up</td>
+        <td>As the 3-second timer expires, the camera smoothly pans up toward the chalk arena. The character's arm draws back and thrusts forward into the throw.</td>
+      </tr>
+      <tr>
+        <td><strong>3. Laban! (Clash &amp; Steering)</strong></td>
+        <td>Third-Person Chase / Overhead</td>
+        <td>Camera seamlessly transitions from behind the player to the tactical duel camera (or player's assigned seat perspective) as the trumpo contacts the ground.</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <hr>
+
+  <h2>4. Character Customization Synergy</h2>
+  <p>
+    Because characters in <em>Paikutan</em> are cosmetic, this POV system gives each character distinct visual and narrative identity without breaking stat parity:
+  </p>
+  <table border="1" cellpadding="8" cellspacing="0">
+    <thead>
+      <tr>
+        <th>Character</th>
+        <th>Visual Sleeve / Skin Detail</th>
+        <th>Cord (Pisi) Aesthetic</th>
+        <th>Animation Flavor</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>Bata</strong> (Batang Kalye)</td>
+        <td>Bare forearms, colorful rubber wristband.</td>
+        <td>Worn white nylon string with knotted loop.</td>
+        <td>Fast, twitchy, energetic hand winding.</td>
+      </tr>
+      <tr>
+        <td><strong>Lola Basyang</strong> (Ang Kuwentista)</td>
+        <td>Floral baro't saya sleeve cuffs, jade bracelet.</td>
+        <td>Traditional abaca twined cord.</td>
+        <td>Steady, deliberate, rhythmic winding motion.</td>
+      </tr>
+      <tr>
+        <td><strong>Tambay</strong> (Hari ng Kanto)</td>
+        <td>Rolled-up sando sleeve, silver wristwatch.</td>
+        <td>Vibrant dyed red commercial cord.</td>
+        <td>Casual one-handed flip into the palm before winding.</td>
+      </tr>
+      <tr>
+        <td><strong>Kapitana</strong> (Barangay Captain)</td>
+        <td>Crisp short-sleeve barong tagalog cuff, gold ring.</td>
+        <td>Neatly coiled blue braided string.</td>
+        <td>Firm, disciplined, tight wraps with zero wobble.</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <hr>
+
+  <h2>5. Technical Implementation Plan</h2>
+  <ul>
+    <li>
+      <strong>Asset Sourcing from JMDGG's <code>tromPOW</code>:</strong>
+      <ul>
+        <li>Port the low-poly hand armature and string wrapping geometry from <code>tromPOW/js/entities/player.js</code>.</li>
+        <li>Render hands in the phone controller's local Three.js scene (budget: &lt; 800 triangles per hand to maintain 60 FPS on mid-range mobile devices).</li>
+      </ul>
+    </li>
+    <li>
+      <strong>UI Layering (<code>play.html</code>):</strong>
+      <ul>
+        <li>Maintain the existing touch detection algorithm in <code>js/controller.js</code> (which calculates angular velocity and circle neatness).</li>
+        <li>Set the <code>#circle-canvas</code> overlay background to <code>transparent</code> and overlay it over <code>canvas#view</code> using CSS layering.</li>
+      </ul>
+    </li>
+    <li>
+      <strong>State Machine Integration:</strong>
+      <ul>
+        <li>During <code>phase === 'wind'</code>, set local camera target to character POV rig.</li>
+        <li>When transition event <code>ev('throw')</code> fires, lerp camera position from POV to throwing line over 0.6 seconds using exponential easing.</li>
+      </ul>
+    </li>
+  </ul>
+
+  <hr>
+
+  <h2>6. DOST Level Up 3.0 Judging Alignment</h2>
+  <ul>
+    <li><strong>Originality &amp; Polish (20%):</strong> Moves mobile phone game controllers away from flat mobile button interfaces into true physical simulation.</li>
+    <li><strong>Gameplay Feel (20%):</strong> Connects the player's physical finger strokes directly to the 3D spinning physics, making the <em>Paikot</em> phase feel tactile and rewarding.</li>
+    <li><strong>Theme Relevance (20%):</strong> Perfectly captures the nostalgia of learning to wind a real trumpo in the streets of the Philippines.</li>
+  </ul>
+</body>
+</html>

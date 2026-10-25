@@ -1,0 +1,198 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Paikutan - Game Ideas &amp; Feature Proposals</title>
+</head>
+<body>
+  <h1>Paikutan: Trumpo Showdown - Game Ideas &amp; Feature Proposals</h1>
+  <p>DOST Level Up 3.0 Esports Game Dev Challenge</p>
+  <p>Compiled Design Specifications (Raw HTML / Plain Text)</p>
+
+  <hr>
+
+  <h2>Table of Contents</h2>
+  <ol>
+    <li><a href="#idea-you-indicator">Idea 1: "You" / "Ikaw" Trumpo Player Indicator</a></li>
+    <li><a href="#idea-ring-closing">Idea 2: "Sikip Na!" Ring Closing System</a></li>
+    <li><a href="#idea-pov-winding">Idea 3: Character POV Winding &amp; Transparent Spin Overlay (from JMDGG)</a></li>
+  </ol>
+
+  <hr>
+
+  <h2 id="idea-you-indicator">Idea 1: "You" / "Ikaw" Trumpo Player Indicator</h2>
+
+  <h3>1. The Problem: Battle Confusion</h3>
+  <p>
+    During fast-paced 1v1 collisions, dashes, and impact screen shakes, players (especially newcomers using phone tilt controls) frequently lose visual track of which trumpo is theirs. 
+    This confusion causes players to tilt in the wrong direction, waste their dash, or steer themselves accidentally out of the chalk circle.
+  </p>
+
+  <h3>2. The Solution: Dynamic Client-Side "YOU" Marker</h3>
+  <ul>
+    <li><strong>Player Phone Screen:</strong> A bold, high-contrast &quot;YOU&quot; (or &quot;IKAW&quot;) indicator floats directly above or under the player's own trumpo.</li>
+    <li><strong>Opponent Anonymity:</strong> The rival trumpo is simply labeled &quot;RIVAL&quot; or displays their selected trumpo name (e.g., &quot;Tikbalang&quot;).</li>
+    <li><strong>Spectator / TV Screen:</strong> The big host screen displays neutral tournament tags (&quot;P1&quot; in red, &quot;P2&quot; in blue, or custom player handles).</li>
+  </ul>
+
+  <h3>3. Visual Specification</h3>
+  <table border="1" cellpadding="6" cellspacing="0">
+    <thead>
+      <tr>
+        <th>Indicator Element</th>
+        <th>Visual Placement</th>
+        <th>Behavior &amp; Function</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>Ground Decal Ring</strong></td>
+        <td>Projected flat on the asphalt directly under the tip.</td>
+        <td>Pulsing circular ring with an embedded forward-facing chevron pointing in the trumpo's current movement direction.</td>
+      </tr>
+      <tr>
+        <td><strong>Floating Billboard Tag</strong></td>
+        <td>Hovering 0.35m directly above the crown.</td>
+        <td>Always faces the active camera (billboard orientation) so it never spins or tilts with the top's physical wobble.</td>
+      </tr>
+      <tr>
+        <td><strong>Off-Screen Arrow Pointer</strong></td>
+        <td>Screen edge clamp (if camera zooms in tight).</td>
+        <td>If a violent clash throws your trumpo out of the camera's close-up frame, an arrow on the screen edge points toward your off-screen position.</td>
+      </tr>
+      <tr>
+        <td><strong>Low Spin Warning State</strong></td>
+        <td>Attached to the text tag.</td>
+        <td>When spin drops below 20%, the &quot;YOU&quot; tag blinks rapidly to alert the player to play defensively or trigger Agaw-Ikot.</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h3>4. Implementation Details</h3>
+  <ul>
+    <li><strong>Engine Hook (<code>js/scene.js</code>):</strong> In the render loop, check <code>view === slot</code>. If true, attach the local indicator mesh only to that slot's root group.</li>
+    <li><strong>Zero Host Overhead:</strong> The indicator is purely local and client-side; no additional network packets or Supabase synchronization required.</li>
+  </ul>
+
+  <hr>
+
+  <h2 id="idea-ring-closing">Idea 2: "Sikip Na!" Ring Closing System</h2>
+
+  <h3>1. Competitive Purpose</h3>
+  <p>
+    In street trumpo battles, players sometimes stay along the outer perimeter to stall out an opponent's spin without taking hits. 
+    &quot;Sikip Na!&quot; introduces a contracting chalk arena boundary after a set duration, compressing the battleground and forcing an inevitable, decisive clash.
+  </p>
+
+  <h3>2. Mathematical Parameters</h3>
+  <table border="1" cellpadding="6" cellspacing="0">
+    <thead>
+      <tr>
+        <th>Parameter</th>
+        <th>Value</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>Initial Radius (<code>ARENA_R</code>)</strong></td>
+        <td>5.0 meters</td>
+        <td>Full chalk arena size at round start.</td>
+      </tr>
+      <tr>
+        <td><strong>Squeeze Start (<code>SQUEEZE_T</code>)</strong></td>
+        <td>20.0 seconds</td>
+        <td>Timestamp when the chalk line begins constricting.</td>
+      </tr>
+      <tr>
+        <td><strong>Squeeze Duration (<code>SQUEEZE_DUR</code>)</strong></td>
+        <td>15.0 seconds</td>
+        <td>Time over which the ring steadily shrinks.</td>
+      </tr>
+      <tr>
+        <td><strong>Final Minimum Radius (<code>SQUEEZE_R</code>)</strong></td>
+        <td>3.0 meters</td>
+        <td>Final tight boundary (playable floor area reduced by 64%).</td>
+      </tr>
+      <tr>
+        <td><strong>Elimination Rule</strong></td>
+        <td>Instant Labas (Ring Out)</td>
+        <td>Crossing outside the active shrinking boundary triggers instant round loss.</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h3>3. Visual &amp; Audio Telegraphs</h3>
+  <ul>
+    <li><strong>Warning Phase (t = 17s):</strong> Text banner announces &quot;SIKIP NA!&quot; alongside a tricycle horn sound cue.</li>
+    <li><strong>Shrinking Phase (t = 20s to 35s):</strong> The 3D chalk circle shifts color from white to warning red as it contracts inward.</li>
+    <li><strong>Tactical Shift:</strong> Heavily benefits heavy-knockback trumpos (Tikbalang) and punishes passive evasive play (Diwata).</li>
+  </ul>
+
+  <hr>
+
+  <h2 id="idea-pov-winding">Idea 3: Character POV Winding &amp; Transparent Spin Overlay (from JMDGG)</h2>
+
+  <h3>1. Concept &amp; Heritage</h3>
+  <p>
+    Adapted from teammate JMDGG's <em>tromPOW</em> repository. Replaces the detached 2D canvas with a diegetic first-person camera looking down through your character's eyes at their hands winding the trumpo.
+  </p>
+
+  <h3>2. Mechanics &amp; Visual Flow</h3>
+  <ul>
+    <li><strong>First-Person Camera:</strong> Positioned at chest height looking down at the hands holding the lathe-turned trumpo and nylon cord (<em>pisi</em>).</li>
+    <li><strong>Transparent Touch HUD:</strong> A semi-transparent circular guide ring (40% to 60% opacity) floats directly over the 3D hands on the smartphone screen.</li>
+    <li><strong>Synchronous Hand Animation:</strong> Each circular thumb swipe on the screen animates the character's fingers wrapping another layer of cord around the cone in real time.</li>
+    <li><strong>RPM Feedback:</strong> Friction dust and elemental sparks burst from the tip as draw speed approaches maximum RPM.</li>
+    <li><strong>Seamless Transition:</strong> When the 3-second winding timer expires, the camera tilts up to follow the physical throw into the 3D chalk circle.</li>
+  </ul>
+
+  <h3>3. Character Personality Details</h3>
+  <table border="1" cellpadding="6" cellspacing="0">
+    <thead>
+      <tr>
+        <th>Character</th>
+        <th>Hand &amp; Sleeve Aesthetic</th>
+        <th>Cord (Pisi) Type</th>
+        <th>Winding Style</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>Bata</strong></td>
+        <td>Bare forearms, rubber wristband</td>
+        <td>Worn white nylon string</td>
+        <td>Rapid, energetic finger strokes</td>
+      </tr>
+      <tr>
+        <td><strong>Lola Basyang</strong></td>
+        <td>Baro't saya lace cuffs, jade bracelet</td>
+        <td>Traditional braided abaca cord</td>
+        <td>Steady, rhythmic, precise wraps</td>
+      </tr>
+      <tr>
+        <td><strong>Tambay</strong></td>
+        <td>Rolled sando sleeve, silver watch</td>
+        <td>Red commercial cord</td>
+        <td>Casual palm flip into winding stance</td>
+      </tr>
+      <tr>
+        <td><strong>Kapitana</strong></td>
+        <td>Barong tagalog cuffs, gold ring</td>
+        <td>Blue braided string</td>
+        <td>Firm, disciplined, tight wraps</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <hr>
+
+  <h2>4. Summary of Code Requirements</h2>
+  <p>All three ideas maintain the strict project guidelines:</p>
+  <ul>
+    <li>No changes to base physics balance on deadline night.</li>
+    <li>Client-side rendering additions (hands, indicator, chalk scaling) that preserve network synchronization.</li>
+    <li>Full compatibility with DOST Level Up 3.0 theme and esports presentation rubrics.</li>
+  </ul>
+</body>
+</html>

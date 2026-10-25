@@ -108,6 +108,7 @@ function onState(s) {
   if (ctrl) ctrl.setState(s);
   if (net) net.send('state', s);
   if (s.phase !== lastPhase) {
+    if (s.phase === 'charge') scene.reset();
     if (s.phase === 'countdown') scene.reset();
     if (s.phase === 'throw' && mode !== 'title') audio.beep(true);
     if ((s.phase === 'roundEnd' || s.phase === 'matchEnd') && s.result && s.result.winner >= 0 && mode !== 'title') audio.win();
@@ -349,6 +350,8 @@ function frame(now) {
   last = now;
   engine.update(dt);
   if (ctrl && ctrl.slot >= 0) scene.setLocalSteer(ctrl.slot, ctrl.localSteer());
+  const charging = state && state.phase === 'charge' && ctrl && state.players[ctrl.slot]?.inRound;
+  scene.setCharge(charging ? ctrl.slot : -1, charging ? ctrl.localSpin() : null);
   scene.render(dt);
   updateHud();
   const humOn = mode !== 'title' && snap && state && ['throw', 'fight'].includes(state.phase);

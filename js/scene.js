@@ -51,6 +51,9 @@ function makeTop(topId, slot, low) {
   model.blur.scale.setScalar(size); model.blur.position.y *= size;
   model.blob.scale.setScalar(size * 1.2); model.blob.position.y = 0.015;
   spinner.add(model.body);
+  // Share the selected model's geometry and paint with the first-person held copy.
+  const held = model.body.clone(true);
+  held.scale.setScalar(0.7); held.rotation.x = Math.PI; held.visible = false;
   tilt.add(model.blur);
   model.aura.scale.multiplyScalar(size); model.aura.position.y *= size;
   tilt.add(model.aura);
@@ -67,7 +70,7 @@ function makeTop(topId, slot, low) {
   const arrow = new THREE.Group();
   arrow.position.y = 0.025; arrow.visible = false; arrow.add(arrowMesh);
   root.add(ring, arrow);
-  return { root, precess, tilt, spinner, ring, arrow, aura: model.aura, topId, vfxTime: 0, auraMaterials: [...new Set(model.aura.children.map(o => o.material))], blur: model.blur, blob: model.blob, prec: rand(0, 6), drop: 0, state: null, target: null, wasLaunched: false, fallT: 0 };
+  return { root, precess, tilt, spinner, held, ring, arrow, aura: model.aura, topId, vfxTime: 0, auraMaterials: [...new Set(model.aura.children.map(o => o.material))], blur: model.blur, blob: model.blob, prec: rand(0, 6), drop: 0, state: null, target: null, wasLaunched: false, fallT: 0 };
 }
 
 // Our characters wear tromPOW's closest outfits: Tambay is his Mang Totoy, Aling Nena his Tita Marites.
@@ -218,6 +221,7 @@ export function createScene(canvas, { low = false } = {}) {
   let party = null; // winner celebration: { slot, final, t }
   const localSteer = []; // this device's own steering, drawn without waiting for the host
   let own = -1; // slot this device plays; -1 for a spectator screen, which shows both arrows
+  let chargeSlot = -1, chargeFeedback = null, windingTime = 0;
   let instant = true;
   let dogTarget = null;
   const camPos = new THREE.Vector3(), camLook = new THREE.Vector3();
@@ -237,6 +241,7 @@ export function createScene(canvas, { low = false } = {}) {
       if (id === (topIds[s] || null)) continue;
       skills.cancel(s);
       if (tops[s]) {
+        tops[s].held.removeFromParent();
         scene.remove(tops[s].root);
         tops[s].root.traverse(o => {
           if (!o.isMesh) return;
@@ -261,6 +266,7 @@ export function createScene(canvas, { low = false } = {}) {
 
   // Hide both tops between rounds.
   function reset() {
+    setCharge(-1);
     for (const t of tops) if (t) { t.root.visible = false; t.state = t.target = null; t.wasLaunched = false; t.fallT = 0; t.dir = null; t.vfxTime = 0; }
     dog.visible = false; dogTarget = null; lane.visible = false;
     for (const v of eggViews.values()) scene.remove(v.group);
@@ -316,6 +322,29 @@ export function createScene(canvas, { low = false } = {}) {
 
   function celebrate(slot, final) { party = { slot, final, t: 0 }; }
   function setCam(m) { camMode = m; }
+  function setCharge(slot, feedback = null) {
+    if (slot !== chargeSlot) {
+      const previous = people[chargeSlot];
+      if (previous) {
+        previous.avatar.rig.head.visible = true;
+        previous.avatar.mode = 'idle';
+        if (previous.avatar.held) previous.avatar.held.visible = false;
+      }
+      chargeSlot = slot;
+      windingTime = 0;
+      // Enter at eye level, without flying through the player's body from the arena camera.
+      if (slot >= 0) camPos.set(0, 0, 0);
+    }
+    chargeFeedback = feedback;
+    const person = people[slot], top = tops[slot];
+    if (!person || !top) return;
+    if (person.avatar.held !== top.held) {
+      person.avatar.rig.hand.add(top.held);
+      person.avatar.held = top.held;
+    }
+    top.held.visible = true;
+    person.avatar.rig.head.visible = false;
+  }
   // slot < 0 clears it (spectator). A player device only shows its own arrow, never the rival's.
   function setLocalSteer(slot, v) {
     own = slot >= 0 ? slot : -1;
@@ -488,7 +517,14 @@ export function createScene(canvas, { low = false } = {}) {
   function updateCamera(dt) {
     const a = camera.aspect;
     let pos, look;
-    if (typeof view === 'number' && view >= 0) {
+    const winding = people[chargeSlot];
+    if (winding) {
+      // Look through the chosen character's eyes at their hands and the arena beyond.
+      const yaw = winding.root.rotation.y, fx = Math.sin(yaw), fz = Math.cos(yaw);
+      pos = winding.avatar.rig.head.getWorldPosition(new THREE.Vector3());
+      pos.add(new THREE.Vector3(fx * 0.12, 0.34, fz * 0.12).multiplyScalar(WORLD_SCALE));
+      look = pos.clone().add(new THREE.Vector3(fx * 1.3, -1.05, fz * 1.3).multiplyScalar(WORLD_SCALE));
+    } else if (typeof view === 'number' && view >= 0) {
       const [sx, sz] = seatDir(view), back = a < 1 ? 9 : 9.5;
       // Phones: stand behind your own throwing line; pull back in portrait so the circle fits.
       pos = new THREE.Vector3(sx * back, a < 1 ? 10 : 8, sz * back);
@@ -530,7 +566,8 @@ export function createScene(canvas, { low = false } = {}) {
     const dist = pos.distanceTo(look);
     const fov = THREE.MathUtils.radToDeg(2 * Math.atan(Math.tan(Math.atan((ARENA_R + (a < 1 ? 2.5 : 1)) / dist)) / a));
     const tight = view === 'spectator' && (party || camMode === 'close' || camMode === 'menu');
-    camera.fov = tight ? 40 : THREE.MathUtils.clamp(fov, 42, 80);
+    camera.fov = winding ? 65 : tight ? 40 : THREE.MathUtils.clamp(fov, 42, 80);
+    camera.near = winding ? 0.03 : 0.1;
     camera.updateProjectionMatrix();
     const k = 1 - Math.exp(-dt * (tight ? 5 : 3));
     if (camPos.lengthSq() === 0) { camPos.copy(pos); camLook.copy(look); }
@@ -588,10 +625,15 @@ export function createScene(canvas, { low = false } = {}) {
       // Watch your own top, slump when it falls; the round winner cheers. The throw plays out on its own.
       const a = p.avatar, st = tops[s] && tops[s].state;
       if (a.mode !== 'release') {
-        a.mode = party ? (party.slot === s ? 'cheer' : 'sad')
+        a.mode = s === chargeSlot ? 'wind' : party ? (party.slot === s ? 'cheer' : 'sad')
           : st && st.launched ? (st.alive ? 'watch' : 'sad') : 'idle';
       }
-      a.update(dt, time);
+      if (s === chargeSlot) {
+        const speed = chargeFeedback?.speed || 0;
+        windingTime += dt * Math.min(3, speed * 0.8);
+        if (a.held) a.held.rotation.y += dt * speed * Math.PI * 2;
+        a.update(dt, windingTime);
+      } else a.update(dt, time);
     });
     world.update(time);
     critters.update(dt, time);
@@ -622,5 +664,5 @@ export function createScene(canvas, { low = false } = {}) {
   window.addEventListener('resize', resize);
   resize();
   setView('spectator');
-  return { setPlayers, applySnap, fx, render, resize, setView, reset, celebrate, setCam, setLocalSteer };
+  return { setPlayers, applySnap, fx, render, resize, setView, reset, celebrate, setCam, setLocalSteer, setCharge };
 }

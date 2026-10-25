@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Paikutan: Technical Problems</title>
+</head>
+<body>
+<pre>Paikutan: Technical Problems
+
+Issue A: Client-Side Rendering of Effects &amp; Sound Effects
+- Over-reliance on Network FX Broadcast: In host.js, clash sparks, rings, and sounds are sent over Supabase as distinct net.send(&#39;fx&#39;, payload) events.
+- Supabase Broadcast Rate Limiting: In net.js, Supabase Realtime is capped at eventsPerSecond: 30. During active clashes (sparks + steering + snapshots), Supabase drops burst broadcast packets.
+- Missing Local Audio in Multiplayer: On play.js (lines 112-115), hum and hit sounds are guarded with if (solo &amp;&amp; snap &amp;&amp; state). In live online multiplayer, the phone relies entirely on receiving remote &#39;fx&#39; messages to play sounds.
+
+Issue B: Mobile Perspective Distortion &amp; Ground Particle Transparency Layering
+- The &quot;Underground Particles&quot; Mystery: In scene.js line 125, the circular arena dirt ground (pit) is initialized with transparent: true, opacity: 0.95!
+- Three.js Depth Sorting Bug: Because pit is transparent, Three.js sorts it against the transparent particle point clouds (dust and sparks). Looking from a steep angle, Three.js frequently sorts the large ground mesh after the particles, drawing the 95% opaque brown dirt plane over the particles!
+- Particle Gravity Sinking: In particles.js, particles have gravity: 4. Once emitted, they fall below y = 0.005 into negative Y-space, sinking physically underneath the ground geometry.
+- Extreme FOV Distortion: In scene.js line 531, dynamic FOV is calculated as 2 * atan(tan(...) / a). For portrait mobile where a &lt; 0.5, this formula spikes the FOV straight to the 80&#176; clamp limit, causing severe fisheye distortion where tops look microscopic and edge effects disappear.
+
+Issue C: Multi-Touch Concurrency: Skill Tap Blocked During Joystick Drag
+- DOM Event Mismatch: In controller.js line 425: const btn = root.querySelector(&#39;[data-act=power]&#39;); btn.onclick = () =&gt; send(&#39;ability&#39;, {}); The skill button is bound to onclick!
+- Pointer Capture Blocking: The joystick (line 433) calls pad.setPointerCapture(e.pointerId) on pointerdown.
+- Mobile Touch Architecture: In iOS WebKit and Android Chrome, when an active pointer is held down with pointer capture on element A, secondary touches on element B with touch-action: manipulation will fire pointerdown, but the browser&#39;s synthetic click event is suppressed or held until all touches release!
+- Because Dash (line 426) uses pointerdown, it responds; but Power (using onclick) is completely ignored while dragging!
+
+Issue D: Missing Tagalog Emotes &amp; Quick-Chat Taunts from JMDGG (tromPOW)
+- Missing Tagalog Quick Chats: The game lacks the quick-chat system from origin/jm-branch. When ported, it should have four slots using Tagalog lines that current Filipino players actually say: QUICK_CHAT = [&quot;Tara G&quot;, &quot;Aray mo&quot;, &quot;Lala&quot;, &quot;Hehe&quot;].
+- Phrase Notes: &quot;Tara G&quot; (let&#39;s go; the G is short for &quot;game&quot;). &quot;Aray mo&quot; (ouch, that one&#39;s on you) is a meme comeback after landing a hit. &quot;Lala&quot; (it&#39;s getting wild / that&#39;s crazy) reacts to a big clash. &quot;Hehe&quot; is a cheeky laugh after a lucky knock-out.
+- Alternate Pool (for rotation or unlockable taunts): &quot;Ikot pa more!&quot; (spin some more; uses the &quot;pa more&quot; meme pattern as a trumpo pun), &quot;Taympers!&quot; (the street-game timeout call), &quot;Sana all!&quot; (playful envy at a lucky hit), &quot;Charot!&quot; (just kidding, after a taunt), &quot;Basag!&quot; (wrecked; MOBA rally call), &quot;Edi wow!&quot; (sarcastic &quot;good for you&quot;), &quot;Ang angas!&quot; (so cool / so cocky), &quot;GG, pre!&quot; (good game, bro).
+- Content Rule: Keep the lines family-friendly. The game is shown on a big screen at a DOST school event, so leave out the profanity common in Pinoy MOBA chat (gago, bobo, amp) even though players use it.
+- Controller Buttons: src/controller/main.ts rendered pill buttons (chatButtons()) and dispatched { t: &#39;chat&#39;, i: index }.
+- Desktop Hotkeys: Host screen supported keys 1 through 6 for taunting; with four slots this becomes keys 1 through 4.
+- Visual &amp; Voice Feedback: Ui.ts spawned floating .bubble popups over character heads for 2.6s, while AudioSystem.ts triggered character barks and browser speech synthesis. Quick-chat text and spoken lines should both be in Tagalog. Browser speech synthesis often has no fil-PH voice (and an English voice mangles Tagalog), so the spoken lines should be pre-recorded barks, with TTS only used when a fil-PH voice is found.
+- When Paikutan&#39;s battle loop was restructured, this system was simply not ported over.
+
+Issue E: Can&#39;t Remove CPUs from Brawl Lobby
+- One-Way Addition in UI: In host.js line 145 and index.html, the Brawl lobby provides an #btn-add-cpu button, but no button to remove or kick CPUs.
+- Engine Support Exists: In engine.js lines 134-150, engine.leave(id) is fully implemented and handles clearing player slots, recalculating roster order, and resetting points.
+- Static Slots List: host.js renders player slots as static text: &lt;li&gt;&lt;b&gt;P${i + 1}&lt;/b&gt; ${who}&lt;/li&gt; without any interactive kick action. Once a CPU is added, the host is trapped and cannot free the seat for real players without refreshing the page.
+
+Issue F: Leave / Back from Match UI (Controller &amp; Host)
+- Controller Lock-in: On play.html, once a player enters a room code and taps &quot;Join match&quot;, #join-screen is set to hidden = true. There is no &quot;Leave Match&quot; or &quot;Back&quot; button anywhere on the phone.
+- Trapped in Lobby / Game: If a player enters the wrong room code, wants to change their nickname, or wants to leave a brawl, their only recourse is to force-close or reload the browser tab.
+- Host Mid-Match Trap: On index.html, the host has a &quot;Cancel&quot; button in the lobby, but once a match starts, there is no &quot;Exit to Menu&quot; button until the entire best-of-3 finishes at #end-bar.
+
+Issue G: Mobile Waiting Screen UX: Missing Visual Image Icons for Tutorial Steps
+- Dense Wall of Text: In controller.js line 180, howTo() returns a plain numbered list (&lt;ol class=&quot;howto&quot;&gt;) containing 5 dense paragraphs of text.
+- Mobile Readability Fatigue: As captured in user testing, mobile players in party/esports environments do not read numbered text blocks. They need clear visual iconography to instantly grasp mechanics: 1. Pick: Top &amp; character selection icon. 2. Paikot: Circular drawing motion / spiral icon. 3. Bitaw: Phone tilting &amp; flicking forward icon. 4. Laban: Clashing trumpo sparks / dash icon. 5. Brawl / Win: Trophy / ring victory icon.
+
+Issue H: No &quot;Join Match&quot; Button: Players Must Host Just to Get a QR, and Can&#39;t Play in Their Own Lobby
+- No Join Entry Point: On index.html, #menu-main only offers &quot;Host a match&quot;, &quot;Practice vs CPU&quot; and &quot;How to play&quot;. There is no &quot;Join match&quot; button and no room-code field, so a player who opens the game cannot join an existing room from the menu.
+- Forced Host Detour: The only way to reach a join link is to tap Host a match -&gt; 1v1 / Brawl. hostRoom() in host.js (lines 54-67) creates a new room and renders the play.html?room=XXXX QR code. Players have to make a lobby just to generate a QR they can scan.
+- Host Can&#39;t Play in Their Own Lobby: The device that makes the lobby turns into the arena screen (start(&#39;host&#39;)) and never takes a player slot. #slots fills only with phones that scan the QR (or CPUs added with + CPU), so whoever made the lobby has to scan their own QR with a second device or sit out.
+</pre>
+</body>
+</html>

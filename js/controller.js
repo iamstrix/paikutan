@@ -53,6 +53,7 @@ export function createController(root, { mode = 'phone', send, myId, sounds = mo
   let lastSteer = [0, 0], lastSteerAt = 0;
   let inverted = false; // Bakunawa eclipse, from the latest snapshot
   let rival = -1; // brawl: the rival shown in the second bar
+  let spinFeedback = null; // local winding animation, without a network round trip
 
   root.classList.add('ctrl', phone ? 'phone' : 'desktop');
 
@@ -240,8 +241,9 @@ export function createController(root, { mode = 'phone', send, myId, sounds = mo
   function viewSpin() {
     const p = me();
     if (p.spun) {
+      spinFeedback = { power: p.spinPower, stability: p.steadiness, speed: 0 };
       show('spunWait', `
-        <div class="panel center">
+        <div class="panel center spin-wait">
           <h2>Ang ikot! Spin locked in</h2>
           <div class="meters big">
             <div class="meter"><span>Lakas · spin power</span><i><b style="width:${pct(p.spinPower)}"></b></i><em>${pct(p.spinPower)}</em></div>
@@ -273,6 +275,7 @@ export function createController(root, { mode = 'phone', send, myId, sounds = mo
       cv.width = w * dpr; cv.height = h * dpr; g.setTransform(dpr, 0, 0, dpr, 0, 0);
     };
     size();
+    spinFeedback = { power: 0, stability: 0, speed: 0 };
     const pos = e => { const r = cv.getBoundingClientRect(); return [e.clientX - r.left, e.clientY - r.top]; };
     const down = e => {
       e.preventDefault();
@@ -294,9 +297,11 @@ export function createController(root, { mode = 'phone', send, myId, sounds = mo
       const now = performance.now();
       const el = tracker ? (now - t0) / 1000 : 0;
       const res = tracker ? tracker.result() : { power: 0, stability: 0, laps: 0 };
+      const speed = tracker && !done ? tracker.speed(now) : 0;
+      spinFeedback = { ...res, speed };
       g.clearRect(0, 0, w, h);
       // Guide ring and its tolerance band.
-      g.strokeStyle = 'rgba(255,255,255,0.12)'; g.lineWidth = R * 0.4;
+      g.strokeStyle = 'rgba(255,248,231,0.08)'; g.lineWidth = R * 0.4;
       g.beginPath(); g.arc(w / 2, h / 2, R, 0, 7); g.stroke();
       g.strokeStyle = PLAYER_COLORS[slot]; g.lineWidth = 4; g.setLineDash([10, 10]);
       g.beginPath(); g.arc(w / 2, h / 2, R, 0, 7); g.stroke(); g.setLineDash([]);
@@ -312,13 +317,15 @@ export function createController(root, { mode = 'phone', send, myId, sounds = mo
         g.beginPath(); g.moveTo(trail[i - 1][0], trail[i - 1][1]); g.lineTo(trail[i][0], trail[i][1]); g.stroke();
       }
       g.fillStyle = '#fff'; g.textAlign = 'center'; g.textBaseline = 'middle';
+      g.shadowColor = 'rgba(0,0,0,0.85)'; g.shadowBlur = 5;
       g.font = `bold ${Math.round(R * 0.45)}px Bungee, sans-serif`;
       g.fillText(tracker ? res.laps.toFixed(1) : '↻', w / 2, h / 2 - R * 0.08);
       g.font = `${Math.round(R * 0.14)}px Nunito, sans-serif`;
       g.fillText(tracker ? 'ikot (laps)' : 'touch the ring', w / 2, h / 2 + R * 0.28);
+      g.shadowBlur = 0;
       root.querySelector('[data-m=power]').style.width = pct(res.power);
       root.querySelector('[data-m=stab]').style.width = pct(res.stability);
-      if (sounds && tracker) audio.whir(done ? 0 : Math.min(1, tracker.speed(now) / 3));
+      if (sounds && tracker) audio.whir(done ? 0 : Math.min(1, speed / 3));
       if (tracker && !done && now - lastProg > 200) { lastProg = now; send('prog', { laps: Math.round(res.laps * 10) / 10 }); }
       if (tracker && !done && el >= SPIN_SECONDS) {
         done = true;
@@ -644,6 +651,7 @@ export function createController(root, { mode = 'phone', send, myId, sounds = mo
 
   return {
     setState, onSnap, localSteer,
+    localSpin: () => spinFeedback,
     get slot() { return slot; },
     destroy() { if (cleanup) cleanup(); cleanup = null; key = ''; root.innerHTML = ''; },
   };
