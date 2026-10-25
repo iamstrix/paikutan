@@ -202,6 +202,23 @@ export const audio = {
       noise(t + d, { vol: 0.15, decay: 0.08, freq: 900 });
     });
   },
+  // Hen running in: a quick "bok-bok-bok".
+  cluck() {
+    if (!ctx) return;
+    const t = ctx.currentTime;
+    [0, 0.11, 0.2].forEach((d, i) => tone(760 - i * 60, t + d, { vol: 0.14, type: 'triangle', decay: 0.07, slideTo: 480 }));
+  },
+  crack() {
+    if (!ctx) return;
+    const t = ctx.currentTime;
+    noise(t, { vol: 0.3, decay: 0.06, type: 'highpass', freq: 2500 });
+    tone(420, t, { vol: 0.12, decay: 0.1, slideTo: 200 });
+  },
+  chirp() {
+    if (!ctx) return;
+    const t = ctx.currentTime;
+    [0, 0.12].forEach(d => tone(2200, t + d, { vol: 0.08, decay: 0.06, slideTo: 2900 }));
+  },
   beep(high = false) {
     if (!ctx) return;
     const t = ctx.currentTime;
@@ -227,7 +244,11 @@ export function playFx(e) {
     case 'launch': audio.land(); break;
     case 'boost': audio.dash(); break;
     case 'fall': case 'out': audio.fall(); break;
-    case 'dog': case 'bark': audio.bark(); break;
+    case 'dogWarn': case 'dog': case 'bark': audio.bark(); break;
+    case 'eggWarn': audio.cluck(); break;
+    case 'egg': audio.click(); break;
+    case 'crack': audio.crack(); break;
+    case 'hatch': audio.chirp(); break;
     case 'ability': {
       const f = { kidlat: audio.kidlat, tikbalang: audio.dash, agimat: audio.shield, diwata: audio.heal, bakunawa: audio.eclipse }[e.top];
       if (f) f();

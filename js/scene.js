@@ -1,7 +1,7 @@
 // three.js view: the barangay around the chalk circle, the trumpos, the players and effects.
 // Used by the desktop spectator and the phones (which follow host snapshots).
 import * as THREE from 'three';
-import { ARENA_R, LAUNCH_Z } from './sim.js';
+import { ARENA_R, LAUNCH_Z, EGG_WARN, EGG_R } from './sim.js';
 import { TOPS, CHARACTERS, PLAYER_COLORS, byId } from './data.js';
 import { buildBarangay, WORLD_SCALE } from './world/barangay.js';
 import { createAtmosphere } from './world/atmosphere.js';
@@ -160,6 +160,21 @@ export function createScene(canvas, { low = false } = {}) {
   buildCircle(scene);
   const dog = makeDog();
   scene.add(dog);
+  // The dog's lane across the circle: red chevrons pointing the way it will run, shown while it waits.
+  const lane = new THREE.Mesh(new THREE.PlaneGeometry(ARENA_R * 2 + 2, 1.8), new THREE.MeshBasicMaterial({
+    map: canvasTex(256, 64, (g, w, h) => {
+      g.fillStyle = 'rgba(255,255,255,0.25)'; g.fillRect(0, 0, w, h);
+      g.strokeStyle = '#fff'; g.lineWidth = 12; g.lineJoin = 'round';
+      for (let x = 30; x < w; x += 64) { g.beginPath(); g.moveTo(x, 10); g.lineTo(x + 24, h / 2); g.lineTo(x, h - 10); g.stroke(); }
+    }),
+    color: '#ff3b30', transparent: true, depthWrite: false,
+  }));
+  lane.material.map.wrapS = THREE.RepeatWrapping; lane.material.map.repeat.set(3, 1);
+  lane.rotation.x = -Math.PI / 2; lane.position.y = 0.016; lane.visible = false;
+  scene.add(lane);
+  // Hens and their eggs, keyed by the sim's egg id.
+  const eggViews = new Map();
+  let eggSnap = [];
 
   // tromPOW's pooled effects (dust, sparks, rings, POW! bursts, the Kidlat bolt) work in his units,
   // so the group is scaled like the barangay and every position goes in divided by WORLD_SCALE.
@@ -207,8 +222,55 @@ export function createScene(canvas, { low = false } = {}) {
   // Hide both tops between rounds.
   function reset() {
     for (const t of tops) if (t) { t.root.visible = false; t.state = t.target = null; t.wasLaunched = false; t.fallT = 0; t.dir = null; }
-    dog.visible = false; dogTarget = null;
+    dog.visible = false; dogTarget = null; lane.visible = false;
+    for (const v of eggViews.values()) scene.remove(v.group);
+    eggViews.clear(); eggSnap = [];
     party = null;
+  }
+
+  function makeEggView(e) {
+    const group = new THREE.Group();
+    const egg = new THREE.Mesh(new THREE.SphereGeometry(EGG_R * 0.9, 16, 12), new THREE.MeshStandardMaterial({ color: '#f3e6cc', roughness: 0.6 }));
+    egg.scale.y = 1.25; egg.position.set(e.x, EGG_R * 1.1, e.z); egg.castShadow = !low; egg.visible = false;
+    // Warning ring where the egg will land.
+    const ring = new THREE.Mesh(new THREE.RingGeometry(0.45, 0.6, 32), new THREE.MeshBasicMaterial({ color: '#ffd23f', transparent: true, depthWrite: false }));
+    ring.rotation.x = -Math.PI / 2; ring.position.set(e.x, 0.018, e.z);
+    // The hen runs in from the edge behind the spot, and back out the same way.
+    const hen = chicken(e.id);
+    hen.scale.setScalar(WORLD_SCALE * 1.2);
+    hen.traverse(o => { if (o.isMesh) o.castShadow = !low; });
+    const d = Math.hypot(e.x, e.z) || 1;
+    const from = [e.x / d * (ARENA_R + 2.5), e.z / d * (ARENA_R + 2.5)];
+    group.add(egg, ring, hen);
+    scene.add(group);
+    return { group, egg, ring, hen, from, out: 0 };
+  }
+
+  function updateEggs(dt) {
+    const seen = new Set();
+    for (const e of eggSnap) {
+      seen.add(e.id);
+      let v = eggViews.get(e.id);
+      if (!v) { v = makeEggView(e); eggViews.set(e.id, v); }
+      const laid = e.t >= 0;
+      // Running in: p goes 0 -> 1 as the warning runs out. Afterwards, out counts the run away.
+      const p = laid ? 1 : 1 - Math.min(1, -e.t / EGG_WARN);
+      if (laid) v.out += dt;
+      const k = laid ? Math.min(1, v.out / 0.9) : 1 - p;
+      const hx = e.x + (v.from[0] - e.x) * k, hz = e.z + (v.from[1] - e.z) * k;
+      v.hen.visible = !laid || v.out < 0.9;
+      v.hen.position.set(hx, Math.abs(Math.sin(time * 16)) * 0.08, hz);
+      const [tx, tz] = laid ? v.from : [e.x, e.z];
+      v.hen.rotation.y = Math.atan2(-(tz - hz), tx - hx);
+      v.hen.userData.head.rotation.z = Math.sin(time * 18) * 0.25;
+      v.ring.visible = !laid;
+      v.ring.material.opacity = 0.35 + 0.5 * Math.abs(Math.sin(time * (8 + 10 * p)));
+      v.ring.scale.setScalar(1.2 - 0.3 * p);
+      v.egg.visible = laid;
+      // About to hatch: it rocks.
+      v.egg.rotation.z = laid && e.t < 1.5 ? Math.sin(time * 20) * 0.25 : 0;
+    }
+    for (const [id, v] of eggViews) if (!seen.has(id)) { scene.remove(v.group); eggViews.delete(id); }
   }
 
   function celebrate(slot, final) { party = { slot, final, t: 0 }; }
@@ -224,6 +286,7 @@ export function createScene(canvas, { low = false } = {}) {
     instant = direct;
     snap.tops.forEach((s, i) => { if (tops[i]) tops[i].target = s; });
     dogTarget = snap.dog;
+    eggSnap = snap.eggs || [];
   }
 
   function fx(e) {
@@ -262,7 +325,21 @@ export function createScene(canvas, { low = false } = {}) {
         shake = Math.max(shake, 0.7);
         break;
       case 'bark':
-        effects.puff(x, 0.05, z, { n: 8, size: 0.4 });
+        effects.puff(x, 0.05, z, { n: 12, speed: 1.8, size: 0.45 });
+        effects.pow(x, 1.0, z, 'ARF!', 1.1);
+        shake = Math.max(shake, 0.4);
+        break;
+      case 'egg':
+        effects.puff(x, 0.05, z, { n: 6, size: 0.3 });
+        effects.pow(x, 0.8, z, 'POK!', 0.9);
+        break;
+      case 'crack':
+        effects.pow(x, 0.9, z, 'PLOK!', 1);
+        effects.puff(x, 0.05, z, { n: 10, speed: 1.2, size: 0.35, color: '#f7d154' });
+        effects.ring(x, z, '#f5b02e', 0.8, 0.4);
+        break;
+      case 'hatch':
+        effects.puff(x, 0.05, z, { n: 8, size: 0.3, color: '#fff3c8' });
         break;
       case 'ability': {
         const color = PLAYER_COLORS[e.slot];
@@ -429,13 +506,25 @@ export function createScene(canvas, { low = false } = {}) {
     time += dt;
     tops.forEach((t, i) => t && updateTop(t, dt, i));
     if (dogTarget) {
+      if (!dog.visible) dog.position.x = dogTarget.x;
       dog.visible = true;
       dog.position.x += (dogTarget.x - dog.position.x) * (instant ? 1 : 1 - Math.exp(-dt * 12));
       dog.position.z = dogTarget.z;
       dog.rotation.y = dogTarget.dir > 0 ? 0 : Math.PI;
-      dog.userData.legs.forEach((l, i) => { l.rotation.z = Math.sin(time * 22 + (i % 2) * Math.PI) * 0.7; });
+      const waiting = dogTarget.warn > 0;
+      // Waiting at the edge it hops on the spot; then it runs.
+      dog.position.y = waiting ? Math.abs(Math.sin(time * 9)) * 0.12 : 0;
+      dog.userData.legs.forEach((l, i) => { l.rotation.z = waiting ? 0 : Math.sin(time * 22 + (i % 2) * Math.PI) * 0.7; });
       dog.userData.tail.rotation.x = Math.sin(time * 30) * 0.5;
-    } else dog.visible = false;
+      lane.visible = waiting;
+      if (waiting) {
+        lane.position.z = dogTarget.z;
+        lane.rotation.z = dogTarget.dir > 0 ? 0 : Math.PI;
+        lane.material.map.offset.x -= dt * 1.5;
+        lane.material.opacity = 0.35 + 0.35 * Math.abs(Math.sin(time * 10));
+      }
+    } else { dog.visible = false; lane.visible = false; }
+    updateEggs(dt);
     people.forEach((p, s) => {
       if (!p) return;
       // Watch your own top, slump when it falls; the round winner cheers. The throw plays out on its own.

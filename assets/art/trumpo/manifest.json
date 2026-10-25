@@ -1,0 +1,52 @@
+{
+  "generator": "OpenAI built-in image_gen",
+  "format": "Transparent PNG",
+  "purpose": "Standalone base art for selection cards, ability buttons, reveals, and promotional compositions. Not model textures or animation sprites.",
+  "assets": [
+    {
+      "id": "kidlat",
+      "name": "Kidlat",
+      "power": "Lightning Strike",
+      "color": "#ffd23f",
+      "description": "Storm-forged wood and golden lightning.",
+      "trumpo": "trumpos/kidlat.png",
+      "skill": "skills/kidlat.png"
+    },
+    {
+      "id": "tikbalang",
+      "name": "Tikbalang",
+      "power": "Tikbalang Dash",
+      "color": "#e63946",
+      "description": "Carved horse crest, iron rim, crimson momentum.",
+      "trumpo": "trumpos/tikbalang.png",
+      "skill": "skills/tikbalang.png"
+    },
+    {
+      "id": "agimat",
+      "name": "Agimat",
+      "power": "Amulet Shield",
+      "color": "#2a9d8f",
+      "description": "Jade lacquer, antique brass and a golden ward.",
+      "trumpo": "trumpos/agimat.png",
+      "skill": "skills/agimat.png"
+    },
+    {
+      "id": "diwata",
+      "name": "Diwata",
+      "power": "Diwata’s Blessing",
+      "color": "#f6bdc0",
+      "description": "Pearlescent blossoms, violet wood and restorative light.",
+      "trumpo": "trumpos/diwata.png",
+      "skill": "skills/diwata.png"
+    },
+    {
+      "id": "bakunawa",
+      "name": "Bakunawa",
+      "power": "Eclipse",
+      "color": "#5bc0be",
+      "description": "A moon-devouring serpent and abyssal teal currents.",
+      "trumpo": "trumpos/bakunawa.png",
+      "skill": "skills/bakunawa.png"
+    }
+  ]
+}

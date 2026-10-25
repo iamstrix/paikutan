@@ -225,8 +225,10 @@ function commentary(e) {
       }[e.top]);
       break;
     }
-    case 'dog': say('Uy! Asong gala! A stray dog runs through the circle!'); break;
-    case 'bark': say(`Arf! The dog bumped ${n(e.slot)}!`); break;
+    case 'dogWarn': say('Uy! Asong gala! A stray dog is about to charge. Get out of the red lane!'); break;
+    case 'bark': say(`Arf! The dog knocks ${n(e.slot)} aside!`); break;
+    case 'eggWarn': say('Putak! A hen is running into the circle…'); break;
+    case 'crack': say(`${n(e.slot)} smashes the egg!`); break;
     case 'fall': say(`${n(e.slot)}'s trumpo topples. Natumba!`); break;
     case 'out': say(`${n(e.slot)} is knocked out of the circle. Labas!`); break;
   }

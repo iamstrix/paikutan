@@ -10,6 +10,10 @@ export const LATE_T = 35;        // after this, spin drains twice as fast
 export const MAX_T = 70;
 export const BOOST_CD = 2.5;     // seconds between dashes
 const BOOST_V = 6, BOOST_COST = 0.04;
+export const DOG_WARN = 2;       // seconds the dog's lane shows before it runs
+export const EGG_WARN = 1.6;     // the hen's run in, from the warning ring to the laid egg
+export const EGG_R = 0.3;
+const EGG_LIE = 10, EGG_BREAK = 3.5, EGG_MAX = 2;
 
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 
@@ -32,7 +36,9 @@ export function createWorld(p0, p1, rand = Math.random) {
   return {
     t: 0, rand, events: [], over: false, winner: -1, reason: '',
     tops: [makeTop(0, p0.char, p0.top), makeTop(1, p1.char, p1.top)],
-    dog: null, dogDone: false, dogAt: 14 + rand() * 10,
+    // Rounds often end inside 10 s, so the barangay shows up early: the dog by 6-12 s, hens from 3.5 s.
+    dog: null, dogDone: false, dogAt: 6 + rand() * 6,
+    eggs: [], eggId: 0, nextEgg: 3.5 + rand() * 1.5,
   };
 }
 
@@ -160,26 +166,80 @@ function collide(w) {
   }
 }
 
-// Asong gala: a stray dog runs through once per round and bumps whatever it touches.
+// Asong gala: a stray dog runs through once per round. It waits at the edge for DOG_WARN seconds
+// (its lane shows on the ground), then charges straight along it and knocks whatever it touches.
 function strayDog(w, dt) {
   if (!w.dog && !w.dogDone && w.t >= w.dogAt) {
     const dir = w.rand() < 0.5 ? 1 : -1;
-    w.dog = { x: -8.5 * dir, z: (w.rand() - 0.5) * 5, vx: 6 * dir, hit: [false, false] };
-    ev(w, 'dog', {});
+    w.dog = { x: -8.5 * dir, z: (w.rand() - 0.5) * 5, vx: 6 * dir, hit: [false, false], warn: DOG_WARN };
+    ev(w, 'dogWarn', { z: w.dog.z, dir });
   }
   const dog = w.dog;
   if (!dog) return;
+  if (dog.warn > 0) {
+    dog.warn -= dt;
+    if (dog.warn <= 0) ev(w, 'dog', {});
+    return;
+  }
   dog.x += dog.vx * dt;
   for (const tp of w.tops) {
     if (!tp.launched || !tp.alive || dog.hit[tp.slot]) continue;
     if (Math.hypot(tp.x - dog.x, tp.z - dog.z) < 0.9) {
       dog.hit[tp.slot] = true;
-      tp.vx += dog.vx * 0.5;
-      tp.vz += Math.sign(tp.z - dog.z || 1) * 2;
+      // About a dash's worth of shove, plus a jolt. Agimat's shield takes most of it.
+      const k = tp.shield > 0 ? 0.4 : 1;
+      tp.vx += dog.vx * 0.9 * k;
+      tp.vz += Math.sign(tp.z - dog.z || 1) * 3 * k;
+      tp.spin -= 0.03 * k;
+      tp.wobble += 0.15 * k * wobbleGain(tp);
       ev(w, 'bark', { x: tp.x, z: tp.z, slot: tp.slot });
     }
   }
   if (Math.abs(dog.x) > 9) { w.dog = null; w.dogDone = true; }
+}
+
+// Manok: now and then a hen runs into the circle (a ring warns where), lays an egg and runs off.
+// The egg is a bump tops bounce off (tromPOW's mango bump), until it hatches or a hard hit smashes it.
+function hens(w, dt) {
+  const live = w.tops.filter(tp => tp.launched && tp.alive);
+  if (live.length === 2 && w.t >= w.nextEgg) {
+    w.nextEgg = w.t + 5 + w.rand() * 3;
+    for (let k = 0; k < 8 && w.eggs.length < EGG_MAX; k++) {
+      // Somewhere inside the circle, clear of both tops.
+      const a = w.rand() * Math.PI * 2, r = 1 + w.rand() * (ARENA_R - 2);
+      const x = Math.cos(a) * r, z = Math.sin(a) * r;
+      if (live.every(tp => Math.hypot(tp.x - x, tp.z - z) > 1.5)) {
+        w.eggs.push({ id: ++w.eggId, x, z, t: -EGG_WARN });
+        ev(w, 'eggWarn', { x, z });
+        break;
+      }
+    }
+  }
+  for (let i = w.eggs.length - 1; i >= 0; i--) {
+    const egg = w.eggs[i];
+    if (egg.t < 0) {
+      egg.t += dt;
+      if (egg.t >= 0) { egg.t = EGG_LIE; ev(w, 'egg', { x: egg.x, z: egg.z }); }
+      continue;
+    }
+    egg.t -= dt;
+    if (egg.t <= 0) { w.eggs.splice(i, 1); ev(w, 'hatch', { x: egg.x, z: egg.z }); continue; }
+    for (const tp of live) {
+      const dx = tp.x - egg.x, dz = tp.z - egg.z, d = Math.hypot(dx, dz);
+      if (d >= TOP_R + EGG_R || d === 0) continue;
+      const nx = dx / d, nz = dz / d, vn = tp.vx * nx + tp.vz * nz;
+      if (-vn > EGG_BREAK) {
+        // Smashed: the top ploughs through, a little slower.
+        tp.vx *= 0.8; tp.vz *= 0.8;
+        w.eggs.splice(i, 1);
+        ev(w, 'crack', { x: egg.x, z: egg.z, slot: tp.slot });
+        break;
+      }
+      tp.x = egg.x + nx * (TOP_R + EGG_R);
+      tp.z = egg.z + nz * (TOP_R + EGG_R);
+      if (vn < 0) { tp.vx -= 1.6 * vn * nx; tp.vz -= 1.6 * vn * nz; }
+    }
+  }
 }
 
 export function step(w, dt = STEP) {
@@ -231,6 +291,7 @@ export function step(w, dt = STEP) {
   }
   collide(w);
   strayDog(w, dt);
+  hens(w, dt);
 
   for (const tp of w.tops) {
     if (!tp.launched || !tp.alive) continue;
@@ -265,7 +326,9 @@ export function snapshot(w) {
     t: r2(w.t),
     tops: w.tops.map(tp => [r2(tp.x), r2(tp.z), r3(Math.max(0, tp.spin)), r3(tp.wobble),
       +tp.launched, +tp.alive, +tp.out, r2(tp.charge), +(tp.shield > 0), +(tp.invert > 0), +(tp.dash > 0), r2(tp.wx || 0), r2(tp.wz || 0), r2(tp.boostCd)]),
-    dog: w.dog ? [r2(w.dog.x), r2(w.dog.z), Math.sign(w.dog.vx)] : null,
+    dog: w.dog ? [r2(w.dog.x), r2(w.dog.z), Math.sign(w.dog.vx), r2(Math.max(0, w.dog.warn))] : null,
+    // t < 0: the hen is still running in (seconds left); t > 0: the egg is down.
+    eggs: w.eggs.map(e => [e.id, r2(e.x), r2(e.z), r2(e.t)]),
   };
 }
 
@@ -274,6 +337,7 @@ export function decodeSnap(s) {
     t: s.t,
     tops: s.tops.map(a => ({ x: a[0], z: a[1], spin: a[2], wobble: a[3], launched: !!a[4], alive: !!a[5],
       out: !!a[6], charge: a[7], shield: !!a[8], invert: !!a[9], dash: !!a[10], wx: a[11] || 0, wz: a[12] || 0, boostCd: a[13] || 0 })),
-    dog: s.dog && { x: s.dog[0], z: s.dog[1], dir: s.dog[2] },
+    dog: s.dog && { x: s.dog[0], z: s.dog[1], dir: s.dog[2], warn: s.dog[3] || 0 },
+    eggs: (s.eggs || []).map(a => ({ id: a[0], x: a[1], z: a[2], t: a[3] })),
   };
 }
