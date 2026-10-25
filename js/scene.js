@@ -1,15 +1,15 @@
 // three.js view: the barangay around the chalk circle, the trumpos, the players and effects.
 // Used by the desktop spectator and the phones (which follow host snapshots).
 import * as THREE from 'three';
-import { ARENA_R, TOP_R, LAUNCH_Z, EGG_WARN, EGG_R } from './sim.js';
+import { ARENA_R, TOP_R, LAUNCH_Z, EGG_WARN, EGG_R, MAX_SEATS, seatDir } from './sim.js';
 import { TOPS, CHARACTERS, PLAYER_COLORS, byId } from './data.js';
 import { buildBarangay, WORLD_SCALE } from './world/barangay.js';
 import { createAtmosphere } from './world/atmosphere.js';
 import { buildTrompo } from './entities/trompo.js';
-import { buildSigil } from './entities/mythic.js';
 import { Avatar } from './entities/avatar.js';
 import { Critters, chicken } from './entities/critters.js';
-import { Effects, CLASH_WORDS, POWER_WORDS } from './fx/effects.js';
+import { Effects, CLASH_WORDS } from './fx/effects.js';
+import { SkillEffects } from './fx/skills.js';
 
 const CLOCK = 15 * 60 + 30; // merienda time: warm light, lamps still off
 
@@ -58,12 +58,6 @@ function makeTop(topId, slot, low) {
   // Coloured chalk ring under each top shows whose it is.
   const ring = new THREE.Mesh(new THREE.RingGeometry(0.5, 0.6, 40), new THREE.MeshBasicMaterial({ color: PLAYER_COLORS[slot], transparent: true, opacity: 0.85 }));
   ring.rotation.x = -Math.PI / 2; ring.position.y = 0.02;
-  const shield = new THREE.Mesh(new THREE.SphereGeometry(0.64, low ? 12 : 20, 12), new THREE.MeshBasicMaterial({ color: '#7fffd4', transparent: true, opacity: 0.12, depthWrite: false }));
-  shield.position.y = 0.45; shield.visible = false;
-  const ward = buildSigil('agimat', low, true);
-  ward.scale.setScalar(2.8); ward.position.y = 0.13; ward.visible = false;
-  const curse = buildSigil('bakunawa', low, true);
-  curse.scale.setScalar(2.8); curse.position.y = 0.22; curse.visible = false;
   // Ground arrow showing where the player is steering.
   const shape = new THREE.Shape();
   shape.moveTo(-0.07, 0.65); shape.lineTo(0.07, 0.65); shape.lineTo(0.07, 1.2); shape.lineTo(0.2, 1.2);
@@ -72,20 +66,28 @@ function makeTop(topId, slot, low) {
   arrowMesh.rotation.x = -Math.PI / 2;
   const arrow = new THREE.Group();
   arrow.position.y = 0.025; arrow.visible = false; arrow.add(arrowMesh);
-  root.add(ring, shield, ward, curse, arrow);
-  return { root, precess, tilt, spinner, ring, shield, ward, curse, arrow, aura: model.aura, topId, vfxTime: 0, auraMaterials: [...new Set(model.aura.children.map(o => o.material))], blur: model.blur, blob: model.blob, prec: rand(0, 6), drop: 0, state: null, target: null, wasLaunched: false, fallT: 0 };
+  root.add(ring, arrow);
+  return { root, precess, tilt, spinner, ring, arrow, aura: model.aura, topId, vfxTime: 0, auraMaterials: [...new Set(model.aura.children.map(o => o.material))], blur: model.blur, blob: model.blob, prec: rand(0, 6), drop: 0, state: null, target: null, wasLaunched: false, fallT: 0 };
 }
 
 // Our characters wear tromPOW's closest outfits: Tambay is his Mang Totoy, Aling Nena his Tita Marites.
 const CHAR_MODEL = { tambay: 'totoy', tindera: 'marites' };
 
 // A player as one of tromPOW's big-head characters, scaled into our world like the barangay.
-function makePerson(charId, slot) {
+function makePerson(charId, slot, brawl) {
   const c = byId(CHARACTERS, charId);
   const avatar = new Avatar(CHAR_MODEL[c.id] || c.id, c.color);
   const root = avatar.group;
   root.scale.setScalar(WORLD_SCALE);
   root.traverse(o => { if (o.isMesh) o.castShadow = true; });
+  if (brawl) {
+    // A brawl rings the circle with players, each well back behind their own line and a step to the
+    // side (the same side as in 1v1): any closer, the ones nearest the TV camera hide the circle.
+    const [sx, sz] = seatDir(slot), back = ARENA_R + 2.8;
+    root.position.set(sx * back - sz * 0.9, 0, sz * back + sx * 0.9);
+    root.rotation.y = Math.atan2(-sx, -sz);
+    return { root, avatar };
+  }
   // Beside their own throwing line, on their right, facing the circle.
   const sz = slot === 0 ? 1 : -1;
   // Out to the side: these characters are big enough to cover the circle from the phone camera.
@@ -126,10 +128,17 @@ function buildCircle(scene) {
   const chalk = new THREE.Mesh(new THREE.RingGeometry(ARENA_R - 0.07, ARENA_R + 0.07, 128), new THREE.MeshBasicMaterial({ color: '#fbf6ea', transparent: true, opacity: 0.9 }));
   chalk.rotation.x = -Math.PI / 2; chalk.position.y = 0.012;
   scene.add(chalk);
-  [0, 1].forEach(s => {
+  // One throwing line per seat; a brawl shows the lines of the seats in use.
+  chalk.userData.lines = Array.from({ length: MAX_SEATS }, (_, s) => {
+    const [sx, sz] = seatDir(s);
+    const seat = new THREE.Group();
+    seat.rotation.y = Math.atan2(sx, sz);
     const line = new THREE.Mesh(new THREE.PlaneGeometry(1.6, 0.12), new THREE.MeshBasicMaterial({ color: PLAYER_COLORS[s], transparent: true, opacity: 0.8 }));
-    line.rotation.x = -Math.PI / 2; line.position.set(0, 0.013, (s === 0 ? 1 : -1) * (LAUNCH_Z + 0.6));
-    scene.add(line);
+    line.rotation.x = -Math.PI / 2; line.position.set(0, 0.013, LAUNCH_Z + 0.6);
+    seat.add(line);
+    seat.visible = s < 2;
+    scene.add(seat);
+    return seat;
   });
   return chalk;
 }
@@ -192,6 +201,8 @@ export function createScene(canvas, { low = false } = {}) {
   const effects = new Effects(Math.random);
   effects.group.scale.setScalar(WORLD_SCALE);
   scene.add(effects.group);
+  const skills = new SkillEffects({ low });
+  scene.add(skills.group);
   const u = v => v / WORLD_SCALE;
   function pop(x, z, color, power) {
     flash.color.set(color); flash.position.set(x, 3, z); flash.intensity = power;
@@ -199,22 +210,32 @@ export function createScene(canvas, { low = false } = {}) {
 
   let tops = [null, null];
   let topIds = [null, null];
-  let people = [null, null], charIds = [null, null];
+  let people = [null, null], charIds = [null, null], wasBrawl = false;
   let shake = 0, eclipse = 0, time = 0;
   let view = 'spectator';
   // Spectator camera: 'auto', 'top' (top-down), 'close' (low, wheel-height chase), 'orbit'.
   let camMode = 'auto';
   let party = null; // winner celebration: { slot, final, t }
-  const localSteer = [null, null]; // this device's own steering, drawn without waiting for the host
+  const localSteer = []; // this device's own steering, drawn without waiting for the host
   let own = -1; // slot this device plays; -1 for a spectator screen, which shows both arrows
   let instant = true;
   let dogTarget = null;
   const camPos = new THREE.Vector3(), camLook = new THREE.Vector3();
 
   function setPlayers(players) {
-    for (const s of [0, 1]) {
-      const id = players[s] && players[s].top;
-      if (id === topIds[s]) continue;
+    // 1v1 has two seats, a brawl up to eight; switching modes clears the seats no longer used.
+    const brawl = players.length > 2;
+    if (brawl !== wasBrawl) {
+      wasBrawl = brawl;
+      people.forEach(p => p && scene.remove(p.root));
+      people = []; charIds = [];
+    }
+    chalk.userData.lines.forEach((line, s) => { line.visible = brawl ? !!players[s] : s < 2; });
+    const n = Math.max(players.length, tops.length, people.length);
+    for (let s = 0; s < n; s++) {
+      const id = (players[s] && players[s].top) || null;
+      if (id === (topIds[s] || null)) continue;
+      skills.cancel(s);
       if (tops[s]) {
         scene.remove(tops[s].root);
         tops[s].root.traverse(o => {
@@ -228,12 +249,12 @@ export function createScene(canvas, { low = false } = {}) {
       tops[s] = id ? makeTop(id, s, low) : null;
       if (tops[s]) { tops[s].root.visible = false; scene.add(tops[s].root); }
     }
-    for (const s of [0, 1]) {
-      const id = players[s] && players[s].char;
-      if (id === charIds[s]) continue;
+    for (let s = 0; s < n; s++) {
+      const id = (players[s] && players[s].char) || null;
+      if (id === (charIds[s] || null)) continue;
       if (people[s]) scene.remove(people[s].root);
       charIds[s] = id;
-      people[s] = id ? makePerson(id, s) : null;
+      people[s] = id ? makePerson(id, s, brawl) : null;
       if (people[s]) scene.add(people[s].root);
     }
   }
@@ -245,7 +266,7 @@ export function createScene(canvas, { low = false } = {}) {
     for (const v of eggViews.values()) scene.remove(v.group);
     eggViews.clear(); eggSnap = []; ringR = ARENA_R;
     party = null;
-    effects.reset(); eclipse = 0;
+    effects.reset(); skills.reset(); eclipse = 0;
   }
 
   function makeEggView(e) {
@@ -297,8 +318,8 @@ export function createScene(canvas, { low = false } = {}) {
   function setCam(m) { camMode = m; }
   // slot < 0 clears it (spectator). A player device only shows its own arrow, never the rival's.
   function setLocalSteer(slot, v) {
-    own = slot === 0 || slot === 1 ? slot : -1;
-    localSteer[0] = localSteer[1] = null;
+    own = slot >= 0 ? slot : -1;
+    localSteer.length = 0;
     if (own >= 0) localSteer[own] = v;
   }
 
@@ -314,6 +335,7 @@ export function createScene(canvas, { low = false } = {}) {
     const x = u(e.x), z = u(e.z), tx = u(e.tx), tz = u(e.tz);
     switch (e.type) {
       case 'hit': {
+        skills.hit(e.x, e.z, e.i);
         const power = e.i * 4;
         effects.spark(x, 0.3, z, 8 + Math.floor(power * 5), power);
         effects.puff(x, 0.05, z, { n: 4 + Math.floor(power * 2), size: 0.35 });
@@ -363,6 +385,7 @@ export function createScene(canvas, { low = false } = {}) {
         effects.puff(x, 0.05, z, { n: 8, size: 0.3, color: '#fff3c8' });
         break;
       case 'stomp':
+        skills.stomp(e.slot);
         // The end of a Tikbalang stampede: hooves come down.
         effects.puff(x, 0.05, z, { n: 18, speed: 2.4, size: 0.5 });
         effects.ring(x, z, '#e63946', u(2), 0.5); // the stomp's 2 m reach
@@ -371,11 +394,10 @@ export function createScene(canvas, { low = false } = {}) {
         break;
       case 'ability': {
         const source = tops[e.slot];
-        if (source) source.vfxTime = e.top === 'tikbalang' ? 0.8 : 1.2;
-        const strike = e.top === 'kidlat' || e.top === 'bakunawa';
-        effects.manifest(e.top, strike ? tx : x, strike ? tz : z, Math.atan2(tx - x, tz - z));
+        if (source) source.vfxTime = 1.2;
+        skills.cast(e.top, { slot: e.slot, target: e.target ?? 1-e.slot, x: e.x, z: e.z, tx: e.tx, tz: e.tz });
         if (e.top === 'kidlat') {
-          effects.lightning(tx, tz);
+          skills.hitTarget(e.target ?? 1-e.slot);
           pop(e.tx, e.tz, '#e8f4ff', 60); shake = 0.9;
         } else if (e.top === 'tikbalang') {
           effects.puff(x, 0.05, z, { n: 12, speed: 2.2, size: 0.45 });
@@ -388,12 +410,11 @@ export function createScene(canvas, { low = false } = {}) {
           effects.sparkle(x, z);
           pop(e.x, e.z, '#ffb3e0', 50);
         } else if (e.top === 'bakunawa') {
-          eclipse = 5;
+          eclipse = Math.max(eclipse, 0.12);
           effects.ring(tx, tz, '#5bc0be', 1.6, 0.8);
           effects.puff(tx, 0.05, tz, { n: 10, color: '#137d89', size: 0.5 });
           shake = Math.max(shake, 0.5);
         }
-        effects.pow(strike ? tx : x, 1.2, strike ? tz : z, POWER_WORDS[e.top] ?? 'POW!', 1.2);
         break;
       }
     }
@@ -419,7 +440,7 @@ export function createScene(canvas, { low = false } = {}) {
     for (const key of ['x', 'z', 'spin', 'wobble']) st[key] += (s[key] - st[key]) * k;
     Object.assign(st, { launched: s.launched, alive: s.alive, out: s.out, shield: s.shield, invert: s.invert, dash: s.dash, charge: s.charge });
     t.root.visible = st.launched;
-    if (!st.launched) return;
+    if (!st.launched) { skills.track(slot, st); return; }
     if (!t.wasLaunched) { t.wasLaunched = true; t.drop = 1; }
     t.drop = Math.max(0, t.drop - dt * 4);
     t.root.position.set(st.x, t.drop * t.drop * 1.5, st.z);
@@ -436,6 +457,7 @@ export function createScene(canvas, { low = false } = {}) {
       t.root.position.y = 0.3 * t.fallT;
       t.spinner.rotation.y -= dt * 3 * (1 - t.fallT);
     }
+    skills.track(slot, { top: t.topId, x: st.x, z: st.z, y: t.root.position.y, alive: st.alive, launched: st.launched, shield: st.shield, invert: st.invert, dash: st.dash });
     // Always shown while alive: bright when steering, dimmed on the last direction when not
     // (tilt has a small dead zone, so hiding it made the arrow flicker).
     const [ax, az] = localSteer[slot] || [s.wx || 0, s.wz || 0];
@@ -453,37 +475,24 @@ export function createScene(canvas, { low = false } = {}) {
     t.blur.rotation.z -= dt * (st.alive ? Math.min(st.spin * 110, 100) : 3 * (1 - t.fallT));
     t.blob.position.y = 0.015 - t.root.position.y;
     t.blob.material.opacity = 1 / (1 + t.root.position.y * 2);
-    t.shield.visible = st.shield && st.alive;
-    t.shield.material.opacity = 0.09 + Math.sin(time * 8) * 0.035;
-    t.ward.visible = t.shield.visible;
-    t.ward.rotation.y = time * 0.45;
-    t.curse.visible = st.invert && st.alive;
-    t.curse.rotation.y = -time * 1.6;
-    t.ring.material.color.set(st.invert ? '#5bc0be' : PLAYER_COLORS[slot]);
+    // Curse art is a separate marker; player ownership stays red/blue throughout.
+    t.ring.material.color.set(PLAYER_COLORS[slot]);
     t.vfxTime = Math.max(0, t.vfxTime - dt);
     t.aura.visible = st.alive;
     t.aura.rotation.y -= dt * (t.topId === 'bakunawa' ? -0.55 : 0.4);
     const auraAlpha = 0.1 + 0.05 * Math.sin(time * 3) + 0.17 * Math.min(1, st.charge || 0) + (t.vfxTime > 0 ? 0.2 : 0);
     for (const m of t.auraMaterials) m.opacity = auraAlpha;
-    // Time-based trails stay equally dense on 30 Hz phones and fast desktop screens.
-    if (st.alive && t.topId === 'tikbalang' && st.dash) {
-      t.trailT = (t.trailT || 0) + dt;
-      if (t.trailT >= 0.045) {
-        t.trailT %= 0.045;
-        effects.puff(u(st.x), 0.12, u(st.z), { n: low ? 2 : 4, color: '#e63946', size: 0.22, speed: 0.5, life: 0.45, gravity: -0.2 });
-      }
-    } else t.trailT = 0;
     if (st.alive && st.wobble > 0.55 && Math.random() < st.wobble * 0.3) effects.puff(u(st.x), 0.04, u(st.z), { n: 1, size: 0.22, speed: 0.3, up: 0.3, life: 0.7 });
   }
 
   function updateCamera(dt) {
     const a = camera.aspect;
     let pos, look;
-    if (view === 0 || view === 1) {
-      const sz = view === 0 ? 1 : -1;
+    if (typeof view === 'number' && view >= 0) {
+      const [sx, sz] = seatDir(view), back = a < 1 ? 9 : 9.5;
       // Phones: stand behind your own throwing line; pull back in portrait so the circle fits.
-      pos = new THREE.Vector3(0, a < 1 ? 10 : 8, sz * (a < 1 ? 9 : 9.5));
-      look = new THREE.Vector3(0, 0, -sz * 0.6);
+      pos = new THREE.Vector3(sx * back, a < 1 ? 10 : 8, sz * back);
+      look = new THREE.Vector3(-sx * 0.6, 0, -sz * 0.6);
     } else if (camMode === 'menu') {
       // Title screen: the circle on the right with the sari-sari store behind, room on the left for the menu.
       const sway = Math.sin(time * 0.1) * 0.6;
@@ -600,11 +609,12 @@ export function createScene(canvas, { low = false } = {}) {
     }
     shake = Math.max(0, shake - dt * 1.5);
     flash.intensity = Math.max(0, flash.intensity - dt * 150);
-    eclipse = Math.max(0, eclipse - dt);
-    const dark = Math.min(1, eclipse * 1.5) * 0.35;
-    atmosphere.setClock(CLOCK, dark);
+    const cursed = tops.some(t => t && t.state && t.state.alive && t.state.invert);
+    eclipse += ((cursed ? 0.28 : 0) - eclipse) * (1 - Math.exp(-dt * 6));
+    atmosphere.setClock(CLOCK, eclipse);
     updateCamera(dt);
     effects.update(dt, camera, canvas.clientHeight);
+    skills.update(dt, camera, canvas.clientHeight);
     atmosphere.follow(camera.position);
     renderer.render(scene, camera);
   }

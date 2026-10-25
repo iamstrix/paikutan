@@ -83,7 +83,7 @@ function onMessage(ev, p) {
   } else if (ev === 'fx') {
     p.forEach(e => { scene.fx(e); playFx(e); if (e.type === 'hit' && navigator.vibrate) navigator.vibrate(Math.round(20 + 60 * e.i)); });
   } else if (ev === 'full' && p.id === myId) {
-    $('#join-msg').textContent = 'This room already has two players.';
+    $('#join-msg').textContent = 'This room is full.';
     $('#join').disabled = false;
   }
 }

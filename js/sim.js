@@ -5,7 +5,11 @@ import { TOPS, byId } from './data.js';
 export const ARENA_R = 5;        // chalk circle radius
 export const TOP_R = 0.42;       // trumpo body radius
 export const STEP = 1 / 60;
-export const LAUNCH_Z = 4.2;     // where each player stands (slot 0 at +z, slot 1 at -z)
+export const LAUNCH_Z = 4.2;     // how far from the middle each player stands
+// Seats around the circle, as turns, in join order: the first two face off head to head,
+// the first four make a cross, the first eight an asterisk.
+const SEATS = [0, 0.5, 0.25, 0.75, 0.125, 0.625, 0.375, 0.875];
+export const MAX_SEATS = SEATS.length;
 // Sikip na!: from SQUEEZE_T the circle shrinks to SQUEEZE_R over SQUEEZE_DUR seconds, so every round ends.
 export const SQUEEZE_T = 20, SQUEEZE_DUR = 15, SQUEEZE_R = 3;
 export const MAX_T = 70;
@@ -18,37 +22,61 @@ const EGG_LIE = 10, EGG_BREAK = 3.5, EGG_MAX = 2;
 // Tikbalang Stampede: a steerable charge at double weight that gets through most of a shield,
 // ending in a stomp that shoves anything within STOMP_R.
 const STAMPEDE_T = 2, STOMP_R = 2;
+// A top that goes down within KO_T seconds of being hit is a knockout for whoever hit it.
+const KO_T = 3;
 
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+const snap0 = v => (Math.abs(v) < 1e-9 ? 0 : v);
 
-export function makeTop(slot, charId, topId) {
+// Unit vector from the middle toward a slot's seat: slot 0 at +z, slot 1 at -z, slot 2 at +x, ...
+export function seatDir(slot) {
+  const a = SEATS[slot % MAX_SEATS] * Math.PI * 2;
+  return [snap0(Math.sin(a)), snap0(Math.cos(a))];
+}
+
+// An empty seat still gets a top that never launches, so tops[slot] always lines up with players[slot].
+export function makeTop(slot, charId, topId, seated = true) {
   const tp = byId(TOPS, topId);
+  const [sx, sz] = seatDir(slot);
   return {
-    slot, char: charId, top: tp.id,
+    slot, seated, char: charId, top: tp.id,
     mass: 1 + (tp.str - 1) * 0.1,
     decay: 1.2 - tp.lon * 0.07,
     sta: tp.sta,
-    launched: false, alive: true, out: false,
-    x: 0, z: slot === 0 ? LAUNCH_Z : -LAUNCH_Z, vx: 0, vz: 0,
+    launched: false, alive: seated, out: false,
+    x: sx * LAUNCH_Z, z: sz * LAUNCH_Z, vx: 0, vz: 0,
     spin: 0, wobble: 0, steady: 1,
-    charge: 0, shield: 0, invert: 0, dash: 0, stampede: 0, hitCd: 0, boostCd: 0,
+    charge: 0, shield: 0, invert: 0, dash: 0, stampede: 0, boostCd: 0, hitBy: -1, hitAt: -99,
     sx: 0, sy: 0, wantAbility: false, wantBoost: false,
   };
 }
 
-export function createWorld(p0, p1, rand = Math.random) {
+// seats: one entry per slot, { char, top } or null for an empty seat.
+export function createWorld(seats, rand = Math.random) {
+  const tops = seats.map((p, s) => (p ? makeTop(s, p.char, p.top) : makeTop(s, 'bata', 'kidlat', false)));
   return {
     t: 0, rand, events: [], over: false, winner: -1, reason: '', ring: ARENA_R, squeezed: false,
-    tops: [makeTop(0, p0.char, p0.top), makeTop(1, p1.char, p1.top)],
+    tops,
+    // Clash cooldowns per pair of tops, so in a brawl one hit does not shield a top from everyone else.
+    pairCd: {},
+    // Knocked-out tops in order: { slot, by } (by: the slot credited with the knockout, or -1).
+    elim: [],
+    eggMax: EGG_MAX + Math.max(0, Math.floor((tops.filter(tp => tp.seated).length - 2) / 2)),
     // Rounds often end inside 10 s, so the barangay shows up early: the dog by 6-12 s, hens from 3.5 s.
     dog: null, dogDone: false, dogAt: 6 + rand() * 6,
     eggs: [], eggId: 0, nextEgg: 3.5 + rand() * 1.5,
   };
 }
 
-// Player-local direction (x = right, y = away from the player) to world x/z and back.
-export const toWorld = (slot, x, y) => (slot === 0 ? [x, -y] : [-x, y]);
-export const toLocal = (slot, wx, wz) => (slot === 0 ? [wx, -wz] : [-wx, wz]);
+// Player-local direction (x = right, y = away from the player, toward the middle) to world x/z and back.
+export function toWorld(slot, x, y) {
+  const [s, c] = seatDir(slot);
+  return [x * c - y * s, -x * s - y * c];
+}
+export function toLocal(slot, wx, wz) {
+  const [s, c] = seatDir(slot);
+  return [wx * c - wz * s, -wx * s - wz * c];
+}
 
 const ev = (w, type, data) => w.events.push({ type, ...data });
 
@@ -57,12 +85,13 @@ const wobbleGain = tp => (1.6 - tp.sta * 0.2) * (1.25 - 0.5 * tp.steady);
 
 export function launch(w, slot, { spinPower = 0.3, steadiness = 0.4, throwPower = 0.2, angle = 0 }) {
   const tp = w.tops[slot];
-  if (tp.launched || w.over) return;
+  if (tp.launched || !tp.alive || w.over) return;
   const p = clamp(throwPower, 0, 1), a = clamp(angle, -0.6, 0.6), s = clamp(steadiness, 0, 1);
   const [fx, fz] = toWorld(slot, Math.sin(a), Math.cos(a));
+  const [sx, sz] = seatDir(slot);
   tp.launched = true;
-  tp.x = fx * (0.3 + p);
-  tp.z = (slot === 0 ? LAUNCH_Z : -LAUNCH_Z) + fz * (0.3 + p);
+  tp.x = sx * LAUNCH_Z + fx * (0.3 + p);
+  tp.z = sz * LAUNCH_Z + fz * (0.3 + p);
   tp.vx = fx * (1.5 + 5 * p);
   tp.vz = fz * (1.5 + 5 * p);
   tp.spin = clamp(0.45 + 0.4 * clamp(spinPower, 0, 1) + 0.15 * p, 0, 1);
@@ -72,6 +101,22 @@ export function launch(w, slot, { spinPower = 0.3, steadiness = 0.4, throwPower 
   ev(w, 'launch', { slot, x: tp.x, z: tp.z, p });
 }
 
+const live = tp => tp.launched && tp.alive;
+
+// Who a power aims at: the nearest rival still spinning, else the nearest one yet to land.
+export function rivalOf(w, tp) {
+  let best = null, bestD = Infinity, bestLive = false;
+  for (const o of w.tops) {
+    if (o === tp || !o.alive) continue;
+    const d = Math.hypot(o.x - tp.x, o.z - tp.z), l = live(o);
+    if ((l && !bestLive) || (l === bestLive && d < bestD)) { best = o; bestD = d; bestLive = l; }
+  }
+  return best;
+}
+
+// Credit for a knockout goes to the last rival that hit this top.
+const mark = (w, tp, by) => { tp.hitBy = by.slot; tp.hitAt = w.t; };
+
 function useAbility(w, tp, opp) {
   tp.charge = 0;
   const live = opp.launched && opp.alive;
@@ -80,6 +125,7 @@ function useAbility(w, tp, opp) {
     case 'kidlat':
       if (live) {
         const k = opp.shield > 0 ? 0.45 : 1;
+        mark(w, opp, tp);
         opp.spin -= 0.07 * k;
         opp.wobble += 0.12 * k;
         opp.vx += (dx / d) * 3 * k;
@@ -111,7 +157,7 @@ function useAbility(w, tp, opp) {
       }
       break;
   }
-  ev(w, 'ability', { slot: tp.slot, top: tp.top, x: tp.x, z: tp.z, tx: opp.x, tz: opp.z });
+  ev(w, 'ability', { slot: tp.slot, target: opp.slot, top: tp.top, x: tp.x, z: tp.z, tx: opp.x, tz: opp.z });
 }
 
 // Every top's quick dash: a burst toward where the player steers. It costs spin and adds
@@ -133,19 +179,22 @@ function boost(w, tp, wx, wz) {
 // against a stampede.
 const weight = (tp, vs) => tp.mass * (tp.dash > 0 ? 1.8 : 1) * (tp.shield > 0 && !(vs && vs.stampede > 0) ? 1.5 : 1);
 
-// The end of a stampede: a stomp that shoves a nearby rival away and rattles it.
-function stomp(w, tp, opp) {
+// The end of a stampede: a stomp that shoves every nearby rival away and rattles it.
+function stomp(w, tp) {
   ev(w, 'stomp', { slot: tp.slot, x: tp.x, z: tp.z });
-  if (!opp.launched || !opp.alive) return;
-  const dx = opp.x - tp.x, dz = opp.z - tp.z, d = Math.hypot(dx, dz) || 1;
-  if (d > STOMP_R) return;
-  const k = (1 - d / STOMP_R) * (opp.shield > 0 ? 0.6 : 1);
-  opp.vx += (dx / d) * 4 * k;
-  opp.vz += (dz / d) * 4 * k;
-  opp.wobble += 0.2 * k * wobbleGain(opp);
+  for (const opp of w.tops) {
+    if (opp === tp || !live(opp)) continue;
+    const dx = opp.x - tp.x, dz = opp.z - tp.z, d = Math.hypot(dx, dz) || 1;
+    if (d > STOMP_R) continue;
+    const k = (1 - d / STOMP_R) * (opp.shield > 0 ? 0.6 : 1);
+    mark(w, opp, tp);
+    opp.vx += (dx / d) * 4 * k;
+    opp.vz += (dz / d) * 4 * k;
+    opp.wobble += 0.2 * k * wobbleGain(opp);
+  }
 }
 
-function hitTop(tp, by, intensity) {
+function hitTop(w, tp, by, intensity) {
   // A shield takes 70% off a hit, but a stampede gets 60% through.
   const guard = tp.shield > 0 ? (by.stampede > 0 ? 0.6 : 0.3) : 1;
   const k = guard * intensity * weight(by, tp) / weight(tp, by);
@@ -153,12 +202,18 @@ function hitTop(tp, by, intensity) {
   // A slow top is much easier to knock over.
   tp.wobble += 0.13 * k * wobbleGain(tp) * (1.6 - tp.spin);
   tp.charge = Math.min(1, tp.charge + 0.08);
-  tp.hitCd = 0.35;
+  mark(w, tp, by);
 }
 
 function collide(w) {
-  const [a, b] = w.tops;
-  if (!a.launched || !b.launched || !a.alive || !b.alive) return;
+  const n = w.tops.length;
+  for (let i = 0; i < n; i++) {
+    for (let j = i + 1; j < n; j++) collidePair(w, w.tops[i], w.tops[j], i * n + j);
+  }
+}
+
+function collidePair(w, a, b, pair) {
+  if (!live(a) || !live(b)) return;
   const dx = b.x - a.x, dz = b.z - a.z, d = Math.hypot(dx, dz);
   if (d >= TOP_R * 2 || d === 0) return;
   const nx = dx / d, nz = dz / d;
@@ -167,7 +222,7 @@ function collide(w) {
   a.x -= nx * push * ia; a.z -= nz * push * ia;
   b.x += nx * push * ib; b.z += nz * push * ib;
   const vn = (b.vx - a.vx) * nx + (b.vz - a.vz) * nz;
-  const fresh = a.hitCd <= 0 && b.hitCd <= 0;
+  const fresh = !(w.pairCd[pair] > 0);
   let J = vn < 0 ? (-1.8 * vn) / (ia + ib) : 0;
   // Both tops spin the same way, so their rims grind in opposite directions and kick apart.
   const clash = fresh ? 1.4 * (a.spin + b.spin) : 0;
@@ -179,8 +234,9 @@ function collide(w) {
   a.vx += tx * 0.6 * b.spin; a.vz += tz * 0.6 * b.spin;
   b.vx -= tx * 0.6 * a.spin; b.vz -= tz * 0.6 * a.spin;
   const i = clamp((Math.abs(vn) + clash) / 7, 0.15, 1);
-  hitTop(a, b, i);
-  hitTop(b, a, i);
+  hitTop(w, a, b, i);
+  hitTop(w, b, a, i);
+  w.pairCd[pair] = 0.35;
   ev(w, 'hit', { x: (a.x + b.x) / 2, z: (a.z + b.z) / 2, i });
   // Agaw-ikot: a top that is behind on spin and dashes into the leader steals some spin.
   // Only on a dash, so it is a skill move rather than every bump. At most 40% of the gap
@@ -199,7 +255,7 @@ function collide(w) {
 function strayDog(w, dt) {
   if (!w.dog && !w.dogDone && w.t >= w.dogAt) {
     const dir = w.rand() < 0.5 ? 1 : -1;
-    w.dog = { x: -8.5 * dir, z: (w.rand() - 0.5) * 5, vx: 6 * dir, hit: [false, false], warn: DOG_WARN };
+    w.dog = { x: -8.5 * dir, z: (w.rand() - 0.5) * 5, vx: 6 * dir, hit: w.tops.map(() => false), warn: DOG_WARN };
     ev(w, 'dogWarn', { z: w.dog.z, dir });
   }
   const dog = w.dog;
@@ -229,14 +285,14 @@ function strayDog(w, dt) {
 // Manok: now and then a hen runs into the circle (a ring warns where), lays an egg and runs off.
 // The egg is a bump tops bounce off (tromPOW's mango bump), until it hatches or a hard hit smashes it.
 function hens(w, dt) {
-  const live = w.tops.filter(tp => tp.launched && tp.alive);
-  if (live.length === 2 && w.t >= w.nextEgg) {
+  const spinning = w.tops.filter(live);
+  if (spinning.length >= 2 && w.t >= w.nextEgg) {
     w.nextEgg = w.t + 5 + w.rand() * 3;
-    for (let k = 0; k < 8 && w.eggs.length < EGG_MAX; k++) {
-      // Somewhere inside the circle, clear of both tops.
+    for (let k = 0; k < 8 && w.eggs.length < w.eggMax; k++) {
+      // Somewhere inside the circle, clear of every top.
       const a = w.rand() * Math.PI * 2, r = 1 + w.rand() * Math.max(0.5, w.ring - 2);
       const x = Math.cos(a) * r, z = Math.sin(a) * r;
-      if (live.every(tp => Math.hypot(tp.x - x, tp.z - z) > 1.5)) {
+      if (spinning.every(tp => Math.hypot(tp.x - x, tp.z - z) > 1.5)) {
         w.eggs.push({ id: ++w.eggId, x, z, t: -EGG_WARN });
         ev(w, 'eggWarn', { x, z });
         break;
@@ -252,7 +308,7 @@ function hens(w, dt) {
     }
     egg.t -= dt;
     if (egg.t <= 0) { w.eggs.splice(i, 1); ev(w, 'hatch', { x: egg.x, z: egg.z }); continue; }
-    for (const tp of live) {
+    for (const tp of spinning) {
       const dx = tp.x - egg.x, dz = tp.z - egg.z, d = Math.hypot(dx, dz);
       if (d >= TOP_R + EGG_R || d === 0) continue;
       const nx = dx / d, nz = dz / d, vn = tp.vx * nx + tp.vz * nz;
@@ -277,17 +333,16 @@ export function step(w, dt = STEP) {
     if (!w.squeezed) { w.squeezed = true; ev(w, 'squeeze', {}); }
     w.ring = Math.max(SQUEEZE_R, ARENA_R - (w.t - SQUEEZE_T) / SQUEEZE_DUR * (ARENA_R - SQUEEZE_R));
   }
+  for (const k in w.pairCd) w.pairCd[k] = Math.max(0, w.pairCd[k] - dt);
   for (const tp of w.tops) {
     if (!tp.launched || !tp.alive) continue;
-    const opp = w.tops[1 - tp.slot];
     tp.shield = Math.max(0, tp.shield - dt);
     tp.invert = Math.max(0, tp.invert - dt);
     tp.dash = Math.max(0, tp.dash - dt);
     if (tp.stampede > 0) {
       tp.stampede -= dt;
-      if (tp.stampede <= 0) stomp(w, tp, opp);
+      if (tp.stampede <= 0) stomp(w, tp);
     }
-    tp.hitCd = Math.max(0, tp.hitCd - dt);
     tp.boostCd = Math.max(0, tp.boostCd - dt);
 
     let sx = tp.sx, sy = tp.sy;
@@ -316,45 +371,75 @@ export function step(w, dt = STEP) {
     const target = clamp((0.45 - tp.spin) / 0.45, 0, 1) * 0.85;
     if (tp.wobble < target) tp.wobble += (target - tp.wobble) * dt;
     else tp.wobble = Math.max(target, tp.wobble - dt * (0.015 + 0.012 * tp.sta));
-    // The top behind on spin charges its power up to 1.5x faster.
-    const behind = opp.launched && opp.alive ? clamp((opp.spin - tp.spin) / 0.3, 0, 1) : 0;
+    // A top behind the spin leader charges its power up to 1.5x faster.
+    let lead = -1;
+    for (const o of w.tops) if (o !== tp && live(o)) lead = Math.max(lead, o.spin);
+    const behind = lead >= 0 ? clamp((lead - tp.spin) / 0.3, 0, 1) : 0;
     tp.charge = Math.min(1, tp.charge + dt / 8 * (1 + 0.5 * behind));
     if (tp.wantAbility) {
       tp.wantAbility = false;
-      if (tp.charge >= 1) useAbility(w, tp, opp);
+      const opp = rivalOf(w, tp);
+      if (tp.charge >= 1 && opp) useAbility(w, tp, opp);
     }
   }
   collide(w);
   strayDog(w, dt);
   hens(w, dt);
 
-  // How much fight each top had left as it went down, for the tiebreak below.
-  const stand = [0, 0];
+  // Tops that go down this step, with how much fight each had left, for the tiebreak below.
+  const fell = [];
   for (const tp of w.tops) {
     if (!tp.launched || !tp.alive) continue;
-    stand[tp.slot] = tp.spin - 0.3 * tp.wobble;
+    const stand = tp.spin - 0.3 * tp.wobble;
     if (Math.hypot(tp.x, tp.z) > w.ring + TOP_R * 0.5) {
       tp.alive = false; tp.out = true;
-      ev(w, 'out', { slot: tp.slot, x: tp.x, z: tp.z });
     } else if (tp.spin <= 0.03 || tp.wobble >= 1) {
       tp.alive = false; tp.spin = 0;
-      ev(w, 'fall', { slot: tp.slot, x: tp.x, z: tp.z });
-    }
+    } else continue;
+    fell.push({ tp, stand });
+    knockOut(w, tp, tp.out ? 'out' : 'fall');
   }
-  const dead = w.tops.filter(tp => tp.launched && !tp.alive);
-  if (dead.length) {
-    w.over = true;
-    // Both down on the same step (usually one big clash): more spin left wins. A real tie is a draw.
-    const loser = dead.length === 1 ? dead[0] : Math.abs(stand[0] - stand[1]) < 0.01 ? null : w.tops[stand[0] < stand[1] ? 0 : 1];
-    if (!loser) { w.winner = -1; w.reason = 'draw'; }
-    else { w.winner = 1 - loser.slot; w.reason = loser.out ? 'out' : 'fall'; }
+  finish(w, fell);
+}
+
+function knockOut(w, tp, type) {
+  const by = tp.hitBy >= 0 && w.t - tp.hitAt < KO_T && w.tops[tp.hitBy].seated ? tp.hitBy : -1;
+  w.elim.push({ slot: tp.slot, by });
+  ev(w, type, { slot: tp.slot, x: tp.x, z: tp.z, by, left: w.tops.filter(o => o.seated && o.alive).length });
+}
+
+// The last top spinning wins. If the last ones all go down on the same step (usually one big
+// clash), the one with more spin left wins; a real tie is a draw.
+function finish(w, fell) {
+  if (w.over) return;
+  const standing = w.tops.filter(tp => tp.seated && tp.alive);
+  if (standing.length === 1) {
+    const last = fell.length ? fell[fell.length - 1].tp : w.tops[w.elim.length ? w.elim[w.elim.length - 1].slot : 0];
+    end(w, standing[0].slot, last.out ? 'out' : 'fall');
+  } else if (standing.length === 0) {
+    fell.sort((a, b) => b.stand - a.stand);
+    if (fell.length < 2 || Math.abs(fell[0].stand - fell[1].stand) < 0.01) end(w, -1, 'draw');
+    else end(w, fell[0].tp.slot, fell[1].tp.out ? 'out' : 'fall');
   } else if (w.t > MAX_T) {
-    w.over = true;
-    const [a, b] = w.tops;
-    w.winner = Math.abs(a.spin - b.spin) < 0.01 ? -1 : a.spin > b.spin ? 0 : 1;
-    w.reason = 'time';
+    standing.sort((a, b) => b.spin - a.spin);
+    end(w, Math.abs(standing[0].spin - standing[1].spin) < 0.01 ? -1 : standing[0].slot, 'time');
   }
-  if (w.over) ev(w, 'over', { winner: w.winner, reason: w.reason });
+}
+
+function end(w, winner, reason) {
+  w.over = true;
+  w.winner = winner;
+  w.reason = reason;
+  ev(w, 'over', { winner, reason });
+}
+
+// A player left mid-round: their top counts as out of the circle.
+export function forfeit(w, slot) {
+  const tp = w.tops[slot];
+  if (!tp || !tp.seated || !tp.alive || w.over) return;
+  tp.alive = false; tp.out = true;
+  knockOut(w, tp, 'out');
+  finish(w, []);
 }
 
 const r2 = v => Math.round(v * 100) / 100;

@@ -110,8 +110,8 @@ export const audio = {
       clearInterval(musicTimer); musicTimer = null;
     }
   },
-  // Continuous hum of a spinning top. Call every frame; spin 0 silences it.
-  hum(slot, spin, wobble) {
+  // Continuous hum of a spinning top. Call every frame; spin 0 silences it. level scales it down in a brawl.
+  hum(slot, spin, wobble, level = 1) {
     if (!ctx) return;
     let h = hums[slot];
     if (!h) {
@@ -128,9 +128,9 @@ export const audio = {
     const on = spin > 0.02 ? 1 : 0;
     h.o.frequency.setTargetAtTime(70 + spin * 150 + slot * 9, t, 0.05);
     h.f.frequency.setTargetAtTime(250 + spin * 1100, t, 0.05);
-    h.g.gain.setTargetAtTime(on * (0.025 + spin * 0.05), t, 0.08);
+    h.g.gain.setTargetAtTime(on * level * (0.025 + spin * 0.05), t, 0.08);
     h.lfo.frequency.setTargetAtTime(3 + wobble * 9, t, 0.1);
-    h.lg.gain.setTargetAtTime(on * wobble * 0.03, t, 0.1);
+    h.lg.gain.setTargetAtTime(on * level * wobble * 0.03, t, 0.1);
   },
   // Whoosh while drawing spin circles; level 0..1.
   whir(level) {

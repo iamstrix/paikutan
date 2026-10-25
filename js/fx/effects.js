@@ -4,7 +4,6 @@
 // and pass positions divided by that scale.
 import * as THREE from 'three';
 import { Particles } from './particles.js';
-import { buildSigil, MYTHIC } from '../entities/mythic.js';
 
 export const CLASH_WORDS = ['PAK!', 'POW!', 'TSUG!', 'BLAG!', 'BOGSH!'];
 export const POWER_WORDS = { kidlat: 'ZAP!', tikbalang: 'CHARGE!', agimat: 'SHIELD!', diwata: 'BLESSED!', bakunawa: 'ECLIPSE!' };
@@ -93,18 +92,11 @@ export class Effects {
     this.rings = [];
     this.pows = [];
     this.bolts = [];
-    this.manifestations = [];
     this.ringNext = 0;
     this.powNext = 0;
     this.powCooldown = 0;
     this.cam = new THREE.Vector3();
     this.group.add(this.dust.points, this.sparks.points);
-    // Two manifestations per power, reused across rounds instead of allocating per cast.
-    for (const id of Object.keys(MYTHIC)) for (let i = 0; i < 2; i++) {
-      const mesh = buildSigil(id, true, true, true);
-      mesh.visible = false; this.group.add(mesh);
-      this.manifestations.push({ id, mesh, t: 0, life: 1, heading: 0 });
-    }
     const ringGeo = new THREE.RingGeometry(0.82, 1, 48);
     ringGeo.rotateX(-Math.PI / 2);
     for (let i = 0; i < 16; i += 1) {
@@ -155,21 +147,7 @@ export class Effects {
     this.ring(x, z, '#ffffff', 0.8, 0.25);
   }
 
-  /** A horizontal mythic relief: visible from both the top camera and player cameras. */
-  manifest(id, x, z, heading = 0) {
-    const pool = this.manifestations.filter(m => m.id === id);
-    if (!pool.length) return;
-    const m = pool.find(m => !m.mesh.visible) || pool.reduce((a, b) => a.t > b.t ? a : b);
-    m.t = 0; m.life = id === 'diwata' ? 1.5 : id === 'bakunawa' ? 1.4 : 0.9;
-    m.heading = heading;
-    m.mesh.position.set(x, 0.22, z); m.mesh.rotation.set(0, heading, 0);
-    m.mesh.scale.setScalar(0.01); m.mesh.visible = true;
-    const color = MYTHIC[id].glow;
-    this.sparks.emit(x, 0.35, z, { n: 18, color, speed: 1.4, up: 1.3, life: 0.8, size: 0.1, grow: 0.5, gravity: 1 }, this.rng);
-  }
-
   reset() {
-    for (const m of this.manifestations) m.mesh.visible = false;
     for (const b of this.bolts) b.mesh.visible = false;
     for (const r of this.rings) r.mesh.visible = false;
     for (const p of this.pows) p.sprite.visible = false;
@@ -222,21 +200,6 @@ export class Effects {
     this.dust.update(dt, projScale);
     this.sparks.update(dt, projScale);
     this.powCooldown -= dt;
-
-    for (const m of this.manifestations) {
-      if (!m.mesh.visible) continue;
-      m.t += dt;
-      const k = Math.min(1, m.t / m.life);
-      const envelope = Math.min(1, k / 0.15) * (1 - k * k);
-      m.mesh.scale.setScalar((m.id === 'tikbalang' ? 5 : 6) * (0.55 + 0.45 * Math.min(1, k * 6)));
-      m.mesh.rotation.y = m.heading + k * (m.id === 'bakunawa' ? -2.2 : m.id === 'diwata' ? 1.2 : 0.35);
-      m.mesh.position.y = 0.22 + (m.id === 'diwata' ? k * 1.1 : Math.sin(k * Math.PI) * 0.2);
-      for (const child of m.mesh.children) {
-        child.material.transparent = true; child.material.depthWrite = false;
-        child.material.opacity = envelope * 0.75;
-      }
-      if (k >= 1) m.mesh.visible = false;
-    }
 
     for (const r of this.rings) {
       if (!r.mesh.visible) continue;

@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Paikutan sound effect audit</title>
+</head>
+<body>
+
+<h1>Paikutan sound effect audit</h1>
+<p>Sound effect references for each trumpo. Compiled 2026-10-25.</p>
+
+<h2>Current state</h2>
+<ul>
+<li>The game has no audio files. Every sound is synthesized in code in js/audio.js.</li>
+<li>Kidlat, Agimat, Diwata and Bakunawa each have their own synthesized power sound.</li>
+<li>Tikbalang has no sound of its own. Its power reuses the generic dash sound. The stampede's end stomp has its own thud.</li>
+</ul>
+
+<h2>Licensing</h2>
+<ul>
+<li>Every candidate below came from a Freesound search filtered to CC0, which means free to use, even commercially, with no credit required.</li>
+<li>Only the T'boli kulintang page was opened and its CC0 license confirmed. Check the license on each sound's page before downloading.</li>
+<li>None of the candidates has been listened to yet.</li>
+</ul>
+
+<h2>Candidates per trumpo</h2>
+
+<h3>Kidlat (Lightning Strike)</h3>
+<p>Target sound: a close thunder crack, then a short electric sizzle.</p>
+<ul>
+<li><a href="https://freesound.org/people/TRP/sounds/567945/">200817 Thunder, pretty close crack</a> by TRP</li>
+<li><a href="https://freesound.org/people/kvgarlic/sounds/693540/">LoudThunder with crack and Sizzle</a> by kvgarlic</li>
+<li><a href="https://freesound.org/people/TRP/sounds/717907/">230713 Thunder, close crack crash big</a> by TRP</li>
+<li><a href="https://freesound.org/people/el_boss/sounds/853286/">Tesla Tower Zap - Electric Zap Short - Game SFX</a> by el_boss</li>
+</ul>
+
+<h3>Tikbalang (Tikbalang Stampede)</h3>
+<p>Target sound: a pounding gallop for the 2 s stampede, ending in the stomp. This is the only trumpo with no power sound of its own today.</p>
+<ul>
+<li><a href="https://freesound.org/people/GiordanoFabricio/sounds/574317/">65 - Galloping horse</a> by GiordanoFabricio</li>
+<li><a href="https://freesound.org/people/gbnelso/sounds/684446/">HorseGallop1.wav</a> by gbnelso</li>
+<li><a href="https://freesound.org/people/martian/sounds/393857/">cartoon horse gallop.wav</a> by martian (a more playful option)</li>
+</ul>
+<p>Gap: no clean CC0 horse neigh was found.</p>
+
+<h3>Agimat (Amulet Shield)</h3>
+<p>Target sound: a bright metallic ward, a struck bronze tone with a shimmer.</p>
+<ul>
+<li><a href="https://freesound.org/people/newlocknew/sounds/772279/">Atonal Crystal Chime Texture 1</a> by newlocknew</li>
+<li><a href="https://freesound.org/people/glenm8/sounds/853654/">gong_brown_80cm_flumies</a> by glenm8</li>
+</ul>
+
+<h3>Diwata (Diwata's Blessing)</h3>
+<p>Target sound: bamboo and air, gentle and rising.</p>
+<ul>
+<li><a href="https://freesound.org/people/laffik/sounds/587294/">bamboo wind chimes.wav</a> by laffik</li>
+<li><a href="https://freesound.org/people/Alex_hears_things/sounds/412416/">WOODEN WINDCHIMES.wav</a> by Alex_hears_things</li>
+<li><a href="https://freesound.org/people/newlocknew/sounds/825544/">Sparkling Twinkle Bleep 1</a> by newlocknew</li>
+</ul>
+<p>Gap: no CC0 kubing (Philippine bamboo jaw harp) recording was found.</p>
+
+<h3>Bakunawa (Eclipse)</h3>
+<p>Target sound: a deep serpent growl, answered by gongs.</p>
+<ul>
+<li><a href="https://freesound.org/people/Peligro8/sounds/797987/">T'boli Tribe South Cotabato</a> by Peligro8. A kulintang recording from Mindanao with lake ambience, 2:24 long, license confirmed CC0.</li>
+<li><a href="https://freesound.org/people/uagadugu/sounds/222523/">Deep Monster Growl</a> by uagadugu</li>
+<li><a href="https://freesound.org/people/J.R.Mythical/sounds/563690/">Long howl) whale and monster.wav</a> by J.R.Mythical</li>
+<li><a href="https://freesound.org/people/kerozenne/sounds/803159/">Temple Gong 2</a> by kerozenne</li>
+</ul>
+<p>This is the strongest pick for the theme. In the folklore, villagers bang pots and gongs during an eclipse to scare the Bakunawa into spitting the moon back out. A growl followed by a burst of kulintang tells that story with a real Mindanao recording. Cut a few strikes from the 2:24 clip. Credit it as T'boli music even though CC0 does not require it.</p>
+
+<h3>Spin hum (all trumpos)</h3>
+<p>Target sound: the actual top spinning.</p>
+<ul>
+<li><a href="https://freesound.org/people/gazbooth/sounds/634288/">SpinningTop.wav</a> by gazbooth</li>
+<li><a href="https://freesound.org/people/Uzbazur/sounds/334970/">Metallic Spinning Top (Dry Sound).wav</a> by Uzbazur</li>
+</ul>
+<p>These are reference only. The current hum is synthesized and follows spin speed live, which a recording cannot do.</p>
+
+<h2>Recommended approach</h2>
+<ol>
+<li>Use real recordings for the five power moments only. Trim each to 1 to 2 seconds and save it as a small mp3, about 150 KB for all five. This matters for phones on mobile data.</li>
+<li>Keep the synthesized sound as the fallback while a file is still loading.</li>
+<li>Keep the spin hum and the hits synthesized, since they react to the game live.</li>
+<li>Add a CREDITS.md to the repo listing each file and its source.</li>
+</ol>
+
+<h2>Other sources checked</h2>
+<ul>
+<li><a href="https://opengameart.org/content/cc0-deep-monster-roar">OpenGameArt: CC0 deep monster roar</a>, another Bakunawa option</li>
+<li><a href="https://mixkit.co/free-sound-effects/thunder/">Mixkit thunder</a> and <a href="https://mixkit.co/free-sound-effects/horse/">Mixkit horse</a>, which use the Mixkit License, not CC0</li>
+<li><a href="https://en.wikipedia.org/wiki/Kubing">Kubing (Wikipedia)</a>, background on the bamboo jaw harp</li>
+</ul>
+
+</body>
+</html>

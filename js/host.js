@@ -1,5 +1,5 @@
 // Desktop page: title screen with a CPU demo, online host/spectator, and practice vs CPU.
-import { Engine, WIN_ROUNDS } from './engine.js';
+import { Engine, WIN_ROUNDS, BRAWL_ROUNDS, BRAWL_WIN_PTS } from './engine.js';
 import { decodeSnap } from './sim.js';
 import { createScene } from './scene.js';
 import { createController, charIcon, topIcon } from './controller.js';
@@ -11,16 +11,20 @@ const $ = s => document.querySelector(s);
 // Canvas signs and POW! bursts letter in Lilita One; give it a moment to load so they don't bake in a fallback.
 await Promise.race([document.fonts.load('64px "Lilita One"').catch(() => {}), new Promise(r => setTimeout(r, 1500))]);
 const scene = createScene($('#view'));
-let engine = null, net = null, ctrl = null, mode = 'title';
+let engine = null, net = null, ctrl = null, mode = 'title', brawl = false;
 const CAMS = ['auto', 'top', 'close', 'orbit'];
 let camIdx = 0;
-let state = null, snap = null, lastNetSnap = 0, lastPhase = '', bannerUntil = 0, squeezeUntil = 0;
+let state = null, snap = null, lastNetSnap = 0, lastPhase = '', bannerUntil = 0, squeezeUntil = 0, bannerHtml = '';
 
 const REASON = { fall: 'Natumba! Toppled over.', out: 'Labas! Out of the circle.', time: 'Time! Faster spinner wins.', draw: 'Tabla! Replay the round.' };
 const nameOf = s => (state && state.players[s] ? state.players[s].name : `P${s + 1}`);
+const tag = s => `<b style="color:${PLAYER_COLORS[s]}">${nameOf(s)}</b>`;
 
-function start(newMode) {
+function start(newMode, { matchMode = '1v1' } = {}) {
   mode = newMode;
+  brawl = matchMode === 'brawl';
+  document.body.classList.toggle('brawl', brawl);
+  showMenu('main');
   if (net) { net.close(); net = null; }
   if (ctrl) { ctrl.destroy(); ctrl = null; }
   document.body.dataset.mode = mode;
@@ -30,7 +34,7 @@ function start(newMode) {
   scene.reset();
   scene.setLocalSteer(-1, null);
   scene.setCam(mode === 'title' ? 'menu' : CAMS[camIdx]);
-  engine = new Engine(onEngine);
+  engine = new Engine(onEngine, { mode: matchMode });
   $('#ticker').innerHTML = '';
   if (mode === 'title' || mode === 'demo') {
     engine.join('cpu-a', 'Kulas', 'cpu');
@@ -42,8 +46,13 @@ function start(newMode) {
   }
 }
 
-async function hostRoom() {
-  start('host');
+function showMenu(which) {
+  $('#menu-main').hidden = which !== 'main';
+  $('#menu-host').hidden = which !== 'host';
+}
+
+async function hostRoom(matchMode) {
+  start('host', { matchMode });
   const room = makeRoomCode();
   const url = new URL('play.html', location.href);
   url.searchParams.set('room', room);
@@ -102,7 +111,13 @@ function onState(s) {
     if (s.phase === 'countdown') scene.reset();
     if (s.phase === 'throw' && mode !== 'title') audio.beep(true);
     if ((s.phase === 'roundEnd' || s.phase === 'matchEnd') && s.result && s.result.winner >= 0 && mode !== 'title') audio.win();
-    if (s.phase === 'roundEnd' && s.result && s.result.winner >= 0) scene.celebrate(s.result.winner, Math.max(...s.scores) >= WIN_ROUNDS);
+    if (s.phase === 'roundEnd' && s.result && s.result.winner >= 0) {
+      scene.celebrate(s.result.winner, brawl ? s.round >= BRAWL_ROUNDS : Math.max(...s.scores) >= WIN_ROUNDS);
+    }
+    if (s.phase === 'roundEnd' && brawl && s.result && s.result.winner >= 0) {
+      const kos = (s.result.kos || []).filter(e => e.by === s.result.winner).length;
+      say(`${tag(s.result.winner)} is the last trumpo spinning! +${BRAWL_WIN_PTS}${kos ? ` and ${kos} knockout${kos > 1 ? 's' : ''}` : ''}.`);
+    }
     if (s.phase === 'fight') bannerUntil = performance.now() + 1200;
     if (s.phase === 'charge' && s.switched && s.switched.from !== s.switched.to) {
       say(`Counterpick! <b style="color:${PLAYER_COLORS[s.switched.slot]}">${nameOf(s.switched.slot)}</b> switches to ${byId(TOPS, s.switched.to).name}.`);
@@ -116,15 +131,30 @@ function onState(s) {
 
 function renderLobby() {
   if (mode !== 'host') return;
-  $('#slots').innerHTML = [0, 1].map(i => {
+  // A brawl lists everyone in, plus the next open seat; 1v1 always shows both seats.
+  const open = state.players.findIndex(p => !p);
+  const seats = brawl ? state.players.map((p, i) => (p || i === open ? i : -1)).filter(i => i >= 0) : [0, 1];
+  $('#slots').innerHTML = seats.map(i => {
     const p = state.players[i];
-    return `<li style="--pc:${PLAYER_COLORS[i]}"><b>P${i + 1}</b> ${p ? p.name + (p.picked ? ' ✓' : '') : '<span class="muted">waiting…</span>'}</li>`;
+    const who = p ? p.name + (p.kind === 'cpu' ? ' <span class="muted small">CPU</span>' : '') + (state.phase === 'pick' && p.picked ? ' ✓' : '')
+      + (brawl && !p.inRound && !['lobby', 'pick'].includes(state.phase) ? ' <span class="muted small">next round</span>' : '')
+      : '<span class="muted">waiting…</span>';
+    return `<li style="--pc:${PLAYER_COLORS[i]}"><b>P${i + 1}</b> ${who}</li>`;
   }).join('');
-  $('#lobby').hidden = state.phase !== 'lobby' && state.phase !== 'pick';
-  document.body.classList.toggle('lobby-open', !$('#lobby').hidden);
+  $('#brawl-actions').hidden = !brawl || state.phase !== 'lobby';
+  $('#btn-add-cpu').disabled = open < 0;
+  $('#btn-start').disabled = !engine.canStart();
+  $('#btn-start').textContent = `Start (${state.players.filter(Boolean).length})`;
+  // A brawl keeps a small QR code up during the match, so people can scan in for the next round.
+  const between = state.phase === 'lobby' || state.phase === 'pick';
+  $('#lobby').hidden = !between && !brawl;
+  $('#lobby').classList.toggle('mini', brawl && !between);
+  document.body.classList.toggle('lobby-open', between);
 }
 
 function renderCards() {
+  $('#roster').hidden = !brawl || state.phase === 'lobby';
+  if (brawl) { renderRoster(); return; }
   [0, 1].forEach(i => {
     const p = state.players[i], el = $(`#card${i}`);
     if (!p || state.phase === 'lobby') { el.hidden = true; return; }
@@ -135,11 +165,32 @@ function renderCards() {
   });
 }
 
+// Brawl: one row per player, ordered by points.
+function renderRoster() {
+  const rows = state.players.map((p, i) => p && { p, i }).filter(Boolean)
+    .sort((a, b) => state.points[b.i] - state.points[a.i] || a.i - b.i);
+  $('#roster').innerHTML = rows.map(({ p, i }) => `<li data-slot="${i}" style="--pc:${PLAYER_COLORS[i]}">
+    ${topIcon(p.top, 26)}<b>${p.name}</b><span class="spin"><i></i></span><em>${state.points[i]}</em></li>`).join('');
+}
+
 // Live HUD numbers, every frame.
 function updateHud() {
   if (!state) return;
   const ph = state.phase;
   const fighting = snap && (ph === 'throw' || ph === 'fight' || ph === 'roundEnd');
+  if (brawl) {
+    $('#roster').querySelectorAll('li').forEach(li => {
+      const i = +li.dataset.slot, p = engine.players[i], tp = fighting && snap.tops[i];
+      const sitting = !p || !p.inRound || ph === 'pick' || ph === 'vs';
+      let spin = tp && tp.launched ? tp.spin : 0;
+      if (ph === 'charge' && p) spin = p.spun ? 0.45 + 0.4 * p.spun.power : Math.min(1, p.laps / 7);
+      li.querySelector('.spin i').style.width = Math.round((sitting ? 0 : spin) * 100) + '%';
+      li.classList.toggle('down', !!(tp && tp.launched && !tp.alive));
+      li.classList.toggle('waiting', !!(p && !p.inRound && !['lobby', 'pick', 'vs'].includes(ph)));
+    });
+    renderBanner();
+    return;
+  }
   [0, 1].forEach(i => {
     const el = $(`#card${i}`);
     if (el.hidden) return;
@@ -169,8 +220,11 @@ function renderBanner() {
   let big = '', small = '';
   if (mode === 'practice' && !['fight', 'roundEnd', 'matchEnd'].includes(ph)) { b.hidden = true; return; }
   switch (ph) {
-    case 'pick': big = 'Pumili!'; small = 'Players are picking a character and a trumpo'; break;
-    case 'vs': big = `${nameOf(0)} <em>vs</em> ${nameOf(1)}`; small = 'Best of 3'; break;
+    case 'pick': big = 'Pumili!'; small = brawl ? `Pick a player and a trumpo · ${t}s` : 'Players are picking a character and a trumpo'; break;
+    case 'vs':
+      if (brawl) { big = 'BRAWL!'; small = `${engine.present().length} trumpos · ${BRAWL_ROUNDS} rounds · most points wins`; }
+      else { big = `${nameOf(0)} <em>vs</em> ${nameOf(1)}`; small = 'Best of 3'; }
+      break;
     case 'counter': {
       const w = state.result.winner;
       big = `${nameOf(1 - w)} is picking a counter…`;
@@ -181,6 +235,7 @@ function renderBanner() {
       const sw = state.switched;
       big = `Round ${state.round}: PAIKOT!`;
       small = sw ? `${nameOf(sw.slot)} ${sw.from === sw.to ? 'stays with' : 'switches to'} ${byId(TOPS, sw.to).name}!` : 'Players draw fast circles to spin their trumpo';
+      if (brawl) small = `Round ${state.round} of ${BRAWL_ROUNDS} · draw fast circles to spin`;
       break;
     }
     case 'countdown': big = ['', 'Isa…', 'Dalawa…', 'Tatlo…'][4 - Math.min(3, Math.max(1, t))]; small = 'Get ready to throw'; break;
@@ -192,13 +247,20 @@ function renderBanner() {
     case 'roundEnd': {
       const r = state.result;
       big = r.winner < 0 ? 'Tabla!' : `${nameOf(r.winner)} wins round ${state.round}`;
-      small = REASON[r.reason] || '';
+      small = brawl && r.winner >= 0 ? `Last trumpo spinning · +${BRAWL_WIN_PTS} points` : REASON[r.reason] || '';
       break;
     }
-    case 'matchEnd': big = `KAMPEON: ${nameOf(state.result.champion)}!`; small = `${state.scores[0]} – ${state.scores[1]}`; break;
+    case 'matchEnd': {
+      const c = state.result.champion;
+      big = `KAMPEON: ${nameOf(c)}!`;
+      small = brawl ? `${state.points[c]} points · ${state.scores[c]} round${state.scores[c] === 1 ? '' : 's'} won` : `${state.scores[0]} – ${state.scores[1]}`;
+      break;
+    }
   }
   b.hidden = !big;
-  b.innerHTML = `<h1>${big}</h1>${small ? `<p>${small}</p>` : ''}`;
+  // Only when the text changes: rewriting it every frame restarted the pop-in, so the headline never showed.
+  const html = `<h1>${big}</h1>${small ? `<p>${small}</p>` : ''}`;
+  if (html !== bannerHtml) { bannerHtml = html; b.innerHTML = html; }
   $('#end-bar').hidden = !(ph === 'matchEnd' && (mode === 'host' || mode === 'practice'));
 }
 
@@ -211,13 +273,15 @@ function say(text) {
 }
 
 function commentary(e) {
-  const n = s => `<b style="color:${PLAYER_COLORS[s]}">${nameOf(s)}</b>`;
+  const n = tag;
+  // In a brawl, say who scored the knockout and how many are left.
+  const ko = () => (brawl && e.by >= 0 ? ` ${n(e.by)} gets the knockout!` : '') + (brawl && e.left > 1 ? ` ${e.left} left.` : '');
   switch (e.type) {
     case 'launch': say(`${n(e.slot)} throws! ${e.p > 0.8 ? 'Malakas! A hard throw.' : e.p < 0.3 ? 'A soft toss…' : 'Bitaw!'}`); break;
     case 'hit': if (e.i > 0.75) say('BANGGAAN! Huge clash!'); break;
     case 'steal': if (e.amt > 0.03) say(`Agaw-ikot! ${n(e.slot)} steals spin back!`); break;
     case 'ability': {
-      const o = n(1 - e.slot);
+      const o = n(e.target ?? 1 - e.slot);
       say({
         kidlat: `KIDLAT! ${n(e.slot)} calls lightning down on ${o}!`,
         tikbalang: `Tikbalang stampede! ${n(e.slot)} breaks through anything in the way!`,
@@ -232,14 +296,19 @@ function commentary(e) {
     case 'eggWarn': say('Putak! A hen is running into the circle…'); break;
     case 'crack': say(`${n(e.slot)} smashes the egg!`); break;
     case 'squeeze': say('Sikip na! The circle is shrinking!'); squeezeUntil = performance.now() + 1800; break;
-    case 'fall': say(`${n(e.slot)}'s trumpo topples. Natumba!`); break;
-    case 'out': say(`${n(e.slot)} is knocked out of the circle. Labas!`); break;
+    case 'fall': say(`${n(e.slot)}'s trumpo topples. Natumba!${ko()}`); break;
+    case 'out': say(`${n(e.slot)} is knocked out of the circle. Labas!${ko()}`); break;
   }
 }
 
 // ---------- buttons ----------
 document.addEventListener('pointerdown', () => audio.unlock(), { once: true });
-$('#btn-host').onclick = () => { audio.unlock(); hostRoom(); };
+$('#btn-host').onclick = () => { audio.unlock(); showMenu('host'); };
+$('#btn-host-1v1').onclick = () => hostRoom('1v1');
+$('#btn-host-brawl').onclick = () => hostRoom('brawl');
+$('#btn-host-back').onclick = () => showMenu('main');
+$('#btn-add-cpu').onclick = () => engine.addCpu();
+$('#btn-start').onclick = () => engine.start();
 $('#btn-practice').onclick = () => {
   audio.unlock();
   if (matchMedia('(pointer: coarse)').matches) location.href = 'play.html?solo=1';
@@ -250,7 +319,8 @@ $('#help-close').onclick = () => { $('#help').hidden = true; };
 $('#btn-back').onclick = () => start('title');
 $('#btn-lobby-cancel').onclick = () => start('title');
 $('#btn-rematch').onclick = () => {
-  engine.players.forEach(p => p && engine.handle(p.id, 'rematch'));
+  if (brawl) engine.rematch();
+  else engine.players.forEach(p => p && engine.handle(p.id, 'rematch'));
 };
 $('#btn-mute').onclick = () => { audio.unlock(); audio.setMuted(!audio.muted); $('#btn-mute').textContent = audio.muted ? '🔇' : '🔊'; };
 const musicBtn = () => { $('#btn-music').classList.toggle('off', audio.musicMuted); $('#btn-music').title = audio.musicMuted ? 'Music off (N)' : 'Music on (N)'; };
@@ -282,7 +352,9 @@ function frame(now) {
   scene.render(dt);
   updateHud();
   const humOn = mode !== 'title' && snap && state && ['throw', 'fight'].includes(state.phase);
-  [0, 1].forEach(i => audio.hum(i, humOn && snap.tops[i].alive && snap.tops[i].launched ? snap.tops[i].spin : 0, humOn ? snap.tops[i].wobble : 0));
+  // Eight hums at full level would drown everything else out.
+  const level = Math.min(1, 2 / Math.max(2, snap ? snap.tops.length : 2));
+  (snap ? snap.tops : []).forEach((tp, i) => audio.hum(i, humOn && tp.alive && tp.launched ? tp.spin : 0, humOn ? tp.wobble : 0, level));
 }
 // ?demo runs a CPU vs CPU match with the full HUD (for trailers and showcase screens).
 // ?practice jumps straight into practice vs CPU.

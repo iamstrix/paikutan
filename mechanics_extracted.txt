@@ -1,0 +1,716 @@
+=== PAGE 1 ===
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+
+
+=== PAGE 2 ===
+ 
+ 
+Page 2 of 15 
+ 
+I. Competition Mechanics 
+A. Eligibility 
+Student Category 
+1. Participants must be enrolled as high school or college students as of 2026. 
+Students who graduated in 2026 are eligible for this competition. 
+2. Each participating school may send any number of teams, composed of a 
+maximum of five (5) students accompanied by one (1) faculty coach or 
+adviser. The coach will only provide mentorship and guidance throughout the 
+competition. 
+3. Only one (1) entry can be submitted per team for the competition. 
+4. The team must be endorsed by the head of the school or university. 
+Professional Category 
+1. Participants are open to independent professionals or studio-
+based developers. 
+2. Interested professionals must register a team composed of a 
+maximum of five (5) members only. 
+3. Only one (1) entry per team can be submitted for the competition. 
+ 
+B. Rules and Guidelines 
+1. Theme 
+Participants must create a game using any known or unique gameplay mechanic 
+that can be associated with the following themes: 
+ Smart City 
+ Disaster Risk Reduction and Management  
+ Climate Change 
+ Education 
+ Circular Economy 
+ Philippine Games and Sports 
+ Board Games / Brain Games 
+ 
+2. Esports-Ready Gameplay 
+ The game may be played in the following gameplay: 
+o Player-versus-Player (PVP) matches (e.g. 1v1, team vs team, free for 
+all)  
+o Player-versus-Environment (PVE) with leaderboards (e.g. fastest 
+completion time, highest score, survival mode or other similar 
+mechanics) 
+
+
+=== PAGE 3 ===
+ 
+ 
+Page 3 of 15 
+ 
+ The game must feature skill-based or knowledge-based matches that can be 
+completed within a reasonable time frame. It must have a way to determine the 
+winner at the end of each match or round. 
+ 
+3. Platform 
+Participants must create and develop a game using any platform that permits the 
+prototype to be played on a browser, personal computer, or mobile device without 
+the purchase of subscription or license. 
+ 
+4. Tools and Game Engine 
+The game can be made from any programming language or can be made via game 
+engines such as Flash, RPG Maker, Unity, Unreal Engine, Godot, etc. 
+ 
+5. Publication 
+The game must not have been commercially published on any major commercial 
+gaming distribution platform or application store such as Steam, Epic Games, 
+Google Play Store, Apple App Store, etc. However, games published or uploaded 
+to online platforms as prototypes or betas/alphas such as in itch.io are eligible if it 
+was not commercially released or actively used in previous competitions.  
+ 
+6. Prohibitions 
+The game must not contain the following:  
+• Material that violates or infringes another's rights, including but not limited 
+to privacy, publicity, copyright, trademark, patent, or intellectual property 
+and property related rights. 
+• Footages, images, or artworks not created by the team unless such 
+footages, images, or artworks are included as part of the team's chosen 
+game creation platform or the team has obtained all rights necessary to 
+include such footages, images, or artworks as part of their entry to the 
+competition. 
+• Material that is inappropriate, indecent, obscene, hateful, torturous, 
+defamatory, slanderous, or libelous. 
+• Material that promotes bigotry, racism, hatred, or harm against any group 
+or individual or promotes discrimination based on race, gender, religion, 
+nationality, disability, sexual orientation, or age. 
+• Material that is unlawful, in violation of, or contrary to the laws or regulations 
+in the Philippine jurisdiction. 
+• AI Generated content that violates any of the above. 
+ 
+7. Code Originality and Integrity 
+
+
+=== PAGE 4 ===
+ 
+ 
+Page 4 of 15 
+ 
+ All game logic, mechanics, and source code must be created by the 
+registered team members. 
+ The game’s source code must be original and must not contain: 
+ Code from previously published or submitted games in any other 
+competition. 
+ Code copied or adapted from other developers without permission. 
+ Code directly taken from open-source projects, tutorials, or 
+templates that implement the core mechanics of the game. 
+ Personal code libraries may be reused only if: 
+ They were created entirely by the member/s of the team. 
+ They have never been part of a previously published or submitted 
+game. 
+ Any reused personal code must be declared during submission. 
+ Violations of these rules will result in disqualification or forfeiture of 
+the prize if found guilty by the organizers and judges even after the 
+competition. 
+ 
+8. AI Usage Disclosure 
+• Use of Artificial Intelligence (AI), including but not limited to Large Language 
+Models (LLMs), generative AI systems, coding assistants, asset generators, 
+and similar technologies, is permitted in the development of the game.  
+• AI may be used for ideation, game design, programming, debugging, 
+writing, asset creation, prototyping, balancing, testing, documentation, and 
+other development-related activities. 
+• Any AI-assisted or AI-generated content used in the game must be 
+disclosed during the competition. 
+• AI-generated content must not infringe upon copyrights, trademarks, 
+patents, trade secrets, privacy rights, or other intellectual property rights. 
+• The organizers may request supporting documentation, source files, 
+prompts, development logs, or version-control records to verify compliance. 
+• Failure to disclose AI usage, misrepresentation of authorship, or use of 
+infringing content may result in disqualification or forfeiture of prizes 
+ 
+9. Waiver and Declaration of Originality 
+All participating teams must sign and submit a Waiver and Declaration of Originality 
+upon the submission date. This document will confirm that: 
+ All source code, assets, and materials in the game are original or used with 
+proper rights and permissions. 
+ The entry does not violate any of the restrictions stated in Sections 6, 7, and 
+8. 
+
+
+=== PAGE 5 ===
+ 
+ 
+Page 5 of 15 
+ 
+ The team accepts full responsibility for any intellectual property disputes 
+that may arise from their entry. 
+ 
+Failure to submit the signed waiver will result in the game being ineligible for 
+judging. 
+ 
+10. Registration 
+Interested teams must officially register in the Registration Link provided before 
+submitting the requirements. 
+ 
+11. Submission and Requirements 
+The teams must upload their entries through the provided link on or before the 
+published deadline of submission. These shall include the following:  
+a) Form 01: Game Development Team Roles – list of team members and 
+their role on the project.  
+b) Form 02: Team Waiver and Declaration of Originality 
+c) Form 03: Asset and AI Usage Disclosure (Not applicable for those with 
+fully original entries) 
+d) Template 01: Game Title and Synopsis – a short write-up limited to 500 
+words describing the game including its mechanics/gameplay.  
+e) Game Trailer – a 1-2 minute .mp4 video teaser of the game that can be 
+played in loop during events related to the competition 
+f) Prototype/Demo – a 3–5-minute .mp4 video recording of the gameplay. 
+Video may include an explanation on how the game works (can be voiced 
+or have closed captions/subtitles) 
+All entries and requirements shall be checked by the organizing committee. 
+All submissions will be pre-screened before qualifying for the competition. 
+12. Pre-Screening/Shortlisting 
+ Each DOST Regional Office shall have the authority to shortlist and endorse 
+entries from their respective regions for both categories. A maximum of three 
+(3) entries per category may be endorsed. However, only the top-ranked entry 
+from each region will be automatically included as a finalist in the national 
+competition. 
+ The remaining two (2) endorsed entries will be placed on a waitlist, to be 
+considered only if other regions are unable to submit their finalists. The 
+competition judges shall determine whether additional finalists from any region 
+may be included. 
+
+
+=== PAGE 6 ===
+ 
+ 
+Page 6 of 15 
+ 
+ All Regional Offices must officially submit their endorsements on or before the 
+published deadline for Submission of Endorsements. The endorsement shall 
+be duly signed by the Regional Director or authorized representative and 
+must be transmitted via email to dost.esports@ncr.dost.gov.ph. 
+ Finalists must submit additional requirements as follows: 
+Student Category 
+Professional Category 
+ Team Name 
+ School Name and Logo 
+ Photos of school ID per 
+member 
+ Proof of enrollment 
+ Endorsement Letter signed 
+or noted by the Department 
+Head, College Dean or Head 
+of the school or university 
+ Game Poster (Dimensions to 
+be announced)
+ Team Name 
+ Group or Company Logo 
+ Photos of valid ID per 
+member 
+ Game Poster (Dimensions 
+to be announced) 
+ 
+13. Finalist 
+The chosen finalists will present their developed game for final judging during the 
+Game Demonstration and Judging Day to be held on 26-27 November 2026 
+during the NSTW celebration at General Santos City. 
+ 
+14. Travel and Accommodation 
+ 
+The DOST as the organizing institution will cover the transportation of Two (2) 
+representatives per team (1 Student and 1 Coach for Student Category, and 2 
+representatives for Professional Category). They will also be provided with a per 
+diem allowance to cover their accommodation and incidental expenses.  
+ 
+15. Winner 
+The winning team will receive cash prizes and will have the chance to further 
+develop their games with the assistance of DOST Regional Offices and partner 
+institutions. 
+ 
+ 
+16. Prizes 
+Student Category (Tax Exempt): 
+o 1st place: P50,000.00 with plaque and medal 
+o 2nd place: P25,000.00 with plaque and medal 
+o 3rd place: P15,000.00 with plaque and medal 
+
+
+=== PAGE 7 ===
+ 
+ 
+Page 7 of 15 
+ 
+ 
+Professional Category (Subject to Tax): 
+o 1st place: P75,000.00 with plaque and medal 
+o 2nd place: P50,000.00 with plaque and medal 
+o 3rd place: P30,000.00 with plaque and medal 
+ 
+ 
+17. Competition Schedule 
+Date 
+Activity 
+September 
+16 
+Orientation with Regional Offices 
+21 
+Official Call for Participants for Level Up 3.0 
+October 
+25 
+Deadline of Submission of Entries 
+26 
+Screening of Entries (if applicable) 
+29 
+Submission of Endorsements 
+November 
+9 
+Announcement of Finalists 
+24 
+Travel from Origin to General Santos City 
+26 
+Game Demonstration and Judging Day 
+27 
+Awarding of Winners 
+ 
+18. Criteria for Screening/Shortlisting: 
+Completeness 
+20% 
+ 
+ The game is functional, stable, and free from critical errors 
+and bugs. 
+ Game has a premise/plot if applicable. If not, there is detailed 
+documentation about entering the game and ending the 
+game. 
+ Game is made ready for commercialization or for public use.
+ All core mechanics and required features are implemented. 
+ The game includes instructions, a tutorial, or onboarding so 
+that new players can understand how to play. 
+
+The game is polished and ready for presentation.
+Theme 
+Relevance 
+20% 
+ 
+ 
+ 
+ The game captures the essence of the competition’s official 
+themes 
+ The game’s core idea or storyline clearly reflects one or more 
+of the competition’s themes. 
+ The game effectively communicates or raises awareness 
+about the chosen theme’s goals, values, or lessons
+Originality 
+20% 
+ Game logic, mechanics, and source code must be created 
+by the registered team members.  
+ The game has an identity, something that makes the game 
+worth browsing or viewing from a public standpoint.
+
+
+=== PAGE 8 ===
+ 
+ 
+Page 8 of 15 
+ 
+ Creative integration of Philippine culture and/or traditions 
+into its theme, story, characters, or setting.
+Gameplay 
+20% 
+ Gameplay mechanics are intuitive, smooth, responsive, 
+easy to learn or master. 
+ The game has a basic and working user interface. If there 
+are many gameplay modes, it must be easily navigated. 
+ Game has a progressive game loop that is both challenging 
+and enjoyable.  
+ Game mechanics can be derived from pre-existing games 
+but can be added with different twists. Unique and innovative 
+gameplay is highly encouraged. 
+ Incorporates or showcases modern technologies (e.g., 
+advanced 
+physics, 
+networking 
+solutions, 
+procedural 
+generation, augment reality, AI-based features, or other 
+innovative tools) that enhance the gameplay experience.
+Aesthetics and 
+Creativity 
+20% 
+ Game has a visually appealing art style, visual effects, and 
+colors that matches the game’s theme.  
+ Game has a decent sound design in which music, sound 
+effects, and voice casting that create an immersive gaming 
+environment. 
+
+The graphics and sound must be of high quality.
+ 
+ 
+19.  Criteria for Final Judging: 
+Gameplay 
+20% 
+ 
+ 
+Gameplay mechanics are intuitive, smooth, responsive, 
+easy to learn or master. 
+ 
+Game has a basic and working user interface. If there are 
+many gameplay modes, it must be easily navigated. 
+ 
+Game has a progressive game loop that is both challenging 
+and enjoyable.  
+ 
+Game mechanics can be derived from pre-existing games 
+but can be added with different twists. Unique and innovative 
+gameplay is highly encouraged. 
+ 
+Incorporates or showcases modern technologies (e.g., 
+advanced 
+physics, 
+networking 
+solutions, 
+procedural 
+generation, AI-based features, or other innovative tools) that 
+enhance the gameplay experience.
+Esports Potential 
+20% 
+ 
+ 
+The game is designed to support competitive gameplay 
+ 
+The game has balanced mechanics to avoid unfair 
+advantage to one or more player/s or team/s. 
+ 
+Rules for winning/losing are easy to understand. 
+ 
+The game is replayable, giving the players different ways or 
+strategies to win the game. 
+ 
+Gameplay 
+is 
+exciting 
+and 
+understandable 
+for 
+spectators/viewers
+
+
+=== PAGE 9 ===
+ 
+ 
+Page 9 of 15 
+ 
+ 
+ 
+Graphics and Art 
+10% 
+ 
+Game has visually appealing art style, visual effects, and 
+colors that matches the game’s core theme.  
+ 
+Colors complement the game’s user interface and must be 
+accessible and inclusive for all types of users. 
+ 
+Utilization of 3D and 2D art is highly encouraged as long as 
+its high quality and does not affect the overall game 
+experience. 
+Music and Sound 
+Design 
+10% 
+ 
+Game has a decent sound design in which music, sound 
+effects, and voice casting  that create an immersive gaming 
+environment. 
+ 
+Music and other sound elements must complement with the 
+game environment and must show the necessary emotion 
+when playing with such sounds. 
+Creativity and 
+Innovation 
+20% 
+ 
+Game has innovative, novel, or unique mechanics that will 
+be appealing for gamers. 
+ 
+Game has a creative theme that can capture different 
+emotions of gamers. 
+Game Feedback 
+20% 
+ 
+Gamer audiences will give overall feedback of the game 
+based on their expectations and personal appeal from the 
+trailer and gameplay demo shown during the event. 
+ 
+Audience will be provided with a system to cast their votes 
+fairly to all games.
+ 
+ 
+ 
+
+
+=== PAGE 10 ===
+ 
+ 
+Page 10 of 15 
+ 
+Form 01: Game Development Team Roles  
+LEVEL UP 3.0 ESPORTS GAME DEV CHALLENGE 
+Team Name:
+Institution:
+Game Title:
+ 
+ 
+I. Team Composition  
+Team Leader: 
+ 
+Course/Year Level:  
+Role in the development 
+of  the game:  
+Members: 
+ 
+ 
+Course/Year Level: 
+ 
+Roles: 
+ 
+ 
+II. Adviser / Coach (Student Category Only) 
+Name of Coach: 
+ 
+Designation: 
+ 
+Institution:  
+ 
+Expertise: 
+ 
+ 
+ 
+
+
+=== PAGE 11 ===
+ 
+ 
+Page 11 of 15 
+ 
+Form 02: Waiver and Declaration of Originality  
+LEVEL UP 3.0 ESPORTS GAME DEV CHALLENGE 
+I/We, the undersigned, hereby declare and affirm the following in connection with our 
+entry to the Level Up: Esports Game Dev Challenge:  
+1. Original Work  
+a. The game submitted, including its source code, assets, artworks, music, 
+sound effects, scripts, and other materials, is our own original  work or 
+is used with proper authorization and licensing.  
+b. No part of the game is copied, adapted, or derived from any third-party 
+work without prior written permission or an appropriate license.  
+2. No Prior Publication  
+a. The submitted game has not have been commercially published on any 
+major commercial gaming distribution platforms or application store such 
+as Steam, Epic Games, Google Play Store, Apple App Store, etc. However, 
+games published or uploaded in online platforms as prototypes or 
+betas/alphas such as in itch.io are eligible if it was not commercially 
+released or actively used in previous competitions. 
+3. Compliance with Competition Rules  
+a. The game fully complies with all content and intellectual property 
+restrictions stated in the competition mechanics.  
+b. Any use of AI tools, libraries, or external resources has been fully 
+disclosed to the organizers.  
+4. Responsibility for Legal Claims  
+a. I/We accept full legal responsibility for any claim, dispute, or legal action 
+arising from the game’s content, code, or assets.  
+b. I/We agree to indemnify and hold harmless the organizers, judges, 
+sponsors, and affiliates from any claims related to copyright, trademark,  
+intellectual property infringement, or other legal violations.  
+5. Consent to Use  
+a. I/We grant the organizers the right to display, showcase, and use our game 
+for promotional, educational, and archival purposes, without further 
+compensation, while retaining all ownership rights to our creation.  
+ 
+
+
+=== PAGE 12 ===
+ 
+ 
+Page 12 of 15 
+ 
+ 
+ 
+Team Name: ____________________________  
+Game Title: _____________________________ 
+Full Names & Signatures of Team Members:  
+Name Signature Date 
+__________________________________ 
+_______________________  
+__________________________________ 
+_______________________  
+__________________________________ 
+_______________________  
+__________________________________ 
+_______________________  
+Coach’s Name:  __________________ 
+Signature: _______________________ 
+Date Submitted: _________________ 
+ 
+ 
+ 
+
+
+=== PAGE 13 ===
+ 
+ 
+Page 13 of 15 
+ 
+Form 03: Asset and AI Usage Disclosure  
+LEVEL UP 3.0 ESPORTS GAME DEV CHALLENGE 
+I/We, the undersigned members of the team, hereby declare that we have utilized AI tools, 
+external assets/libraries or services in limited capacities during the development of our game  
+entry. This form provides a complete and truthful account of such usage in compliance with the 
+competition’s guidelines.  
+Details of Usage:  
+AI 
+Tool/Assets/Libraries 
+Used 
+Area of 
+Application  
+Description of 
+AI Tool / 
+Platform  
+/Assets / 
+Libraries Used 
+Extent of Usage
+⬜ Minimal 
+⬜ Moderate  
+⬜ Heavy 
+⬜ Minimal 
+⬜ Moderate  
+⬜ Heavy 
+⬜ Minimal 
+⬜ Moderate  
+⬜ Heavy 
+ 
+By signing below, I/we confirm that:  
+1. Assets/Libraries and AI-generated code/AI tools used for ideation, game design, 
+programming, debugging, writing, asset creation, prototyping, balancing, testing, 
+documentation, and other development-related activities. 
+2. No AI-generated code replicates or infringes upon any copyrighted or open-source 
+material.  
+3. We take full responsibility for all code submitted as part of our entry.  
+ 
+
+
+=== PAGE 14 ===
+ 
+ 
+Page 14 of 15 
+ 
+Full Names & Signatures of Team Members:  
+Name  
+ 
+Signature  
+ 
+Date 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+I hereby certify that I have reviewed this disclosure and the team’s submission 
+complies with the competition’s guidelines.  
+Coach’s Name (if applicable):   
+Signature: 
+Date Submitted:  
+ 
+ 
+
+
+=== PAGE 15 ===
+ 
+ 
+Page 15 of 15 
+ 
+Template 01: Game Title and Synopsis  
+LEVEL UP 3.0 ESPORTS GAME DEV CHALLENGE 
+Game Title: 
+Team Name: 
+Synopsis: 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+
+

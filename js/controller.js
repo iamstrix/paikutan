@@ -3,7 +3,7 @@
 import { CHARACTERS, TOPS, PLAYER_COLORS, STAT_LABELS, byId } from './data.js';
 import { toWorld, BOOST_CD } from './sim.js';
 import { CircleTracker, SPIN_SECONDS, readSwipe, Motion } from './input.js';
-import { WIN_ROUNDS } from './engine.js';
+import { WIN_ROUNDS, BRAWL_ROUNDS } from './engine.js';
 import { audio } from './audio.js';
 
 const pct = v => Math.round(v * 100) + '%';
@@ -52,11 +52,18 @@ export function createController(root, { mode = 'phone', send, myId, sounds = mo
   let joy = null; // active touch joystick vector
   let lastSteer = [0, 0], lastSteerAt = 0;
   let inverted = false; // Bakunawa eclipse, from the latest snapshot
+  let rival = -1; // brawl: the rival shown in the second bar
 
   root.classList.add('ctrl', phone ? 'phone' : 'desktop');
 
   const me = () => st && st.players[slot];
   const opp = () => st && st.players[1 - slot];
+  const brawl = () => !!st && st.mode === 'brawl';
+  // Who this phone is waiting on, in words.
+  const rivals = () => (brawl() ? 'the others' : opp() ? opp().name : 'your opponent');
+  // Brawl standing: 1 = most points.
+  const place = () => 1 + st.players.filter((p, i) => p && i !== slot && st.points[i] > st.points[slot]).length;
+  const ordinal = n => n + (n % 10 === 1 && n !== 11 ? 'st' : n % 10 === 2 && n !== 12 ? 'nd' : n % 10 === 3 && n !== 13 ? 'rd' : 'th');
   const remaining = () => Math.max(0, (deadline - performance.now()) / 1000);
 
   function show(k, html, init) {
@@ -159,10 +166,12 @@ export function createController(root, { mode = 'phone', send, myId, sounds = mo
 
   // ---------- views ----------
   function viewLobby() {
-    show('lobby', `
+    const n = st.players.filter(Boolean).length;
+    // The key includes the head count so the brawl line updates as people scan in.
+    show(brawl() ? `lobby-${n}` : 'lobby', `
       <div class="panel center">
         <div class="badge" style="background:${PLAYER_COLORS[slot]}">Player ${slot + 1}</div>
-        <h2>Waiting for your opponent…</h2>
+        <h2>${brawl() ? `Brawl! ${n} in so far. Waiting for the host to start…` : 'Waiting for your opponent…'}</h2>
         ${howTo()}
       </div>`);
   }
@@ -173,7 +182,8 @@ export function createController(root, { mode = 'phone', send, myId, sounds = mo
       <li><b>Paikot!</b> Draw fast circles on the ring. Faster = more spin, neater = steadier.</li>
       <li><b>Bitaw!</b> ${phone ? 'Tilt to aim, then flick your phone forward like casting a line.' : 'Drag the mouse upward and let go, fast.'}</li>
       <li><b>Laban!</b> ${phone ? 'Tilt to steer' : 'WASD / arrows to steer'}, ${phone ? 'tap Dash' : 'Shift to dash'} for a quick burst (costs a little spin), tap the power when it’s full. Behind on spin? Dash into your rival to steal some back.</li>
-      <li><b>Lost a round?</b> You may switch trumpo to counter your rival. The round winner stays locked. Last trumpo spinning inside the circle wins.</li>
+      ${brawl() ? `<li><b>Brawl:</b> everyone against everyone. Last trumpo spinning gets 2 points, and every trumpo you knock out is 1 point. Most points after ${BRAWL_ROUNDS} rounds wins.</li>`
+      : '<li><b>Lost a round?</b> You may switch trumpo to counter your rival. The round winner stays locked. Last trumpo spinning inside the circle wins.</li>'}
     </ol>`;
   }
 
@@ -184,7 +194,7 @@ export function createController(root, { mode = 'phone', send, myId, sounds = mo
       show('pickWait', `
         <div class="panel center">
           <div class="vs-row">${charIcon(p.char, 72)}${topIcon(p.top, 72)}</div>
-          <h2>Ready!</h2><p class="muted">Waiting for ${opp() ? opp().name : 'opponent'}…</p>
+          <h2>Ready!</h2><p class="muted">Waiting for ${rivals()}…${brawl() ? ' <span data-timer></span>' : ''}</p>
           <button class="btn ghost" data-act="unready">Change pick</button>
         </div>`, () => {
         root.querySelector('[data-act=unready]').onclick = () => send('pick', { ...sel, ready: false });
@@ -198,6 +208,7 @@ export function createController(root, { mode = 'phone', send, myId, sounds = mo
         <h2>Pick your trumpo</h2>
         <div data-car="top"></div>
         <button class="btn big" data-act="ready">Ready!</button>
+        ${brawl() ? '<p class="muted small">Picks lock in <span data-timer></span></p>' : ''}
       </div>`, () => {
       const pick = k => id => { sel[k] = id; send('pick', { ...sel, ready: false }); };
       carousel(root.querySelector('[data-car=char]'), CHARACTERS, sel.char, pick('char'), charItem, charDetails);
@@ -207,6 +218,16 @@ export function createController(root, { mode = 'phone', send, myId, sounds = mo
   }
 
   function viewVs() {
+    if (brawl()) {
+      const ps = st.players.map((p, i) => p && { p, i }).filter(Boolean);
+      show('vs', `
+        <div class="panel center brawl-vs">
+          <h1 class="vs-mid">BRAWL!</h1>
+          <p class="muted">${ps.length} trumpos · ${BRAWL_ROUNDS} rounds · most points wins</p>
+          <ul class="brawl-list">${ps.map(({ p, i }) => `<li style="--pc:${PLAYER_COLORS[i]}" class="${i === slot ? 'me' : ''}">${topIcon(p.top, 30)}<b>${p.name}</b></li>`).join('')}</ul>
+        </div>`);
+      return;
+    }
     const [a, b] = st.players;
     show('vs', `
       <div class="panel center vs">
@@ -227,7 +248,7 @@ export function createController(root, { mode = 'phone', send, myId, sounds = mo
             <div class="meter"><span>Tatag · steadiness</span><i><b style="width:${pct(p.steadiness)}"></b></i><em>${pct(p.steadiness)}</em></div>
           </div>
           <p class="muted">Next: <b>Bitaw!</b> ${phone ? 'tilt to aim and flick your phone forward.' : 'drag the mouse up and let go.'}</p>
-          <p class="muted">Waiting for ${opp().name}… <span data-timer></span></p>
+          <p class="muted">Waiting for ${rivals()}… <span data-timer></span></p>
         </div>`);
       return;
     }
@@ -379,12 +400,13 @@ export function createController(root, { mode = 'phone', send, myId, sounds = mo
   function viewFight() {
     const p = me(), o = opp();
     const t = byId(TOPS, p.top);
+    rival = -1;
     show('fight', `
       <div class="fight">
         ${phone ? `<div class="bars">
           <div class="bar" style="--pc:${PLAYER_COLORS[slot]}"><span>${p.name}</span><i><b data-b="me"></b></i></div>
-          <div class="bar" style="--pc:${PLAYER_COLORS[1 - slot]}"><span>${o.name}</span><i><b data-b="opp"></b></i></div>
-        </div>` : ''}
+          <div class="bar" data-bar="opp" style="--pc:${PLAYER_COLORS[1 - slot]}"><span data-n="opp">${brawl() ? '' : o.name}</span><i><b data-b="opp"></b></i></div>
+        </div>${brawl() ? '<div class="left" data-left></div>' : ''}` : ''}
         <div class="warn" data-warn hidden>Bakunawa! Your steering is reversed!</div>
         ${phone ? `<div class="joy"><div class="joy-knob"></div><span>${motion.hasTilt ? 'Tilt to steer · or drag here' : 'Drag here to steer'}</span></div>
           <button class="btn ghost small center-btn" data-act="center">Re-center tilt</button>`
@@ -455,6 +477,16 @@ export function createController(root, { mode = 'phone', send, myId, sounds = mo
   function viewRoundEnd() {
     const r = st.result || {};
     const won = r.winner === slot, draw = r.winner < 0;
+    if (brawl()) {
+      const kos = (r.kos || []).filter(e => e.by === slot).length;
+      show('roundEnd', `
+        <div class="hud-msg result ${draw ? '' : won ? 'win' : 'lose'}">
+          <h2>${draw ? 'Tabla!' : won ? 'Panalo ka! +2' : `${st.players[r.winner] ? st.players[r.winner].name : 'Someone'} wins the round`}</h2>
+          <p>${kos ? `You knocked out ${kos} trumpo${kos > 1 ? 's' : ''}: +${kos}.` : won ? 'Last trumpo spinning.' : 'No knockouts this round.'}</p>
+          <p class="score">${st.points[slot]} pts <small>(${ordinal(place())} · round ${st.round} of ${BRAWL_ROUNDS})</small></p>
+        </div>`);
+      return;
+    }
     show('roundEnd', `
       <div class="hud-msg result ${draw ? '' : won ? 'win' : 'lose'}">
         <h2>${draw ? 'Tabla!' : won ? 'Panalo ka!' : 'Talo ka!'}</h2>
@@ -494,6 +526,15 @@ export function createController(root, { mode = 'phone', send, myId, sounds = mo
   function viewMatchEnd() {
     const champ = st.result && st.result.champion === slot;
     const p = me();
+    if (brawl()) {
+      show('matchEnd', `
+        <div class="panel center result ${champ ? 'win' : 'lose'}">
+          <h1>${champ ? 'KAMPEON!' : `${ordinal(place())} place`}</h1>
+          <p class="score">${st.points[slot]} pts</p>
+          <p class="muted">The host can start another brawl.</p>
+        </div>`);
+      return;
+    }
     show(p.rematch ? 'rematchWait' : 'matchEnd', `
       <div class="panel center result ${champ ? 'win' : 'lose'}">
         <h1>${champ ? 'KAMPEON!' : 'Talo… next time!'}</h1>
@@ -504,6 +545,15 @@ export function createController(root, { mode = 'phone', send, myId, sounds = mo
       const b = root.querySelector('[data-act=rematch]');
       if (b) b.onclick = () => { if (sounds) audio.click(); send('rematch', {}); };
     });
+  }
+
+  // Brawl: joined mid-round, so this phone watches until the next round.
+  function viewSitOut() {
+    show('sitOut', `
+      <div class="hud-msg">
+        <h2>You're in the next round!</h2>
+        <p>Watch the brawl. You'll pick your trumpo when this round ends.</p>
+      </div>`);
   }
 
   // ---------- state ----------
@@ -517,6 +567,10 @@ export function createController(root, { mode = 'phone', send, myId, sounds = mo
       if (state.phase === 'roundEnd' && state.result && state.result.winner === slot) audio.win();
     }
     lastPhase = state.phase;
+    if (brawl() && !me().inRound && ['charge', 'countdown', 'throw', 'fight', 'roundEnd'].includes(state.phase)) {
+      viewSitOut();
+      return;
+    }
     switch (state.phase) {
       case 'lobby': viewLobby(); break;
       case 'pick': viewPick(); break;
@@ -534,10 +588,28 @@ export function createController(root, { mode = 'phone', send, myId, sounds = mo
 
   function onSnap(s) {
     if (key !== 'fight' || slot < 0) return;
-    const a = s.tops[slot], b = s.tops[1 - slot];
+    const a = s.tops[slot];
+    // In a brawl the second bar follows the nearest rival still spinning.
+    let r = 1 - slot;
+    if (brawl()) {
+      let best = Infinity;
+      r = -1;
+      s.tops.forEach((t, i) => {
+        const d = Math.hypot(t.x - a.x, t.z - a.z);
+        if (i !== slot && t.launched && t.alive && d < best) { best = d; r = i; }
+      });
+      const left = root.querySelector('[data-left]');
+      if (left) left.textContent = `${s.tops.filter(t => t.launched && t.alive).length} left`;
+      if (r !== rival && st.players[r]) {
+        rival = r;
+        const bar = root.querySelector('[data-bar=opp]');
+        if (bar) { bar.style.setProperty('--pc', PLAYER_COLORS[r]); bar.querySelector('[data-n=opp]').textContent = st.players[r].name; }
+      }
+    }
+    const b = s.tops[r];
     const bm = root.querySelector('[data-b=me]'), bo = root.querySelector('[data-b=opp]');
     if (bm) bm.style.width = pct(a.spin);
-    if (bo) bo.style.width = pct(b.spin);
+    if (bo) bo.style.width = pct(b ? b.spin : 0);
     const ring = root.querySelector('[data-ring]');
     ring.style.strokeDashoffset = String(283 * (1 - a.charge));
     const ready = a.charge >= 1 && a.alive;

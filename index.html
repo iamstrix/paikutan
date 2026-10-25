@@ -27,6 +27,7 @@
     <div class="spin"><i class="dmg"></i><b></b><em></em></div>
     <div class="row">wobble <span class="wob"><b></b></span> power <span class="pips"><i></i><i></i><i></i></span> <span class="wins"></span></div>
   </div>
+  <ol id="roster" hidden></ol>
   <div id="banner" hidden></div>
   <ul id="ticker"></ul>
   <div id="end-bar" hidden>
@@ -39,10 +40,15 @@
   <h1 class="logo">PAIKUTAN</h1>
   <div class="subtitle">Trumpo Showdown</div>
   <p class="tagline">The Filipino street game of <b>trumpo</b>, now a head-to-head esport. Spin it with your finger, throw it with your phone, and be the last trumpo spinning in the chalk circle.</p>
-  <div class="menu">
+  <div class="menu" id="menu-main">
     <button class="btn big" id="btn-host">Host a match</button>
     <button class="btn big blue" id="btn-practice">Practice vs CPU</button>
     <button class="btn big ghost" id="btn-help">How to play</button>
+  </div>
+  <div class="menu" id="menu-host" hidden>
+    <button class="btn big" id="btn-host-1v1">1v1<small>Best of 3, head to head. The esports mode.</small></button>
+    <button class="btn big blue" id="btn-host-brawl">Brawl<small>Up to 8 trumpos, everyone vs everyone.</small></button>
+    <button class="btn big ghost" id="btn-host-back">Back</button>
   </div>
   <p class="muted small" style="margin-top:1.2em">Host on a laptop or TV. Two players join by scanning the QR code with their phones.</p>
   <div class="foot">Made for DOST Level Up 3.0 · Philippine Games and Sports</div>
@@ -55,6 +61,10 @@
   <a id="room-url" target="_blank" rel="noopener"></a>
   <p class="small muted" id="net-status"></p>
   <ul id="slots"></ul>
+  <div class="lobby-actions" id="brawl-actions" hidden>
+    <button class="btn small blue" id="btn-add-cpu">+ CPU</button>
+    <button class="btn small" id="btn-start" disabled>Start</button>
+  </div>
   <button class="btn ghost small" id="btn-lobby-cancel">Cancel</button>
 </div>
 
@@ -84,6 +94,8 @@
       <li><b>Diwata</b>: restores spin, steadies the wobble and lifts an eclipse curse. Beats Bakunawa.</li>
       <li><b>Bakunawa</b>: eclipse that reverses the rival's steering for 5 s and cuts a stampede short. Beats Tikbalang.</li>
     </ul>
+    <h2>Brawl</h2>
+    <p>Host a match, then pick <b>Brawl</b>: up to 8 players, everyone against everyone, and anyone can scan in between rounds. The last trumpo spinning gets <b>2 points</b>, and every knockout is <b>1 point</b> for whoever hit that trumpo last. After 3 rounds, the most points wins.</p>
     <p class="muted small">Watch out for the barangay. Once a round the <i>asong gala</i> (stray dog) charges across the circle: when a red lane appears, get out of it. Hens run in and lay eggs (a yellow ring shows where). Eggs block your trumpo until they hatch, unless you dash through and smash them.</p>
     <button class="btn" id="help-close">Got it</button>
   </div>

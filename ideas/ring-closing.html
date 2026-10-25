@@ -1,0 +1,176 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Sikip Na! (Ring Closing Mechanic) - Paikutan Feature Proposal</title>
+</head>
+<body>
+  <h1>Sikip Na! (Ring Closing Mechanic)</h1>
+  <p>Feature Design Proposal for <strong>Paikutan: Trumpo Showdown</strong></p>
+  <p>Competition: DOST Level Up 3.0 Esports Game Dev Challenge</p>
+
+  <hr>
+
+  <h2>1. Overview &amp; Competitive Objective</h2>
+  <p>
+    In street trumpo battles, players sometimes stay along the outer perimeter to stall out an opponent's spin without taking hits. 
+    <strong>&quot;Sikip Na!&quot;</strong> introduces a shrinking chalk arena boundary after a set duration, compressing the battleground and forcing an inevitable, high-stakes clash.
+  </p>
+  <ul>
+    <li><strong>Eliminates Turtling:</strong> Prevents evasive players from running down the round timer.</li>
+    <li><strong>Guaranteed Match Pacing:</strong> Guarantees that every round resolves decisively within 35 to 45 seconds, perfectly suited for esports broadcasting.</li>
+    <li><strong>End-Game Climax:</strong> Escalates the threat of <em>Labas</em> (Ring Out), making every dash, bump, and collision life-or-death near the closing border.</li>
+  </ul>
+
+  <hr>
+
+  <h2>2. Core Mathematical Specification</h2>
+  <table border="1" cellpadding="8" cellspacing="0">
+    <thead>
+      <tr>
+        <th>Parameter</th>
+        <th>Value</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>Initial Arena Radius</strong> (<code>ARENA_R</code>)</td>
+        <td>5.0 meters</td>
+        <td>The full chalk arena drawn at the start of the round.</td>
+      </tr>
+      <tr>
+        <td><strong>Squeeze Start Time</strong> (<code>SQUEEZE_T</code>)</td>
+        <td>20.0 seconds</td>
+        <td>Timestamp when the chalk circle begins actively constricting.</td>
+      </tr>
+      <tr>
+        <td><strong>Squeeze Duration</strong> (<code>SQUEEZE_DUR</code>)</td>
+        <td>15.0 seconds</td>
+        <td>Total transition time over which the ring continuously shrinks.</td>
+      </tr>
+      <tr>
+        <td><strong>Minimum Final Radius</strong> (<code>SQUEEZE_R</code>)</td>
+        <td>3.0 meters</td>
+        <td>The final tight boundary size (reduces playable floor area by 64%).</td>
+      </tr>
+      <tr>
+        <td><strong>Hard Round Cap</strong> (<code>MAX_T</code>)</td>
+        <td>70.0 seconds</td>
+        <td>Absolute match overtime threshold before sudden death spin drain.</td>
+      </tr>
+      <tr>
+        <td><strong>Ring Shrink Formula</strong></td>
+        <td><code>R(t) = max(SQUEEZE_R, ARENA_R - ((t - SQUEEZE_T) / SQUEEZE_DUR) * (ARENA_R - SQUEEZE_R))</code></td>
+        <td>Linear interpolation updating the dynamic boundary radius each simulation step.</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <hr>
+
+  <h2>3. Visual, Audio, &amp; Telegraph System</h2>
+  <ol>
+    <li>
+      <strong>3-Second Warning Announcement (at t = 17s):</strong>
+      <ul>
+        <li><strong>Host HUD Banner:</strong> Prominent text banner flashes across the screen: <em>&quot;SIKIP NA!&quot;</em>.</li>
+        <li><strong>Audio Cue:</strong> Sudden tricycle horn or barangay whistle sound effect signals the impending shrink.</li>
+        <li><strong>Chalk Flash:</strong> The white chalk perimeter pulses between white (<code>#fbf6ea</code>) and warning orange.</li>
+      </ul>
+    </li>
+    <li>
+      <strong>Active Constriction Phase (t = 20s to 35s):</strong>
+      <ul>
+        <li><strong>Chalk Retraction:</strong> The visible 3D chalk ring shifts from white to hot danger red (<code>#ff8a7a</code>) as it scales down.</li>
+        <li><strong>Ground Dust Effect:</strong> Fine chalk dust particles scrape inward along the asphalt as the border recedes.</li>
+        <li><strong>Throw Lines Recede:</strong> The player launch lines and floor markings contract proportionately.</li>
+      </ul>
+    </li>
+    <li>
+      <strong>Final Sudden Death Perimeter (t &gt; 35s):</strong>
+      <ul>
+        <li>The ring locks at a tight 3.0-meter diameter.</li>
+        <li>Any trumpo whose center of mass exceeds <code>R(t)</code> immediately triggers the <strong>Labas (Ring Out)</strong> elimination flag.</li>
+      </ul>
+    </li>
+  </ol>
+
+  <hr>
+
+  <h2>4. Impact on Trumpo Archetypes &amp; Strategy</h2>
+  <table border="1" cellpadding="8" cellspacing="0">
+    <thead>
+      <tr>
+        <th>Trumpo</th>
+        <th>Role / Affinity</th>
+        <th>Tactical Impact Under &quot;Sikip Na!&quot;</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>Tikbalang</strong></td>
+        <td>Heavy Striker (Stampede)</td>
+        <td><strong>Major Beneficiary:</strong> A tighter ring makes Tikbalang's 2-second Stampede and terminal hoof-stomp almost impossible to dodge, easily shoving opponents across the short distance into <em>Labas</em>.</td>
+      </tr>
+      <tr>
+        <td><strong>Agimat</strong></td>
+        <td>Defensive Anchor (Shield)</td>
+        <td><strong>High Priority Defense:</strong> When space runs out, collisions become inevitable. Agimat's 70% knockback reduction allows it to absorb heavy dashes without flying out of the ring.</td>
+      </tr>
+      <tr>
+        <td><strong>Kidlat</strong></td>
+        <td>Speed / Burst (Lightning)</td>
+        <td><strong>High Risk, High Reward:</strong> High speed becomes dangerous near red chalk boundaries. Players must execute precise tilt counter-steering to land the lightning bolt without skidding out.</td>
+      </tr>
+      <tr>
+        <td><strong>Bakunawa</strong></td>
+        <td>Disruptor (Eclipse)</td>
+        <td><strong>Lethal Punisher:</strong> Casting Eclipse in a 3-meter circle is devastating; reversed controls guarantee that a panicked rival steers themselves directly over the closing chalk line.</td>
+      </tr>
+      <tr>
+        <td><strong>Diwata</strong></td>
+        <td>Regenerator (Blessing)</td>
+        <td><strong>Skill Check:</strong> Can no longer run away to freely restore spin; must time blessing between forced clashes and use Agaw-Ikot dash comebacks to survive.</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <hr>
+
+  <h2>5. Implementation Architecture &amp; Code Touchpoints</h2>
+  <p>The game architecture already supports dynamic arena radius tracking across client-server snapshots:</p>
+  <ul>
+    <li>
+      <strong>Simulation Engine (<code>js/sim.js</code>):</strong>
+      <ul>
+        <li><code>w.ring</code> dynamically computes current chalk radius based on <code>w.t</code>, <code>SQUEEZE_T</code>, and <code>SQUEEZE_DUR</code>.</li>
+        <li>Ring-out boundary check evaluates <code>Math.hypot(tp.x, tp.z) &gt; w.ring</code> rather than static <code>ARENA_R</code>.</li>
+        <li>Snapshot serializes <code>s.ring</code> so phone clients mirror the exact boundary.</li>
+      </ul>
+    </li>
+    <li>
+      <strong>3D Scene Renderer (<code>js/scene.js</code>):</strong>
+      <ul>
+        <li>Chalk mesh scaling: <code>chalk.scale.setScalar(ringR / ARENA_R)</code>.</li>
+        <li>Chalk dynamic tint: <code>chalk.material.color.set(ringR &lt; ARENA_R - 0.01 ? &#39;#ff8a7a&#39; : &#39;#fbf6ea&#39;)</code>.</li>
+      </ul>
+    </li>
+    <li>
+      <strong>Spectator &amp; Phone HUDs (<code>js/host.js</code> &amp; <code>js/play.js</code>):</strong>
+      <ul>
+        <li>Display on-screen banner countdown when <code>w.ring &lt; ARENA_R</code>.</li>
+        <li>Phone mini-radar scales the circle graphic down synchronously with the host screen.</li>
+      </ul>
+    </li>
+  </ul>
+
+  <hr>
+
+  <h2>6. Conclusion &amp; Esports Viability</h2>
+  <p>
+    <em>&quot;Sikip Na!&quot;</em> bridges traditional Filipino play with modern battle royale design patterns. 
+    It respects cultural play (the chalk circle is standard in street games) while solving the single biggest threat to spectator engagement: late-round stagnation.
+  </p>
+</body>
+</html>

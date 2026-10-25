@@ -271,3 +271,36 @@ body.clean #hud, body.clean #corner { display: none; }
   box-shadow: inset 0 -4px 0 rgba(0, 0, 0, 0.18); }
 .char-fig .body { width: 100%; flex: 1; margin-top: 4px; background: var(--c); border-radius: 8px 8px 4px 4px; box-shadow: inset 0 -8px 0 rgba(0, 0, 0, 0.2); }
 .car-item.main .char-fig { animation: car-bob 1.8s ease-in-out infinite; filter: drop-shadow(0 8px 10px rgba(0, 0, 0, 0.45)); }
+
+/* ---------- host menu and brawl ---------- */
+.menu .btn small { display: block; font-family: Nunito, sans-serif; font-size: 0.8rem; font-weight: 700; opacity: 0.85; margin-top: 2px; letter-spacing: 0; text-transform: none; }
+.lobby-actions { display: flex; gap: 10px; justify-content: center; margin-bottom: 10px; }
+.lobby-actions .btn { flex: 1; }
+.btn:disabled { opacity: 0.45; cursor: default; }
+#slots li .small { font-size: 0.75rem; }
+/* During a brawl the lobby shrinks to a corner QR code so people can scan in for the next round. */
+#lobby.mini { top: auto; bottom: 76px; width: 150px; padding: 10px; }
+#lobby.mini > :not(#qr, #room-code) { display: none; }
+#lobby.mini #room-code { font-size: 1.3rem; }
+#lobby.mini #qr { width: 120px; height: 120px; margin: 4px auto 0; padding: 5px; }
+body.brawl .pcard { display: none; }
+#roster { position: absolute; left: 16px; top: 16px; width: min(280px, 40vw); list-style: none; margin: 0; padding: 8px;
+  background: var(--panel-soft); border-radius: var(--radius); backdrop-filter: blur(4px); }
+#roster li { display: grid; grid-template-columns: 26px 1fr 70px 28px; align-items: center; gap: 8px; padding: 5px 6px;
+  border-left: 4px solid var(--pc); border-radius: 6px; margin: 3px 0; background: rgba(0, 0, 0, 0.2); transition: opacity 0.3s; }
+#roster li b { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 0.9rem; }
+#roster li .spin { height: 8px; border-radius: 4px; background: rgba(0, 0, 0, 0.45); overflow: hidden; }
+#roster li .spin i { display: block; height: 100%; background: linear-gradient(90deg, var(--pc), var(--yellow)); transition: width 0.1s; }
+#roster li em { font-style: normal; font-family: Bungee, Impact, sans-serif; text-align: right; color: var(--yellow); }
+#roster li.down { opacity: 0.4; }
+#roster li.down b { text-decoration: line-through; }
+#roster li.waiting { opacity: 0.6; }
+@media (max-width: 700px) { #roster { width: calc(100% - 32px); } }
+/* Phone: brawl line-up and how many are left. */
+.brawl-list { list-style: none; padding: 0; margin: 12px auto; display: grid; grid-template-columns: 1fr 1fr; gap: 6px; max-width: 360px; text-align: left; }
+.brawl-list li { display: flex; align-items: center; gap: 6px; padding: 5px 8px; border-radius: 8px; border-left: 4px solid var(--pc); background: rgba(0, 0, 0, 0.25); font-size: 0.85rem; }
+.brawl-list li.me { box-shadow: 0 0 0 2px var(--pc); }
+.brawl-list li b { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.fight .left { position: absolute; top: 62px; left: 50%; transform: translateX(-50%); font-family: Bungee, Impact, sans-serif; font-size: 0.9rem;
+  color: var(--yellow); text-shadow: 0 2px 4px #000; pointer-events: none; }
+.brawl-vs .vs-mid { margin: 0; }

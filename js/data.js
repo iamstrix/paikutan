@@ -27,7 +27,8 @@ export const TOPS = [
     desc: 'The sea serpent swallows the moon: rival steering is reversed for 5 seconds, and a stampede is cut short.' },
 ];
 
-export const PLAYER_COLORS = ['#e63946', '#3a86ff'];
+// One per seat: 1v1 uses the first two; a brawl goes up to eight.
+export const PLAYER_COLORS = ['#e63946', '#3a86ff', '#ffbe0b', '#2dc653', '#ff70c8', '#00c2d1', '#ff8c1a', '#a77bff'];
 export const STAT_LABELS = { str: 'Lakas (hit)', lon: 'Tagal (spin time)', sta: 'Tatag (balance)' };
 
 export const byId = (list, id) => list.find(x => x.id === id) || list[0];
