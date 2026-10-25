@@ -3,9 +3,11 @@ import http from 'node:http';
 import { readFile, writeFile, mkdir } from 'node:fs/promises';
 import { resolve, extname, sep } from 'node:path';
 import { spawn } from 'node:child_process';
+import { pathToFileURL } from 'node:url';
 import assert from 'node:assert/strict';
 
 const root = process.cwd(), output = resolve(root, 'node_modules/.sfx-check');
+const standalone = process.argv.includes('--standalone'), suffix = standalone ? '-standalone' : '';
 await mkdir(output, { recursive: true });
 const server = http.createServer(async (req, res) => {
   try {
@@ -48,7 +50,7 @@ try {
     if (result.exceptionDetails) throw Error(result.exceptionDetails.exception?.description || result.exceptionDetails.text);
     return result.result.value;
   };
-  await send('Page.navigate', { url: base + '/sound/index.html' }, sessionId);
+  await send('Page.navigate', { url: standalone ? pathToFileURL(resolve(root, 'sound/soundboard.html')).href : base + '/sound/index.html' }, sessionId);
   for (let i=0;i<50;i++) { if (await evaluate('return Boolean(window.soundLab)')) break; await new Promise(resolve => setTimeout(resolve, 100)); }
   const loaded = await evaluate('soundLab.audio.unlock();await soundLab.audio.preload();return soundLab.audio.status');
   assert.equal(loaded.context, 'running'); assert.equal(loaded.loaded.length, 9, 'all five MP3s and four voice clips decode');
@@ -69,7 +71,7 @@ try {
   console.log(`PASS: ${rendered.length} real offline renders are audible, finite, unclipped, and end in silence; WAV export works`);
 
   const mix = await evaluate(`
-    const {createSynth}=await import('/js/audio-synth.js');const {POWER_SAMPLES}=await import('/js/sfx-catalog.js');
+    const {createSynth}=typeof __synth!=='undefined'?__synth:await import('/js/audio-synth.js');const {POWER_SAMPLES}=typeof __catalog!=='undefined'?__catalog:await import('/js/sfx-catalog.js');
     const context=new OfflineAudioContext(1,44100*5,44100),bus=context.createGain(),master=context.createGain(),compressor=context.createDynamicsCompressor();
     bus.gain.value=.85;master.gain.value=.85;compressor.threshold.value=-10;compressor.knee.value=12;compressor.ratio.value=6;compressor.attack.value=.003;compressor.release.value=.18;
     bus.connect(master).connect(compressor).connect(context.destination);const synth=createSynth(context,bus,{maxVoices:512});
@@ -101,13 +103,13 @@ try {
 
   await evaluate(`document.querySelector('[data-play="tikbalang"]').click();document.querySelector('#fallback').checked=true;document.querySelector('[data-play="bakunawa"]').click();document.querySelector('#stop').click();`);
   const screenshot = await send('Page.captureScreenshot', { captureBeyondViewport: false }, sessionId);
-  await writeFile(resolve(output, 'soundboard-desktop.png'), Buffer.from(screenshot.data, 'base64'));
+  await writeFile(resolve(output, 'soundboard-desktop' + suffix + '.png'), Buffer.from(screenshot.data, 'base64'));
   await send('Emulation.setDeviceMetricsOverride', { width: 390, height: 844, deviceScaleFactor: 1, mobile: true }, sessionId);
   assert(await evaluate('return document.documentElement.scrollWidth<=innerWidth'), 'soundboard fits a phone');
-  const mobile = await send('Page.captureScreenshot', {}, sessionId); await writeFile(resolve(output, 'soundboard-mobile.png'), Buffer.from(mobile.data, 'base64'));
+  const mobile = await send('Page.captureScreenshot', {}, sessionId); await writeFile(resolve(output, 'soundboard-mobile' + suffix + '.png'), Buffer.from(mobile.data, 'base64'));
   assert.deepEqual(errors, []);
   const manifest = JSON.parse(await readFile(resolve(root, 'sound/source-manifest.json'), 'utf8'));
   assert(manifest.totalBytes < 150000);
-  await writeFile(resolve(output, 'results.json'), JSON.stringify({ passed: true, rendered, mix, playback, fallback, loops, powerBytes: manifest.totalBytes, errors }, null, 2));
+  await writeFile(resolve(output, 'results' + suffix + '.json'), JSON.stringify({ passed: true, standalone, rendered, mix, playback, fallback, loops, powerBytes: manifest.totalBytes, errors }, null, 2));
   console.log(`PASS: desktop/phone soundboard, no runtime errors; five power clips total ${manifest.totalBytes} bytes`);
 } finally { socket?.close(); browser.kill(); server.close(); }

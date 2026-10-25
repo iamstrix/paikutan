@@ -4,6 +4,7 @@ import * as THREE from 'three';
 import { ARENA_R, TOP_R, LAUNCH_Z, EGG_WARN, EGG_R, MAX_SEATS, seatDir } from './sim.js';
 import { TOPS, CHARACTERS, PLAYER_COLORS, CHAR_MODEL, byId } from './data.js';
 import { buildBarangay, WORLD_SCALE } from './world/barangay.js';
+import { buildPodium } from './world/podium.js';
 import { createAtmosphere } from './world/atmosphere.js';
 import { buildTrompo } from './entities/trompo.js';
 import { Avatar } from './entities/avatar.js';
@@ -90,14 +91,14 @@ function makePerson(charId, slot, brawl) {
     const [sx, sz] = seatDir(slot), back = ARENA_R + 2.8;
     root.position.set(sx * back - sz * 0.9, 0, sz * back + sx * 0.9);
     root.rotation.y = Math.atan2(-sx, -sz);
-    return { root, avatar };
+    return { root, avatar, home: [root.position.clone(), root.rotation.y] };
   }
   // Beside their own throwing line, on their right, facing the circle.
   const sz = slot === 0 ? 1 : -1;
   // Out to the side: these characters are big enough to cover the circle from the phone camera.
   root.position.set(-sz * 3, 0, sz * (LAUNCH_Z + 1.3));
   root.rotation.y = slot === 0 ? Math.PI : 0;
-  return { root, avatar };
+  return { root, avatar, home: [root.position.clone(), root.rotation.y] };
 }
 
 function makeDog() {
@@ -232,6 +233,14 @@ export function createScene(canvas, { low = false } = {}) {
   // Spectator camera: 'auto', 'top' (top-down), 'close' (low, wheel-height chase), 'orbit'.
   let camMode = 'auto';
   let party = null; // winner celebration: { slot, final, t }
+  // Brawl match end: the top three on the podium, everyone else gathered round to clap.
+  const stand = buildPodium();
+  stand.group.scale.setScalar(WORLD_SCALE);
+  stand.group.visible = false;
+  scene.add(stand.group);
+  let podium = null; // { places: [slot, ...] best first, crowd: [slot, ...], t }
+  const podiumTags = new Map();
+  const names = [];
   const localSteer = []; // this device's own steering, drawn without waiting for the host
   let own = -1; // slot this device plays; -1 for a spectator screen, which shows both arrows
   let chargeSlot = -1, chargeFeedback = null, windingTime = 0;
@@ -242,6 +251,7 @@ export function createScene(canvas, { low = false } = {}) {
   function setPlayers(players) {
     // 1v1 has two seats, a brawl up to eight; switching modes clears the seats no longer used.
     const brawl = players.length > 2;
+    players.forEach((p, s) => { names[s] = p ? p.name : ''; });
     if (brawl !== wasBrawl) {
       wasBrawl = brawl;
       people.forEach(p => p && scene.remove(p.root));
@@ -288,6 +298,103 @@ export function createScene(canvas, { low = false } = {}) {
     effects.reset(); skills.reset(); eclipse = 0;
     bubbles.forEach(b => b.el.remove()); bubbles.clear();
     youTag.hidden = true;
+    clearPodium();
+  }
+
+  function clearPodium() {
+    if (!podium) return;
+    podium = null;
+    stand.group.visible = false;
+    people.forEach(p => { if (p) { p.root.position.copy(p.home[0]); p.root.rotation.y = p.home[1]; p.root.visible = true; } });
+    tops.forEach(t => t && t.root.scale.setScalar(1));
+    podiumTags.forEach(el => el.remove()); podiumTags.clear();
+  }
+
+  // standings: every seat from first place down, or null to take the podium away.
+  function showPodium(standings) {
+    if (!standings) { if (podium) reset(); return; }
+    reset();
+    podium = { places: standings.slice(0, 3), crowd: standings.slice(3), t: 0 };
+    stand.group.visible = true;
+    podium.places.forEach((slot, i) => {
+      const el = document.createElement('div');
+      el.className = 'podium-tag';
+      el.dataset.place = i + 1;
+      el.style.setProperty('--pc', PLAYER_COLORS[slot]);
+      el.innerHTML = `<b>${i + 1}</b>`;
+      el.append(names[slot] || `P${slot + 1}`);
+      el.hidden = true;
+      chatLayer.append(el);
+      podiumTags.set(slot, el);
+    });
+  }
+
+  // The podium grows up out of the dirt, then each player hops on, 3rd place first.
+  function updatePodium(dt) {
+    podium.t += dt;
+    const t = podium.t, rise = Math.min(1, t / 0.7), e = 1 - (1 - rise) ** 3;
+    stand.group.position.y = (e - 1) * stand.height * WORLD_SCALE;
+    stand.flags.forEach((f, i) => f.setRotationFromAxisAngle(f.userData.axis, Math.sin(time * 1.6 + i) * 0.18));
+    tops.forEach(top => { if (top) top.root.visible = false; });
+    podium.places.forEach((slot, i) => {
+      const p = people[slot], top = tops[slot], spot = stand.spots[i];
+      const hop = THREE.MathUtils.clamp((t - 0.7 - (2 - i) * 0.35) / 0.4, 0, 1);
+      if (p) {
+        p.root.visible = hop > 0;
+        p.root.position.copy(spot.stand).multiplyScalar(WORLD_SCALE).add(stand.group.position);
+        p.root.position.y += Math.sin(hop * Math.PI) * 1.2;
+        p.root.rotation.y = 0;
+      }
+      // Their trumpo spins at their feet.
+      if (top) {
+        top.root.visible = hop >= 1;
+        top.root.position.copy(spot.top).multiplyScalar(WORLD_SCALE).add(stand.group.position);
+        top.root.scale.setScalar(0.75); // full size hides the legs of whoever stands behind it
+        top.prec += dt * 2.5;
+        top.precess.rotation.y = top.prec;
+        top.tilt.rotation.x = 0.04;
+        top.spinner.rotation.y -= dt * 60;
+        top.blur.material.opacity = 0.35;
+        top.blur.rotation.z -= dt * 60;
+        top.blob.position.y = 0.015; top.blob.material.opacity = 1;
+        top.arrow.visible = false;
+        top.aura.visible = true;
+      }
+    });
+    // The rest stand in an arc behind it, either side of the poles, facing the podium.
+    podium.crowd.forEach((slot, k) => {
+      const p = people[slot];
+      if (!p) return;
+      const a = [2.05, -2.05, 2.6, -2.6, Math.PI][k], r = 4.4;
+      p.root.position.set(Math.sin(a) * r, 0, Math.cos(a) * r);
+      p.root.rotation.y = Math.atan2(-p.root.position.x, -p.root.position.z);
+    });
+    // Confetti over the winner, a gentler sprinkle on 2nd and 3rd, fireworks over the plaza.
+    if (rise >= 1) {
+      podium.places.forEach((slot, i) => {
+        const spot = stand.spots[i];
+        if (Math.random() < [0.45, 0.15, 0.1][i]) effects.confetti(spot.stand.x + rand(-0.4, 0.4), spot.stand.y + 2.4, rand(-0.3, 0.3), 5);
+      });
+      if (Math.random() < 0.05) {
+        const fx = rand(-7, 7), fz = rand(-6, -2);
+        effects.sparks.emit(u(fx), u(rand(6, 9)), u(fz), { n: 50, color: ['#ffd23f', '#ff70a6', '#7fffd4', '#e8f4ff'][Math.floor(rand(0, 4))], speed: 3, up: 1.5, life: 0.9, size: 0.14, grow: 0.3, gravity: 2 }, Math.random);
+        pop(fx, fz, '#ffd23f', 20);
+      }
+    }
+  }
+
+  // Name tags over the podium players' heads; after the camera moves, so they don't lag a frame.
+  function placePodiumTags() {
+    for (const [slot, el] of podiumTags) {
+      const p = people[slot];
+      if (!p || !p.root.visible) { el.hidden = true; continue; }
+      p.avatar.rig.head.getWorldPosition(bubblePoint);
+      bubblePoint.y += 1.3;
+      bubblePoint.project(camera);
+      el.hidden = bubblePoint.z < -1 || bubblePoint.z > 1;
+      el.style.left = `${(bubblePoint.x + 1) * 50}%`;
+      el.style.top = `${(1 - bubblePoint.y) * 50}%`;
+    }
   }
 
   function makeEggView(e) {
@@ -563,6 +670,12 @@ export function createScene(canvas, { low = false } = {}) {
       const sway = Math.sin(time * 0.1) * 0.6;
       pos = new THREE.Vector3(1 + sway, 6, 15);
       look = new THREE.Vector3(-4 + sway, 0.5, -2);
+    } else if (podium) {
+      // Front on to the podium with the plaza behind, swaying a little; it rises with the steps.
+      const ang = Math.sin(time * 0.2) * 0.22, rise = Math.min(1, podium.t / 1.6);
+      // Aimed high so the podium sits under the Kampeon banner.
+      look = new THREE.Vector3(0, 1.6 + rise * 1.4, 0);
+      pos = new THREE.Vector3(Math.sin(ang) * 12, 2 + rise * 2, Math.cos(ang) * 12);
     } else if (party && tops[party.slot] && tops[party.slot].state) {
       // Winner close-up: slow orbit around the trumpo still spinning.
       const w = tops[party.slot].state, ang = party.t * 0.6 + 0.8;
@@ -591,7 +704,7 @@ export function createScene(canvas, { low = false } = {}) {
         look.set(mx * 0.3, 0, mz * 0.3);
       }
     }
-    const tight = view === 'spectator' && (party || camMode === 'close' || camMode === 'menu');
+    const tight = view === 'spectator' && (podium || party || camMode === 'close' || camMode === 'menu');
     camera.fov = winding ? 60 : tight ? 40 : 48;
     if (!winding && !tight) {
       const offset = pos.clone().sub(look);
@@ -628,7 +741,7 @@ export function createScene(canvas, { low = false } = {}) {
 
   function render(dt) {
     time += dt;
-    tops.forEach((t, i) => t && updateTop(t, dt, i));
+    if (!podium) tops.forEach((t, i) => t && updateTop(t, dt, i));
     if (dogTarget) {
       if (!dog.visible) dog.position.x = dogTarget.x;
       dog.visible = true;
@@ -655,7 +768,8 @@ export function createScene(canvas, { low = false } = {}) {
       if (!p) return;
       // Watch your own top, slump when it falls; the round winner cheers. The throw plays out on its own.
       const a = p.avatar, st = tops[s] && tops[s].state;
-      if (a.mode !== 'release') {
+      if (podium) a.mode = podium.places[0] === s ? 'cheer' : 'clap';
+      else if (a.mode !== 'release') {
         a.mode = s === chargeSlot ? 'wind' : party ? (party.slot === s ? 'cheer' : 'sad')
           : st && st.launched ? (st.alive ? 'watch' : 'sad') : 'idle';
       }
@@ -669,6 +783,7 @@ export function createScene(canvas, { low = false } = {}) {
     world.update(time);
     critters.update(dt, time);
     updatePeek(dt);
+    if (podium) updatePodium(dt);
     if (party) {
       party.t += dt;
       const w = tops[party.slot] && tops[party.slot].state;
@@ -682,10 +797,11 @@ export function createScene(canvas, { low = false } = {}) {
     }
     shake = Math.max(0, shake - dt * 1.5);
     flash.intensity = Math.max(0, flash.intensity - dt * 150);
-    const cursed = tops.some(t => t && t.state && t.state.alive && t.state.invert);
+    const cursed = !podium && tops.some(t => t && t.state && t.state.alive && t.state.invert);
     eclipse += ((cursed ? 0.28 : 0) - eclipse) * (1 - Math.exp(-dt * 6));
     atmosphere.setClock(CLOCK, eclipse);
     updateCamera(dt);
+    placePodiumTags();
     for (const [slot, bubble] of bubbles) {
       const person = people[slot];
       if (!person || performance.now() >= bubble.until) { bubble.el.remove(); bubbles.delete(slot); continue; }
@@ -698,7 +814,7 @@ export function createScene(canvas, { low = false } = {}) {
     }
     // Spectator screens (own < 0) have no single "you", so the tag only shows on a player's device.
     const mine = own >= 0 ? tops[own] : null;
-    youTag.hidden = !(mine && mine.state && mine.root.visible && !party);
+    youTag.hidden = !(mine && mine.state && mine.root.visible && !party && !podium);
     if (!youTag.hidden) {
       // Anchor on the near edge of the ownership ring, so the tag sits just under the top on screen.
       const p = mine.root.position;
@@ -718,5 +834,5 @@ export function createScene(canvas, { low = false } = {}) {
   window.addEventListener('resize', resize);
   resize();
   setView('spectator');
-  return { setPlayers, applySnap, fx, render, resize, setView, reset, celebrate, setCam, setLocalSteer, setCharge };
+  return { setPlayers, applySnap, fx, render, resize, setView, reset, celebrate, showPodium, setCam, setLocalSteer, setCharge };
 }

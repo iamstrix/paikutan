@@ -135,6 +135,9 @@ function onState(s) {
     if (s.phase === 'roundEnd' && s.result && s.result.winner >= 0) {
       scene.celebrate(s.result.winner, brawl ? s.round >= BRAWL_ROUNDS : Math.max(...s.scores) >= WIN_ROUNDS);
     }
+    // Brawl match end: the top three take the podium; it comes down when the next match starts.
+    if (s.phase === 'matchEnd' && brawl && s.result && s.result.standings) scene.showPodium(s.result.standings);
+    else if (lastPhase === 'matchEnd') scene.showPodium(null);
     if (s.phase === 'roundEnd' && brawl && s.result && s.result.winner >= 0) {
       const kos = (s.result.kos || []).filter(e => e.by === s.result.winner).length;
       say(`${tag(s.result.winner)} is the last trumpo spinning! +${BRAWL_WIN_PTS}${kos ? ` and ${kos} knockout${kos > 1 ? 's' : ''}` : ''}.`);
@@ -193,8 +196,11 @@ function renderCards() {
 
 // Brawl: one row per player, ordered by points.
 function renderRoster() {
+  // At match end, the final standings break ties the same way as the podium.
+  const rank = state.result && state.result.standings;
+  const at = i => (rank.includes(i) ? rank.indexOf(i) : rank.length + i); // anyone who joined after the end goes last
   const rows = state.players.map((p, i) => p && { p, i }).filter(Boolean)
-    .sort((a, b) => state.points[b.i] - state.points[a.i] || a.i - b.i);
+    .sort((a, b) => (rank ? at(a.i) - at(b.i) : state.points[b.i] - state.points[a.i] || a.i - b.i));
   $('#roster').innerHTML = rows.map(({ p, i }) => `<li data-slot="${i}" style="--pc:${PLAYER_COLORS[i]}">
     ${topIcon(p.top, 26)}<b>${p.name}</b><span class="spin"><i></i></span><em>${state.points[i]}</em></li>`).join('');
 }

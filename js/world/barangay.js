@@ -14,6 +14,8 @@ import {
 const BILOG_R = 2.8;
 export const WORLD_SCALE = ARENA_R / BILOG_R;
 const POST_Z = 11.2;
+// The broad canopy stays beyond the brawl seats and their inward-facing phone cameras.
+const MANGO_TREE = { x: -14, z: -3.8 };
 
 // Seeded so every screen (host and phones) builds the same barangay.
 function seeded(seed) {
@@ -83,8 +85,8 @@ export function buildBarangay({ low = false } = {}) {
 
   // Ground storytelling: the worn band round the bilog, leaf litter, a road that has seen years of jeepneys.
   groundDecal(scenery, 'scuff', 11, 11, 0, 0, 0, 0.02);
-  groundDecal(scenery, 'leaves', 5, 5, -4.6, -4.2, 0.5, 0.018);
-  groundDecal(scenery, 'leaves', 3, 3, -2.8, -2.4, 2.1, 0.018);
+  groundDecal(scenery, 'leaves', 5, 5, MANGO_TREE.x, MANGO_TREE.z, 0.5, 0.018);
+  groundDecal(scenery, 'leaves', 3, 3, MANGO_TREE.x + 1.8, MANGO_TREE.z + 1.8, 2.1, 0.018);
   for (let i = 0; i < 9; i += 1) {
     const x = -24 + i * 6 + rng() * 3;
     groundDecal(scenery, i % 3 === 0 ? 'patch' : 'crack', 1.6 + rng(), 1.6 + rng(), x, 8.2 + rng() * 1.6, rng() * 6, 0.095);
@@ -124,7 +126,7 @@ export function buildBarangay({ low = false } = {}) {
   put(sampayan(['#e94b3c', '#ffffff', '#2f7dd1', '#f7c548', '#e94b8a', '#53b36a', '#ffffff']), 12.6, -5.2, 0.1);
   put(carabao(), -23, 17, 0.5);
   put(askal(), 2.7, -5.0, 2.6);
-  put(mangoTree(), -4.6, -4.2);
+  put(mangoTree(), MANGO_TREE.x, MANGO_TREE.z);
 
   const trees = [
     [-24, -12], [-7, -14.5], [5, -14], [22, -13], [-27, 3], [27, 7], [-13, 20.5], [12, 21],
@@ -255,7 +257,7 @@ export function buildBarangay({ low = false } = {}) {
     [[-7, 6.5, 4], [7, 6.5, 4], 0.45],
     [[-18, 5.4, POST_Z], [-6, 5.4, POST_Z], 0.6],
     [[6, 5.4, POST_Z], [18, 5.4, POST_Z], 0.6],
-    [[-4.6, 4.8, -4.2], [-8.6, 3.3, -6.3], 0.3],
+    [[MANGO_TREE.x, 4.8, MANGO_TREE.z], [-8.6, 3.3, -6.3], 0.3],
   ]) {
     const b2 = banderitas(new THREE.Vector3(...a), new THREE.Vector3(...b), sag);
     sway.push(b2);

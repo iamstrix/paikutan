@@ -1,0 +1,441 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#164b43">
+<title>Paikutan · Classmate Voice Recording Guide</title>
+<style>
+:root{color-scheme:light;--paper:#faf7ef;--ink:#203c35;--muted:#586960;--green:#164b43;--line:#d8ded2;--orange:#b94322;--yellow:#f6c85c;font-family:system-ui,-apple-system,"Segoe UI",sans-serif;background:var(--paper);color:var(--ink)}
+*{box-sizing:border-box}body{margin:0}a{color:var(--green);text-underline-offset:3px}button,input,select{font:inherit}button,a.button{border:1px solid var(--green);border-radius:7px;background:white;color:var(--green);padding:10px 14px;cursor:pointer;font-weight:700;text-decoration:none}button:hover,a.button:hover{background:#e6eee3}button:focus-visible,input:focus-visible,select:focus-visible,a:focus-visible,summary:focus-visible{outline:3px solid var(--orange);outline-offset:3px}button.primary{background:var(--green);color:white}.wrap{width:min(1260px,100%);margin:auto;padding:0 28px}.masthead{background:var(--green);color:var(--paper);padding:32px 0 38px}.topline{display:flex;justify-content:space-between;gap:18px;align-items:center;font-size:.78rem;letter-spacing:.1em;text-transform:uppercase}.masthead a{color:#e2ecdb}.kicker{font-size:.76rem;letter-spacing:.13em;text-transform:uppercase;font-weight:800;color:var(--orange)}h1{font-size:clamp(2.8rem,7vw,5.8rem);line-height:.98;letter-spacing:-.06em;margin:32px 0 20px;max-width:920px}h1 span{color:var(--yellow)}.lede{max-width:760px;font-size:1.08rem;line-height:1.65;color:#e1e9dc}.masthead .tag{color:#fff0c3;border-color:#7e9c8a}.stats{display:flex;gap:34px;flex-wrap:wrap;margin:26px 0 0}.stats strong{display:block;font-size:1.7rem;line-height:1.1;color:var(--yellow)}.stats span{font-size:.76rem;color:#e1e9dc}h2{font-size:1.8rem;letter-spacing:-.035em;margin:0 0 14px}h3{font-size:1.1rem;margin:0 0 9px}p,li{line-height:1.65}p{margin:8px 0 14px}.muted{color:var(--muted)}.intro{padding:32px 0;display:grid;grid-template-columns:1.1fr 1fr;gap:34px;border-bottom:1px solid var(--line)}.notice{padding:17px 19px;border-left:4px solid var(--orange);background:#f4eadd}.notice p:last-child{margin-bottom:0}.tag{display:inline-block;padding:4px 8px;border:1px solid var(--line);border-radius:99px;font-size:.67rem;line-height:1.3;font-weight:800;letter-spacing:.04em}.tag.core{background:#e5eedc;border-color:#bdcfac;color:#2c501e}.tag.extra{background:#f6e6d5;border-color:#e4c3a0;color:#81441e}.tag.optional{background:#ece9f3;border-color:#d2c8e1;color:#625176}.toolbar{display:flex;gap:9px;flex-wrap:wrap;margin:20px 0 12px}.section{padding:34px 0;border-bottom:1px solid var(--line)}.brief-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:12px}.brief{border:1px solid var(--line);background:white;border-radius:10px;padding:17px;border-top:4px solid var(--accent,var(--green))}.brief p{font-size:.84rem}.brief .sound{font-weight:750;color:var(--ink)}.brief dl{margin:12px 0 0;font-size:.78rem}.brief dt{font-weight:800;margin:11px 0 3px}.brief dd{margin:0;color:var(--muted);line-height:1.55}details{border:1px solid var(--line);border-radius:9px;padding:16px 19px;margin-top:14px;background:#fffdf8}summary{cursor:pointer;font-weight:800}details[open] summary{margin-bottom:16px}.two-col{display:grid;grid-template-columns:1fr 1fr;gap:25px}.two-col ul,.two-col ol{padding-left:21px;margin:0}.two-col li{margin-bottom:9px;font-size:.9rem}code{font-family:ui-monospace,Consolas,monospace;font-size:.79rem;overflow-wrap:anywhere;background:#edf0e8;padding:2px 4px;border-radius:3px}.flow{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-top:18px}.step{border-top:2px solid var(--green);padding-top:12px}.step b{display:block;margin-bottom:5px}.step p{font-size:.84rem}.filter-panel{background:#eef1e7;border:1px solid var(--line);border-radius:10px;padding:18px;margin:23px 0}.filters{display:grid;grid-template-columns:2fr 1.2fr 1fr 1fr;gap:12px}.filters label{display:flex;flex-direction:column;gap:6px;font-size:.75rem;font-weight:800}input[type=search],select{width:100%;min-width:0;border:1px solid #9ba99a;background:#fffef9;color:var(--ink);padding:10px;border-radius:6px}.options{display:flex;gap:20px;flex-wrap:wrap;margin-top:16px;font-size:.85rem}.options label{display:flex;gap:8px;align-items:center;cursor:pointer}input[type=checkbox]{accent-color:var(--green);width:18px;height:18px;flex-shrink:0}.catalog-bar{display:flex;justify-content:space-between;gap:20px;align-items:center;margin:19px 0}.catalog-bar p{margin:0;font-size:.82rem}.entity{margin:30px 0 42px;scroll-margin-top:18px}.entity-head{display:grid;grid-template-columns:1fr auto;gap:16px;padding-bottom:16px;border-bottom:3px solid var(--green);align-items:start}.entity-head h3{font-size:1.55rem;letter-spacing:-.035em}.entity-head p{max-width:850px;font-size:.85rem;margin:0;color:var(--muted)}.entity-count{font-size:.72rem;font-weight:800;white-space:nowrap;background:#e8eddf;padding:7px 9px;border-radius:5px}.cue{display:grid;grid-template-columns:210px 1fr;gap:23px;padding:20px 0;border-bottom:1px solid var(--line);break-inside:avoid}.cue-meta h4{font-size:.86rem;margin:0 0 8px}.cue-meta p{font-size:.75rem;margin:8px 0 0;line-height:1.55;color:var(--muted)}.cue-meta .duration{color:var(--ink);font-weight:700}.takes{display:grid;gap:12px;min-width:0}.take{display:grid;grid-template-columns:24px 1fr;column-gap:8px;align-items:start}.take input{margin:5px 0 0;cursor:pointer}.take label{font-size:1.07rem;font-weight:650;line-height:1.5;cursor:pointer;display:block;overflow-wrap:anywhere}.take small{display:block;font-family:ui-monospace,Consolas,monospace;font-size:.68rem;color:var(--muted);margin-top:3px;overflow-wrap:anywhere}.take.done label{color:#64745e}.take.done .script{text-decoration:line-through;text-decoration-thickness:1px}.direction{font-size:.77rem;color:var(--muted);margin:0;line-height:1.5}.type{color:var(--orange);font-size:.66rem;letter-spacing:.08em;text-transform:uppercase;font-weight:800;margin-right:7px}.empty{padding:35px;border:1px dashed var(--line);border-radius:9px;text-align:center}.jump{display:flex;gap:7px;flex-wrap:wrap;margin:17px 0}.jump a{font-size:.74rem;padding:6px 9px;background:#e8eddf;border-radius:5px;text-decoration:none}.event-table{border-collapse:collapse;width:100%;font-size:.8rem}.event-table th,.event-table td{text-align:left;padding:12px 10px;border-bottom:1px solid var(--line);vertical-align:top;line-height:1.6}.event-table th{background:#edf0e8}.table-scroll{overflow-x:auto}.footer{padding:27px 0 42px;font-size:.8rem;color:var(--muted)}[hidden]{display:none!important}#live-status{min-height:1.4em;font-size:.8rem;color:var(--muted)}.print-note{display:none}
+@media(max-width:1000px){.brief-grid{grid-template-columns:repeat(3,1fr)}.filters{grid-template-columns:1fr 1fr}.flow{grid-template-columns:1fr 1fr}}
+@media(max-width:640px){.wrap{padding:0 17px}.masthead{padding:22px 0 28px}.topline{font-size:.64rem;align-items:start}.topline nav{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end}h1{font-size:3.2rem}.stats{gap:23px}.intro,.two-col{grid-template-columns:1fr;gap:20px}.brief-grid{grid-template-columns:1fr}.brief dl{display:grid;grid-template-columns:85px 1fr;gap:9px}.brief dt,.brief dd{margin:0}.filters{grid-template-columns:1fr}.flow{gap:20px}.catalog-bar{align-items:start;flex-direction:column;gap:8px}.entity-head{grid-template-columns:1fr;gap:10px}.entity-count{justify-self:start}.cue{grid-template-columns:1fr;gap:14px}.cue-meta p{display:inline;margin-right:6px}.cue-meta h4{display:inline;margin-right:8px}.cue-meta .tag{vertical-align:middle}.take label{font-size:1rem}.options{gap:12px}.toolbar button{font-size:.8rem}.event-table{min-width:640px}}
+@media print{@page{margin:14mm}body{background:white;color:#111;font-size:10pt}.wrap{width:100%;padding:0}.masthead{background:white;color:#111;padding:0 0 14px;border-bottom:2px solid #111}.masthead a,.masthead .lede,.masthead .tag,.stats span{color:#333}.masthead h1{font-size:32pt;margin:15px 0}.masthead h1 span,.stats strong{color:#111}.stats{gap:25px}.stats strong{font-size:17pt}.topline nav,.toolbar,.filter-panel,.jump,.no-print,#live-status,.briefs-section,.intro,.production-notes,.integration-notes,.footer{display:none!important}.section{padding:17px 0;border:0}.entity{margin:14px 0 25px}.entity-head h3{font-size:17pt}.entity-head{break-after:avoid;border-color:#222}.entity-head p{font-size:9pt}.cue{grid-template-columns:150px 1fr;gap:15px;padding:12px 0}.cue-meta h4{font-size:9pt}.cue-meta p{font-size:8pt}.take label{font-size:11pt}.take small{font-size:7pt}.direction{font-size:8pt}.take.done .script{text-decoration:none}.print-note{display:block;font-size:9pt}.catalog-bar{margin:0 0 14px}.tag{font-size:7pt}.entity-count{background:white;border:1px solid #bbb}.takes{gap:8px}details{display:none}}
+</style>
+</head>
+<body>
+<header class="masthead">
+  <div class="wrap">
+    <div class="topline"><b>Paikutan / Recording room</b><nav><a href="index.html">Sound lab</a> · <a href="soundboard.html">Soundboard</a> · <a href="../index.html">Game</a></nav></div>
+    <h1>Mic check,<br><span>barangay.</span></h1>
+    <p class="lede">A classmate recording pack for every playable character, every trumpo, and the life around the bilog. Short Tagalog lines, alternate reads, creature vocals, and a sound identity for every swipe.</p>
+    <span class="tag">Original recording scripts · 25 October 2026</span>
+    <div class="stats"><div><strong id="stat-cues">…</strong><span>recording cues</span></div><div><strong id="stat-takes">…</strong><span>scripted variants</span></div><div><strong>25</strong><span>character × trumpo pairings</span></div><div><strong id="stat-core">…</strong><span>essential A takes</span></div></div>
+  </div>
+</header>
+<main class="wrap">
+  <section class="intro" aria-label="How to use this guide">
+    <div><div class="kicker">The recording plan</div><h2>Small first batch.<br>Plenty of personality after.</h2><p>Start with <b>P1 · Essential</b>, variant A. Those cover browsing, selection, ready, throws, skills, wins, losses, and key warnings. Add B variants and P2 reactions when the cast has time. P3 is optional world flavor and reserve voices.</p><p class="muted">The five playable characters are cosmetic; any one can use any of the five trumpos. Record all five skill calls in each character’s voice. CPU players use the same character pack.</p></div>
+    <div class="notice"><h3>For the person on the mic</h3><p>Read the bold script. Instructions in square brackets are performed, never spoken. A and B are alternative lines; record them separately. Aim for a friendly barangay competition: spirited, clear, and playful.</p><p><b>Three takes per line:</b> natural, excited, then your best interpretation. The filenames below start at <code>t01</code>; use <code>t02</code> and <code>t03</code> for repeats. Check a variant off after its takes are captured.</p></div>
+  </section>
+
+  <section class="section briefs-section" id="trumpo-ambience">
+    <div class="kicker">Swipe → settle → select</div><h2>Let each trumpo announce itself.</h2>
+    <p>Use a tiny, quiet version of its skill sound while browsing, then a fuller signature when selected. The player’s character speaks the skill call in combat. A trumpo spirit voice is an optional additional layer, recorded separately from these effects.</p>
+    <div class="brief-grid">
+      <article class="brief" style="--accent:#d59b1a"><h3>Kidlat</h3><p class="sound">Dry spark · electric air · thunder</p><dl><dt>Browse</dt><dd>0.35–0.6 s. A little “tss-zzt,” with a soft distant rumble. Quick attack; light tail.</dd><dt>Select</dt><dd>0.8–1.2 s. Spark rises into a compact thunder snap, then a fading electric fizz.</dd><dt>Record</dt><dd>Mouth “tss,” “zzzt,” and a chesty “brrm” in separate files. Make the browse cue from the fizz, not the loud crack.</dd><dt>Combat</dt><dd>Lightning Strike: knockback and spin loss. The impact stays distinct from menu ambience.</dd></dl></article>
+      <article class="brief" style="--accent:#a85b35"><h3>Tikbalang</h3><p class="sound">Hooves · snort · earth</p><dl><dt>Browse</dt><dd>0.4–0.7 s. Two restrained hoof taps and a small breathy snort.</dd><dt>Select</dt><dd>1–1.5 s. Four accelerating hoofbeats, a deep breath, and one compact stomp.</dd><dt>Record</dt><dd>Tongue clicks, “hrrff,” and a low “huh” separately. Coconut shells or desk taps can supply optional hoof Foley.</dd><dt>Combat</dt><dd>Tikbalang Stampede lasts 2 s and ends with a stomp. Keep that long gallop for the actual skill.</dd></dl></article>
+      <article class="brief" style="--accent:#2a9d8f"><h3>Agimat</h3><p class="sound">Bronze ring · shimmer · ward</p><dl><dt>Browse</dt><dd>0.4–0.7 s. One delicate metallic “ting” and an airy shimmer.</dd><dt>Select</dt><dd>0.9–1.3 s. A warm bronze bloom followed by a soft, stable resonant tail.</dd><dt>Record</dt><dd>Closed-mouth “mm,” airy “shh,” and a short “ting” separately. A gentle spoon-on-cup strike can add metal.</dd><dt>Combat</dt><dd>Amulet Shield lasts 5 s and reduces hits; it does not make the top invincible. Use a different cue when the ward fades.</dd></dl></article>
+      <article class="brief" style="--accent:#ad79a6"><h3>Diwata</h3><p class="sound">Bamboo · breeze · rising light</p><dl><dt>Browse</dt><dd>0.5–0.8 s. A gentle breath of air with two light wooden chimes.</dd><dt>Select</dt><dd>1–1.5 s. A rising breath, three bamboo notes, and an open, warm finish.</dd><dt>Record</dt><dd>Soft “haa,” an upward “oo,” and light wooden taps separately. Gentle and alive; keep consonants clear.</dd><dt>Combat</dt><dd>Diwata’s Blessing restores spin, steadies wobble, and clears Eclipse. Menu whispers should leave space for dialogue.</dd></dl></article>
+      <article class="brief" style="--accent:#4d5f85"><h3>Bakunawa</h3><p class="sound">Sea air · low growl · gong</p><dl><dt>Browse</dt><dd>0.5–0.8 s. A low breathy “vrrm” with a distant gong-like resonance.</dd><dt>Select</dt><dd>1–1.5 s. A short layered creature breath opening into a dark gong tail.</dd><dt>Record</dt><dd>Comfortable low “oh,” “grr,” and airy “shh” separately. Use editing for depth; keep the read playful and effortless.</dd><dt>Combat</dt><dd>Eclipse reverses rival steering for 5 s, shortened by Agimat, and cuts a stampede short. Use a clear curse-on and curse-off distinction.</dd></dl></article>
+    </div>
+    <div class="flow"><div class="step"><b>01 / Character swipe</b><p>Keep the wooden UI tick. After a card settles for about 180 ms, play its short browse line.</p></div><div class="step"><b>02 / Trumpo swipe</b><p>After the card settles, play its quiet signature once. Target 0.35–0.8 s; stop the previous tail on the next swipe.</p></div><div class="step"><b>03 / Confirm</b><p>Play the fuller trumpo signature. Duck it under the character’s confirm line. Optional spirit name calls replace the signature’s vocal layer.</p></div><div class="step"><b>04 / In battle</b><p>Use the active character’s matching skill call and the full skill SFX. Menu previews stay softer and shorter.</p></div></div>
+    <p class="muted">Suggested playback: one menu voice at a time; cancel pending previews on fast swipes; fade old ambience over 80–120 ms; avoid repeating the same character line within 2 s. No automatic ambience loop is needed. These are implementation directions for the planned recordings.</p>
+  </section>
+
+  <section class="section production-notes">
+    <div class="kicker">Before rolling</div><h2>A clean, repeatable recording session.</h2>
+    <details><summary>Recording setup, filenames, and delivery</summary><div class="two-col"><div><ol><li>Record in the quietest room available. Put the phone or microphone about 15–20 cm away, slightly to the side of the mouth. Keep its position fixed.</li><li>Record a normal line and an excited line, then listen back. If the loud read distorts, lower the input level or step back a little. Keep the character’s energy in the performance.</li><li>Leave about 0.5 s of quiet before and after each take. In a long session, say the cue ID, pause, speak the line, pause, and repeat.</li><li>Capture 10 s of room tone at the start and end. Record one actor at a time; group crowd recordings come later.</li><li>Deliver dry WAV when possible, mono, 48 kHz / 24-bit. A phone’s original M4A is also fine; keep the original file and let the editor export WAV.</li></ol></div><div><ul><li><b>Voice direction:</b> natural Filipino / Taglish. Speak comfortably; character identity comes from pace, rhythm, and attitude. Keep the vowels and last syllables audible.</li><li><b>Pronunciation pass:</b> agree on Kid-lat, Tik-ba-lang, A-gi-mat, Di-wa-ta, and Ba-ku-na-wa before recording. Keep the cast consistent; use your group’s natural pronunciation.</li><li><b>Folders:</b> <code>sound/recordings/&lt;entity&gt;/</code>. Spoken lines use <code>vo_</code>; creature/effort sounds <code>vx_</code>; selection effects <code>amb_</code>. Each filename includes entity, event, variant, and take.</li><li><b>Example:</b> <code>vo_lola_champion_a_t01.wav</code>. With an actor suffix: <code>vo_lola_champion_a_jose_t02.wav</code>. One take per delivered file.</li><li><b>Editing later:</b> trim pauses, keep a little breathing room, match perceived loudness, and add tiny fades. Export separate game clips after choosing the best reads. Add reverb, pitch layers, and ambience in the mix.</li></ul></div></div></details>
+    <details><summary>Casting and character direction</summary><div class="two-col"><div><p><b>Bata:</b> eager street player, quick ideas, bright rhythm. A classmate can suggest youthful energy in their normal voice.</p><p><b>Lola Basyang:</b> warm storyteller with excellent timing. Calm confidence; she has played longer than everyone else.</p><p><b>Tambay:</b> relaxed kanto regular. Smile in the voice, easy delivery, sudden excitement when a move lands.</p></div><div><p><b>Kapitana:</b> clear, welcoming, decisive. She organizes the game and enjoys winning as much as anyone.</p><p><b>Aling Nena:</b> quick, witty store owner. Uses change, stock, and suki metaphors; proud of her trumpo expertise.</p><p><b>Announcer:</b> energetic barangay emcee with crisp timing. <b>Crowd:</b> 3–6 classmates, slightly staggered, with varied distances. Record individual voices as well as a group.</p></div></div></details>
+  </section>
+
+  <section class="section" id="recording-catalog">
+    <div class="kicker">The script library</div><h2>Pick a role. Roll a take.</h2>
+    <p>Every cue has an event, delivery direction, and suggested filename. A/B are alternatives to rotate in the game. <b>Creature vocals and ambience briefs are performances, not spoken words.</b></p>
+    <div class="toolbar no-print"><button class="primary" id="core-batch">Show essential A takes</button><button id="show-all">Show full pack</button><button id="export">Export visible CSV</button><button id="print">Print / Save PDF</button></div>
+    <div class="filter-panel"><div class="filters"><label>Search lines, IDs, or triggers<input id="search" type="search" placeholder="Try: win, lola, eclipse, dog…" autocomplete="off"></label><label>Speaker / entity<select id="entity-filter"><option value="all">Every entity</option></select></label><label>Event group<select id="group-filter"><option value="all">Every event group</option></select></label><label>Recording priority<select id="priority-filter"><option value="all">All priorities</option><option value="P1">P1 · Essential</option><option value="P2">P2 · Expansion</option><option value="P3">P3 · Optional</option></select></label></div><div class="options"><label><input type="checkbox" id="a-only">Variant A only</label><label><input type="checkbox" id="unrecorded">Unrecorded only</label></div></div>
+    <div class="catalog-bar"><p id="visible-count" role="status">Preparing the script…</p><p id="progress">Recording progress is stored in this browser.</p></div>
+    <p class="print-note" id="print-note"></p>
+    <p class="muted no-print" style="font-size:.8rem">Checkboxes track captured takes on this device and browser only. Export the CSV to share your progress. Filters also control printing and CSV export; browser PDF search can find lines in a printed full pack.</p>
+    <nav id="jump-links" class="jump" aria-label="Jump to visible entity"></nav>
+    <div id="catalog"></div><noscript><p>Enable JavaScript to view this self-contained script library, its filters, and recording checklist. No internet connection is needed.</p></noscript>
+    <p id="live-status" role="status" aria-live="polite"></p>
+  </section>
+
+  <section class="section integration-notes">
+    <div class="kicker">For the audio editor &amp; programmer</div><h2>Give each line a useful moment.</h2>
+    <p>This is a recording and sound-direction guide. The new lines and menu ambience are planned assets. Existing game event names below identify useful attachment points; the guide does not install these recordings into the game.</p>
+    <details><summary>Event routing, timing, and overlap rules</summary><div class="table-scroll"><table class="event-table"><thead><tr><th>Moment</th><th>Existing source / proposed use</th><th>Playback direction</th></tr></thead><tbody>
+      <tr><td>Character &amp; trumpo carousel</td><td><code>js/controller.js</code> carousel selections; current <code>pick</code> UI cue</td><td>Add separate settled-card preview hooks with the selected character/top ID. A generic button click alone does not identify the entity. Confirm uses the settled choice.</td></tr>
+      <tr><td>Match phases</td><td><code>pick → vs → charge → countdown → throw → fight → roundEnd → counter → matchEnd</code>; <code>js/audio-events.js</code></td><td>Emcee owns global phase calls. Keep “Bitaw!” and countdown unobstructed. Character winding/intro lines are lower priority and can be skipped.</td></tr>
+      <tr><td>Skill call</td><td><code>ability</code> with <code>slot</code> and <code>top</code>; <code>js/sim.js</code></td><td>Choose the line from the actor’s character pack and that top’s skill. Use all 25 pairings. Optional spirit vocals must leave room for the character.</td></tr>
+      <tr><td>Dash, impacts, steal, elimination</td><td><code>boost</code>, <code>hit</code>, <code>steal</code>, <code>fall</code>, <code>out</code></td><td>Use efforts for common hits. <code>hit</code> currently reports impact position/intensity, without attacker/victim slots; precise personal reactions need additional attribution. Never infer “you scored” from an unattributed hit.</td></tr>
+      <tr><td>Readiness &amp; statuses</td><td><code>powerReady</code>, <code>dashReady</code>, <code>wardEnd</code>, <code>curseEnd</code>, <code>lowSpin</code> snapshot transitions</td><td>Most are local-player feedback. Curse-on, edge danger, shield block, and stampede interruption need explicit transition/condition checks. Say “ready” only when it becomes ready.</td></tr>
+      <tr><td>Dog, hen, egg, chick</td><td><code>dogWarn</code>, <code>dog</code>, <code>bark</code>, <code>eggWarn</code>, <code>egg</code>, <code>crack</code>, <code>hatch</code></td><td>Warning first, creature sound second, optional character reaction last. The chick cue is a hatch sound; a separate chick animation is not required by the current event.</td></tr>
+      <tr><td>Round &amp; match results</td><td><code>roundWin</code>, <code>roundLose</code>, <code>draw</code>, <code>champion</code>, <code>matchLose</code></td><td>Use the actual winner/champion slot. Emcee announces first, winner speaks next, then crowd. Loss lines belong on the losing player’s device or a later reaction beat.</td></tr>
+      <tr><td>Quick chat</td><td><code>js/chat.js</code>: <code>Tara G</code>, <code>Aray mo</code>, <code>Lala</code>, <code>Hehe</code>; currently <code>CHAT_ENABLED = false</code></td><td>Each character records the exact existing phrase once in their own delivery. Expanded social lines are optional proposals. Respect the existing 2.6 s chat cooldown if restored.</td></tr>
+      <tr><td>Background &amp; reserve models</td><td><code>js/world/barangay.js</code>, <code>js/entities/critters.js</code>, <code>js/entities/characters.js</code></td><td>Carabao, parked askal, street vendors, and reserve model voices are optional ambience ideas, not active combat announcements. Do not put scenery lines on the gameplay voice queue.</td></tr>
+    </tbody></table></div><p><b>Suggested priority:</b> throw/countdown and hazard warnings → match result → skill call → status → flavor. One foreground speech line at a time per device. Drop stale combat reactions after about 0.8 s, and cancel them at round end. Aim for a 4–6 s personal combat speech cooldown, with exceptions for critical warnings.</p><p><b>Host / phones:</b> host carries the emcee, crowd, and shared creature SFX; a phone carries its local character/status voice. If all audio is on one host, pick one foreground actor per event. Deduplicate repeated network events by sequence ID, as the current FX receiver does. Duck music and selection ambience under dialogue; never queue eight simultaneous brawl reactions.</p></details>
+    <details><summary>Roster notes and scope</summary><p>Canonical roster: <a href="../js/data.js">js/data.js</a>. <b>Bata, Lola Basyang, Tambay, Kapitana, Aling Nena</b> are the five selectable voices; <b>Kidlat, Tikbalang, Agimat, Diwata, Bakunawa</b> are the five trumpos. Generic actor names are used for announcer and crowd so recorded clips work with custom player names.</p><p>The model file retains older art labels: “Lola Nena” supplies Lola Basyang’s rig; “Mang Totoy” supplies Tambay’s rig; “Tita Marites” supplies Aling Nena’s rig. They do not need duplicate playable voice packs. Kuya Jun and Kuya Tanod are reserve model ideas below, explicitly P3. Kapitana uses the uniform rig with her own appearance.</p><p>Dog and hen are active arena hazards. The chick has a hatch event. Roaming chickens, the parked askal, and carabao are scenery. The buildings, vehicles, cart, and videoke can use optional nearby-human vocals and Foley; they do not need character win/loss lines. An egg gets a crack or hatch sound rather than spoken dialogue.</p><p>Creative lines are proposals matched to the current mechanics. Optional spirit voices personify the trumpos for flavor. Skill calls remain in the player character’s voice even if no spirits are cast.</p></details>
+  </section>
+</main>
+<footer class="wrap footer">Made for the Paikutan class recording session. <a href="index.html">Sound lab</a> · <a href="soundboard.html">Existing SFX previews</a> · <a href="CREDITS.md">Existing audio credits</a></footer>
+<script>
+'use strict';
+const PRIORITIES = {P1:'Essential',P2:'Expansion',P3:'Optional'};
+const cues = [];
+const entities = [];
+function entity(id,name,group,direction){entities.push({id,name,group,direction});}
+function add(entityId,event,label,group,duration,priority,trigger,direction,lines,type='vo'){
+  cues.push({entity:entityId,event,label,group,duration,priority,trigger,direction,lines,type});
+}
+const EVENTS = [
+ ['browse','Carousel browse','Selection','0.5–1.3 s','P1','Character card settles after a swipe.','A short invitation; smile before speaking.'],
+ ['select','Character confirmed','Selection','0.7–1.7 s','P1','The player locks this character.','Decisive and happy to be picked.'],
+ ['ready','Ready to play','Selection','0.5–1.4 s','P1','The player confirms Ready.','Clear, confident; leave space for the emcee.'],
+ ['intro','Matchup introduction','Match flow','1–2.5 s','P2','Versus reveal, before winding.','A friendly challenge to the other player.'],
+ ['wind','Winding the string','Match flow','0.5–1.5 s','P2','The charge / winding phase starts.','Focused anticipation; do not cover countdown.'],
+ ['spin_lock','Good spin locked','Match flow','0.5–1.4 s','P2','A strong winding result is submitted.','Pleased with the wind-up.'],
+ ['soft_spin','Weak spin locked','Match flow','0.6–1.5 s','P2','A weak winding result is submitted.','A little sheepish, then determined.'],
+ ['throw','Throw release','Combat','0.3–1 s','P1','This player releases the trumpo.','A crisp burst; the line lands on the release.'],
+ ['dash','Dash','Combat','0.2–0.8 s','P2','This player boosts / dashes.','Short effort with forward energy.'],
+ ['big_hit','Big clash reaction','Combat','0.3–1.1 s','P2','A strong clash involving this top.','Surprised delight; no claim of a knockout.'],
+ ['hurt','Took a hard hit','Combat','0.3–1 s','P2','A confirmed strong impact on this top.','Cartoon surprise, then recover quickly.'],
+ ['steal','Agaw-ikot succeeds','Combat','0.5–1.5 s','P2','This player steals spin with a dash.','Quick triumph; emphasize the recovered spin.'],
+ ['power_ready','Skill ready','Status','0.6–1.4 s','P1','This player’s skill meter first fills.','Useful information, not a full battle shout.'],
+ ['dash_ready','Dash ready','Status','0.5–1.2 s','P2','This player’s dash cooldown finishes.','Light, matter-of-fact notification.'],
+ ['low_spin','Low spin','Status','0.6–1.6 s','P1','This top first drops below 20% spin.','Concern without panic; it is still alive.'],
+ ['edge','Near the edge','Status','0.5–1.4 s','P2','Proposed: this live top nears the ring boundary.','Urgent self-reminder; use sparingly.'],
+ ['cursed','Eclipse received','Status','0.6–1.6 s','P2','This top’s steering becomes reversed.','Startled recognition; directions have flipped.'],
+ ['curse_end','Eclipse lifted','Status','0.6–1.5 s','P2','Steering returns to normal.','Relief and renewed control.'],
+ ['block','Ward absorbs a hit','Status','0.5–1.4 s','P2','A confirmed shielded contact on this top.','Relieved confidence; protection reduces damage.'],
+ ['ward_end','Ward ends','Status','0.6–1.5 s','P2','This player’s Agimat shield expires.','Alert, ready to play carefully again.'],
+ ['healed','Blessing received','Status','0.6–1.5 s','P2','This player’s Diwata restores spin and balance.','Feel the relief; the top steadies.'],
+ ['zapped','Lightning received','Status','0.3–1.1 s','P2','This top is hit by Lightning Strike.','A small electric jolt; playful, not painful.'],
+ ['stampede_cut','Stampede interrupted','Status','0.6–1.4 s','P2','Eclipse cuts this player’s stampede short.','Surprised loss of momentum.'],
+ ['dog_warn','Stray dog warning','Barangay','0.6–1.4 s','P2','The dog warning lane appears.','Quick warning; emcee warning takes priority.'],
+ ['dog_hit','Dog bumps the top','Barangay','0.5–1.5 s','P2','The dog knocks this top aside.','A comic complaint directed at the dog.'],
+ ['hen_warn','Hen approaches','Barangay','0.6–1.5 s','P2','An egg-warning hen runs toward the bilog.','Amused warning, not alarm.'],
+ ['egg_crack','Egg smashed','Barangay','0.4–1.4 s','P2','This player breaks an egg obstacle.','React to the small surprise.'],
+ ['hatch','An egg hatches','Barangay','0.6–1.4 s','P3','An egg hatches nearby.','Warm little aside; never interrupt a warning.'],
+ ['squeeze','Circle shrinking','Barangay','0.6–1.6 s','P2','The chalk ring begins shrinking.','Notice the tighter space.'],
+ ['ko','Scored a knockout','Results','0.5–1.6 s','P2','This player is credited with an elimination.','Happy about the play; keep it sportsmanlike.'],
+ ['fall','Own trumpo falls','Results','0.5–1.6 s','P2','This player’s top tumbles.','Disappointed, with a little comic timing.'],
+ ['out','Own trumpo leaves ring','Results','0.5–1.6 s','P2','This player’s top is knocked out.','A surprised realization, then accept it.'],
+ ['round_win','Round won','Results','0.7–1.8 s','P1','This player wins a round.','A quick celebration; this is not yet match victory.'],
+ ['round_lose','Round lost','Results','0.7–1.8 s','P1','This player loses a round.','Disappointed but ready to come back.'],
+ ['draw','Draw','Results','0.7–1.8 s','P2','The round ends in a tie.','Amused; the tied round will be replayed.'],
+ ['champion','Match champion','Results','1–2.5 s','P1','This player is declared match champion.','The biggest joyful read in the pack.'],
+ ['match_lose','Match lost','Results','0.8–2 s','P1','Another player becomes champion.','Sincere good sport; invite another game.'],
+ ['counterpick','Changed trumpo','Selection','0.7–1.8 s','P2','A losing duelist confirms a different trumpo.','A fresh plan; winning duelists remain locked.'],
+ ['keep_top','Kept trumpo','Selection','0.7–1.8 s','P2','A counterpicking player keeps the same top.','Trust in the current choice.'],
+ ['rematch','Rematch requested','Social','0.7–1.8 s','P2','This player requests another match.','Friendly invitation, no pressure.'],
+ ['idle','Waiting in the lobby','Social','1–2.5 s','P3','Optional idle while waiting for others.','Casual and conversational; use rarely.'],
+ ['gg','Good game','Social','0.7–1.8 s','P3','Optional end-of-match sportsmanship.','Warm and direct.'],
+];
+
+entity('bata','Bata','Playable characters','Batang Kalye · Bright, eager, fast on the pickup. Competitive in the way a friend at recess is competitive.');
+const BATA = {
+ browse:['Ako naman!','Tara, laro tayo!'], select:['Ako ang bahala!','Yes! Galingan natin!'], ready:['Handa na ako!','G na, G na!'], intro:['Tingnan natin kung sino ang mas magaling!','Huwag mo akong maliitin!'], wind:['Ikot, ikot, ikot!','Sige, higpitan natin!'], spin_lock:['Uy, lakas nito!','Ayos ang ikot!'], soft_spin:['Ay, bitin! Kaya pa ’yan!','Mahina? Diskarte na lang!'], throw:['Heto na!','Bitaw!'], dash:['Takbo!','Sugod!'], big_hit:['Ang lakas!','Ay, banggaan!'], hurt:['Aray! Hoy!','Oop! Teka!'], steal:['Akin ang ikot!','Bawi ko ’yan!'], power_ready:['May power na ako!','Handa na ang skill!'], dash_ready:['Pwede nang sumugod!','May dash na ulit!'], low_spin:['Hala, paubos na!','Ikot pa, please!'], edge:['Huwag sa labas!','Balik sa gitna!'], cursed:['Baliktad ang liko!','Hala, kanan o kaliwa?'], curse_end:['Ayos, tama na ulit!','Kaya ko nang lumiko!'], block:['Buti may panangga!','Uy, nasalag!'], ward_end:['Wala na ang panangga!','Ingat, tapos na ang shield!'], healed:['Bumalik ang ikot!','Yes, steady na!'], zapped:['Ay, kuryente!','Whoa! Kidlat!'], stampede_cut:['Ay, naputol ang sugod!','Teka, bitin ang takbo!'], dog_warn:['Uy, may aso!','Tabi, may aso!'], dog_hit:['Doggie, trumpo ko ’yon!','Ay! Nasagi ng aso!'], hen_warn:['Manok, tabi muna!','Uy, may manok sa bilog!'], egg_crack:['Ay, nabasag!','Oops! Yung itlog!'], hatch:['Uy, may sisiw!','Ang liit, o!'], squeeze:['Lumiliit ang bilog!','Dikit sa gitna!'], ko:['Yes! Isa na!','Ayos, magandang tira!'], fall:['Ay, tumumba!','Bangon—ay, talo na pala.'], out:['Hala, lumabas!','Lagpas sa guhit!'], round_win:['Panalo sa round!','Isa pa, kaya ’to!'], round_lose:['Bawi ako sa susunod!','Okay lang, laro pa!'], draw:['Tabla? Ulit tayo!','Pareho pala tayo!'], champion:['Ako ang kampeon! Yes!','Panalo! Ikuwento ko ’to sa bahay!'], match_lose:['Ang galing mo! Ulit tayo?','Sa susunod, ako naman!'], counterpick:['Ito naman ang subukan ko!','May bago akong diskarte!'], keep_top:['Ito pa rin! Kaya natin!','Hindi pa ako susuko dito!'], rematch:['Isa pa! Isa pa!','Ulit, please!'], idle:['Kumpleto na ba tayo?','Sino pa ang sasali?'], gg:['Ang saya ng laban!','Galing! Apir!']
+};
+entity('lola','Lola Basyang','Playable characters','Ang Kuwentista · Warm, unhurried wit and a storyteller’s timing. Her confidence is quiet until the winning laugh.');
+const LOLA = {
+ browse:['Halika, apo.','May kuwento akong dala.'], select:['O, simulan na natin.','Si Lola na ang bahala.'], ready:['Handang-handa, apo.','Aba, simulan na!'], intro:['May bagong kabanata tayo ngayon.','Tingnan natin ang iyong diskarte, apo.'], wind:['Dahan-dahan, tapos higpit.','Ikot muna bago ang kuwento.'], spin_lock:['Ayan, maayos ang pagkakapaikot.','May ibubuga pa si Lola.'], soft_spin:['Ay, kinapos nang kaunti.','Mahina man, may paraan.'], throw:['Hayan, apo!','Bitaw na!'], dash:['Makikiraan!','Sugod, apo!'], big_hit:['Aba, matindi!','Oho! Nagtagpo!'], hurt:['Ay, naku po!','Aba, teka!'], steal:['Nabawi ko ang ikot.','May balik din ang kuwento.'], power_ready:['Handa na ang aking lakas.','May munting hiwaga na tayo.'], dash_ready:['Pwede na muling sumugod.','May tulin na ulit, apo.'], low_spin:['Huwag munang huminto.','Kaunting ikot pa, apo.'], edge:['Sa gitna tayo, apo.','Naku, malapit sa guhit.'], cursed:['Aba, baligtad ang daan!','Nalito pati ang aking trumpo.'], curse_end:['Ayan, tuwid na ang landas.','Nawala rin ang sumpa.'], block:['May bantay ang ating trumpo.','Salamat sa panangga.'], ward_end:['Tapos na ang ating panangga.','Ingat na muli, apo.'], healed:['Ayan, lumakas muli.','Parang bagong simula.'], zapped:['Ay, may kidlat!','Aba, nakagugulat!'], stampede_cut:['Naku, napigil ang sugod.','Bitin ang takbo natin.'], dog_warn:['Tabi muna, may aso!','Apo, ingat sa aso.'], dog_hit:['Ay, aso, dahan-dahan!','Naku, nasagi ang trumpo.'], hen_warn:['Manok, sa gilid muna.','May bisita tayong manok.'], egg_crack:['Ay, basag ang itlog.','Naku, sayang naman.'], hatch:['Aba, bagong sisiw!','May munting buhay na sumilip.'], squeeze:['Sikip na, apo. Sa gitna.','Lumiliit na ang ating mundo.'], ko:['Mahusay ang tirang iyon.','May tumigil na sa pag-ikot.'], fall:['Ay, dito muna nagtatapos.','Naku, humiga na.'], out:['Lumagpas sa ating guhit.','Ay, napalayo nang husto.'], round_win:['Isang kabanata para kay Lola.','Aba, may panalo tayo!'], round_lose:['May kasunod pang kabanata.','Hindi pa tapos ang kuwento.'], draw:['Magkapantay pala tayo.','Tabla? Ulitin ang kabanata!'], champion:['At si Lola ang naging kampeon!','O, may magandang wakas ang kuwento!'], match_lose:['Mahusay, apo. Karapat-dapat.','Sa iyo ang wakas ngayon, apo.'], counterpick:['Bagong trumpo, bagong kuwento.','Ibang paraan naman ang subukan.'], keep_top:['Ito pa rin ang kasama ko.','May kuwento pa ang trumpo kong ito.'], rematch:['May oras pa sa isang kuwento?','Isa pang laban, apo?'], idle:['Noong araw, dito rin kami naglalaro.','Hihintayin natin ang iba, apo.'], gg:['Maganda ang naging laban.','Salamat sa laro, apo.']
+};
+entity('tambay','Tambay','Playable characters','Hari ng Kanto · Easygoing, friendly swagger. Sounds like a regular who has been waiting all afternoon for a good match.');
+const TAMBAY = {
+ browse:['O, pare!','Dito tayo, boss.'], select:['Ayos, tayo ang magkasama.','Kanto crew, tara!'], ready:['G na, pare!','Ready na, boss!'], intro:['Magandang laban ’to, ramdam ko.','Tingnan natin ang diskarte mo, pare.'], wind:['Konting ikot pa.','Pulido muna ang pisi.'], spin_lock:['Swak ang ikot!','Ayos ’to, pare.'], soft_spin:['Medyo bitin, diskarte na lang.','Okay lang, kaya pang ibawi.'], throw:['Heto, pare!','Pasok!'], dash:['Daan, boss!','Sibat!'], big_hit:['Solid na bangga!','Uy, grabe ’yon!'], hurt:['Aray, pare!','Oof! Tinamaan!'], steal:['Bawi ang ikot, boss!','Sa akin muna ’yan!'], power_ready:['May skill na, pare.','Luto na ang special!'], dash_ready:['May dash na ulit.','Pwede nang sumibat!'], low_spin:['Kapit lang, trumpo.','Uy, paubos na ’to.'], edge:['Balik sa loob, boss!','Alanganin sa gilid!'], cursed:['Pare, baligtad ang liko!','Kaliwa ko, kanan niya!'], curse_end:['Normal na ulit, boss.','Ayos, hawak ko na.'], block:['May panangga, pare.','Nasalag! Swabe.'], ward_end:['Wala nang shield, ingat.','Tapos na ang bantay natin.'], healed:['Balik ang sigla, boss!','Ayos, may ikot pa.'], zapped:['Ay! Nakuryente!','Grabe ang kidlat!'], stampede_cut:['Ay, putol ang arangkada!','Bitin ang sugod, pare!'], dog_warn:['Pare, may aso!','Tabi, dadaan ang aso!'], dog_hit:['Boss aso, laro ’to!','Uy, trumpo ko ’yon!'], hen_warn:['Manok, may laban dito!','May manok na naman, pare.'], egg_crack:['Ay, basag, boss.','Nadale ang itlog!'], hatch:['Uy, sisiw, pare!','May bagong tambay sa kanto.'], squeeze:['Sikip na, gitna tayo.','Konti na ang espasyo, boss.'], ko:['Ayos ang tira, pare!','Isang malinis na pasok!'], fall:['Ay, humiga na, boss.','Tumba. Bawi na lang.'], out:['Ay, lumabas sa guhit!','Napakalayo naman no’n!'], round_win:['Sa atin ang round, pare!','Swabe! Isang panalo.'], round_lose:['Bawi tayo, boss.','Magandang tira. May kasunod pa.'], draw:['Tabla! Pantay ang diskarte.','Pareho, boss. Ulitin natin.'], champion:['Hari pa rin ng kanto!','Panalo, pare! Solid na laban!'], match_lose:['Sa iyo ngayon, boss. Galing!','Panalo ka, pare. Bawi ako ulit.'], counterpick:['Ibang diskarte naman, boss.','Palit trumpo, bagong plano.'], keep_top:['Ito pa rin, kabisado ko ’to.','Tiwala lang dito, pare.'], rematch:['Isa pa, pare?','May oras pa, G ulit!'], idle:['Dito lang ako sa kanto, boss.','Sino pa? Kumpletuhin natin.'], gg:['Solid na laro, pare.','Salamat sa laban, boss.']
+};
+entity('kapitana','Kapitana','Playable characters','Barangay Captain · Welcoming, organized, and a spirited competitor. Clear calls, warm authority, and a grin when she wins.');
+const KAPITANA = {
+ browse:['Sali tayo!','Handa ang kapitana!'], select:['Sige, pangungunahan ko.','Tara, sama-sama tayo.'], ready:['Handa na. Simulan natin!','Lahat ayos? Laban na!'], intro:['Malinis na laro, masayang laban!','Ipakita natin ang galing ng barangay!'], wind:['Ayusin ang pisi.','Tamang ikot, tamang bitaw.'], spin_lock:['Mahusay ang paghahanda.','Ayos, matatag ang ikot!'], soft_spin:['Kulang, pero may paraan.','Diskarte ang babawi rito.'], throw:['Sige na!','Bitaw!'], dash:['Makikiraan!','Abante!'], big_hit:['Matinding banggaan!','Magandang salubong!'], hurt:['Ay, tinamaan!','Oop! Matindi!'], steal:['Nabawi ang ikot!','Balik ang ating lakas!'], power_ready:['Handa na ang aking skill.','Pwede nang gamitin ang lakas.'], dash_ready:['Handa na ang dash.','Pwede nang umabante muli.'], low_spin:['Kulang na ang ikot.','Kapit, may laban pa.'], edge:['Sa loob ng guhit!','Balik sa gitna, agad!'], cursed:['Baligtad ang pagpipiloto!','Teka, kabaligtaran ang liko!'], curse_end:['Normal na ang kontrol.','Nawala na ang sumpa.'], block:['Mabuti, may panangga.','Nasalag ang tama!'], ward_end:['Wala na ang panangga.','Ingat, tapos na ang proteksiyon.'], healed:['Nanumbalik ang ikot!','Matatag na muli tayo.'], zapped:['Ay! Tinamaan ng kidlat!','Oop! Nakagugulat!'], stampede_cut:['Naputol ang ating sugod.','Nahinto ang arangkada!'], dog_warn:['Tabi sa daraanan ng aso!','Ingat, may asong papasok!'], dog_hit:['Aso, sa gilid muna!','Nasagi tayo. Bawi agad!'], hen_warn:['Manok sa loob ng bilog!','Ingat sa paparating na manok.'], egg_crack:['Nabasag ang itlog!','Oop! May nabasag.'], hatch:['May sisiw na, tingnan!','Bagong bisita sa barangay.'], squeeze:['Lumiliit ang bilog. Sa gitna!','Bawas espasyo, dagdag ingat!'], ko:['Mahusay na tira!','Malinis ang pagkakapasok!'], fall:['Natumba ang ating trumpo.','Dito muna ang round natin.'], out:['Lumabas tayo sa bilog.','Lampas sa guhit. Sayang!'], round_win:['Sa atin ang round na ito!','Magandang simula. Tuloy lang!'], round_lose:['Ayos lang. Babawi tayo.','May pagkakataon pa sa susunod.'], draw:['Pantay ang laban. Ulitin!','Tabla! Isa pang round.'], champion:['Panalo! Para sa buong barangay!','Kapitana, kampeon! Salamat sa laban!'], match_lose:['Binabati ko ang ating kampeon!','Mahusay ang laro mo. Deserve mo ’yan.'], counterpick:['Palit plano, palit trumpo.','May panibagong diskarte tayo.'], keep_top:['Itutuloy ko ang trumpo ko.','Ito pa rin. Ayusin ang diskarte.'], rematch:['Isa pang maayos na laban?','Handa ba kayo sa rematch?'], idle:['Hintayin natin ang ibang sasali.','Lahat ay may puwesto sa laro.'], gg:['Salamat sa magandang laban.','Mahusay ang lahat. Palakpakan!']
+};
+entity('tindera','Aling Nena','Playable characters','Sari-sari Store Boss · Brisk, witty, and deeply familiar with every trumpo on her shelf. Friendly suki banter, quick comic timing.');
+const TINDERA = {
+ browse:['O, suki!','Dito ang magaling pumili!'], select:['Suki, panalo ang pinili mo.','Ako na ang bahala rito.'], ready:['Bukas na ang laban!','Handa na, suki!'], intro:['Alam ko ang kalidad ng trumpo ko!','Tingnan natin kung sulit ang diskarte mo.'], wind:['Ayusin ang balot ng pisi.','Pulidong ikot muna, suki.'], spin_lock:['De-kalidad ang ikot!','Sulit ang pagkakapaikot!'], soft_spin:['Ay, kulang sa puhunan.','Bawi na lang sa diskarte.'], throw:['Heto, suki!','Pasok sa bilog!'], dash:['Makikiraan, suki!','Arangkada!'], big_hit:['Aba, lakas ng dating!','Matibay ang bangga!'], hurt:['Aray, suki!','Ay! Teka lang!'], steal:['May sukli pa ako!','Bawi ang puhunan!'], power_ready:['May espesyal na tayo!','Handa na ang paninda kong lakas!'], dash_ready:['Pwede nang rumatsada!','Balik na ang dash, suki.'], low_spin:['Nauubos ang puhunan!','Ikot pa, huwag maubusan!'], edge:['Suki, sa loob lang!','Lagpas na sa puwesto!'], cursed:['Ay, baligtad ang sukli—ang liko!','Suki, pakaliwa, pakanan na!'], curse_end:['Ayos na ang kuwenta!','Normal na ang liko, suki.'], block:['Matibay ang panangga!','May bantay ang paninda ko!'], ward_end:['Tapos na ang panangga, suki.','Wala nang proteksiyon. Ingat!'], healed:['May dagdag ikot na!','Balik ang puhunan, suki!'], zapped:['Ay! Kuryente!','Grabe ang singil ng kidlat!'], stampede_cut:['Ay, naputol ang biyahe!','Bitin ang arangkada, suki!'], dog_warn:['May aso, itabi ang trumpo!','Tabi, suki! May aso!'], dog_hit:['Aso, hindi pagkain ’yan!','Ay, nasagi ang paninda!'], hen_warn:['Manok, walang tinda sa bilog!','Suki, may manok na paparating.'], egg_crack:['Ay, basag ang paninda!','Sayang ang itlog, suki!'], hatch:['Uy, may bagong sisiw!','Aba, nadagdagan ang kapitbahay!'], squeeze:['Lumiliit ang puwesto!','Sa gitna, suki. Masikip na!'], ko:['Sulit ang tirang iyon!','May resulta ang puhunan!'], fall:['Ay, humiga ang paninda.','Natumba. Bawi sa susunod.'], out:['Nailabas ang paninda!','Ay, lagpas sa puwesto!'], round_win:['Isang panalo para kay Nena!','Sulit! Sa akin ang round!'], round_lose:['Bawi sa susunod na ikot!','Lugi sa round, may bawi pa!'], draw:['Tabla sa kuwenta!','Pantay tayo, suki. Ulit!'], champion:['Sold out ang kalaban! Kampeon!','Panalo si Nena! Salamat, mga suki!'], match_lose:['Panalo ka, suki. Magaling!','Sa iyo ang titulo. Bawi ako bukas!'], counterpick:['Palit paninda, bagong diskarte.','Ito naman ang ilalabas ko.'], keep_top:['Subok na ang kalidad nito.','Ito pa rin, suki. Tiwala ako.'], rematch:['Isa pang ikot, suki?','May stock pa akong laban!'], idle:['Pagkatapos ng laro, may tindahan pa ako.','Suki, sino pa ang hinihintay?'], gg:['Salamat, suki. Sulit ang laban.','Balik ka, ha? Magandang laro!']
+};
+const CHARACTER_SCRIPTS = {bata:BATA,lola:LOLA,tambay:TAMBAY,kapitana:KAPITANA,tindera:TINDERA};
+for(const [id,script] of Object.entries(CHARACTER_SCRIPTS)){
+  for(const [event,label,group,duration,priority,trigger,direction] of EVENTS){
+    if(!script[event]) throw new Error('Missing script: '+id+'/'+event);
+    add(id,event,label,group,duration,priority,trigger,direction,script[event]);
+  }
+}
+
+const SKILLS = {
+ bata:{kidlat:['Kidlat, tira!','Zap! Huli ka!'],tikbalang:['Tikbalang, sugod!','Takbo, tapos stomp!'],agimat:['Agimat, bantay!','Panangga, ngayon na!'],diwata:['Diwata, tulong!','Blessing! Ikot ulit!'],bakunawa:['Bakunawa, dilim!','Baliktad ang liko mo!']},
+ lola:{kidlat:['Kidlat, gumuhit ka!','Kulog at kidlat, apo!'],tikbalang:['Tikbalang, humayo ka!','Sugod, aking Tikbalang!'],agimat:['Agimat, ako’y ingatan.','Bantayan mo ang ating ikot.'],diwata:['Diwata, basbasan mo kami.','Muling sumigla ang ating ikot.'],bakunawa:['Bakunawa, lunukin ang buwan!','Dumilim ang ating kabanata.']},
+ tambay:{kidlat:['Kidlat, pasok, pare!','Isang zap, boss!'],tikbalang:['Tikbalang, arangkada!','Sugod sa kanto!'],agimat:['Agimat, kapit, boss!','May panangga tayo, pare!'],diwata:['Diwata, pa-bless naman!','Balik-ikot, boss!'],bakunawa:['Bakunawa, gabi na!','Baligtad muna, pare!']},
+ kapitana:{kidlat:['Kidlat, ngayon na!','Tamang tama, Kidlat!'],tikbalang:['Tikbalang, abante!','Simulan ang stampede!'],agimat:['Agimat, panangga!','Proteksiyon, ngayon na!'],diwata:['Diwata, ibalik ang lakas!','Basbas ng Diwata!'],bakunawa:['Bakunawa, simulan ang Eclipse!','Baligtarin ang kanilang liko!']},
+ tindera:{kidlat:['Kidlat, special delivery!','May kuryenteng sukli!'],tikbalang:['Tikbalang, express delivery!','Arangkada, may padala!'],agimat:['Agimat, bantay-tinda!','Protektado ang puhunan!'],diwata:['Diwata, dagdag ikot!','Blessing, may libreng dagdag!'],bakunawa:['Bakunawa, patay-ilaw muna!','Baligtad ang kuwenta mo!']}
+};
+const TOP_NAMES = {kidlat:'Kidlat',tikbalang:'Tikbalang',agimat:'Agimat',diwata:'Diwata',bakunawa:'Bakunawa'};
+for(const [id,skills] of Object.entries(SKILLS)) for(const [top,lines] of Object.entries(skills)){
+  add(id,'skill_'+top,TOP_NAMES[top]+' · skill activation','Skills','0.6–1.8 s','P1','This character activates '+TOP_NAMES[top]+'.','In the character’s own voice. Hit the trumpo name clearly; leave the effect’s impact room to land.',lines);
+}
+const QUICK_CHAT = [['chat_0','Tara G','An inviting challenge.'],['chat_1','Aray mo','A playful complaint.'],['chat_2','Lala','Amused disbelief; pronounce naturally as your group uses it.'],['chat_3','Hehe','A short mischievous chuckle / spoken hehe.']];
+for(const id of Object.keys(CHARACTER_SCRIPTS)){
+  for(const [event,line,direction] of QUICK_CHAT) add(id,event,'Quick chat · '+line,'Social','0.3–1 s','P2','Exact existing quick-chat phrase; feature is currently disabled.',direction,[line]);
+  add(id,'effort','Efforts & reactions','Efforts','0.2–0.7 s each','P2','Reusable short reactions to throws, bumps, and small recoveries.','Perform in this character’s voice. Each bracketed instruction is a separate clip.',[
+    '[Short throw effort: “Hup!”]', '[Light impact: “Oof!”]', '[Big surprise: sharp inhale, then “Ah!”]', '[Small laugh]', '[Big victory laugh]', '[Disappointed exhale]'
+  ],'vx');
+}
+
+entity('announcer','Barangay emcee','Announcer & crowd','A proposed shared voice role for the host screen. Clear, brisk, cheerful. Record complete phrases and separate number clips; custom player names stay on screen.');
+const ANNOUNCER = [
+ ['welcome','Welcome','Match flow','1.5–3 s','P2','Title / lobby welcome.',['Maligayang pagdating sa Paikutan!','Barangay, tara na sa bilog!']],
+ ['join','Player joins','Match flow','0.6–1.5 s','P2','A seat is filled.',['May bagong kalaro!','May sumali sa bilog!']],
+ ['leave','Player leaves','Match flow','0.7–1.5 s','P3','A seat is vacated in the lobby.',['May bakanteng puwesto!','Pwede pang sumali!']],
+ ['pick','Pick a character and trumpo','Match flow','1.5–2.5 s','P1','Selection phase opens.',['Pumili ng karakter at trumpo!','Sino ka sa bilog? Pumili na!']],
+ ['last_call','Selection almost over','Match flow','0.8–1.6 s','P2','Proposed last few seconds of selection.',['Huling sandali! Pumili na!','Ihanda na ang inyong pili!']],
+ ['versus','Duel reveal','Match flow','0.8–1.8 s','P1','1v1 versus reveal.',['Dalawang manlalaro, isang bilog!','Isang malinis na laban!']],
+ ['brawl','Brawl reveal','Match flow','1–2.2 s','P1','Brawl versus reveal.',['Brawl na! Sino ang huling iikot?','Maraming trumpo, isang kampeon!']],
+ ['rules_duel','Duel rule reminder','Match flow','2–3.5 s','P2','Optional duel reveal reminder.',['Dalawang panalong round para maging kampeon!','Paunahang manalo ng dalawang round!']],
+ ['rules_brawl','Brawl rule reminder','Match flow','2–3.5 s','P2','Optional brawl reveal reminder.',['Tatlong round! Pinakamaraming puntos ang kampeon!','May puntos sa knockout at panalo sa round!']],
+ ['round_1','Round one','Match flow','0.5–1 s','P1','First round begins.',['Unang round!','Round one!']],
+ ['round_2','Round two','Match flow','0.5–1 s','P1','Second round begins.',['Ikalawang round!','Round two!']],
+ ['round_3','Round three','Match flow','0.5–1 s','P1','Third round begins.',['Ikatlong round!','Round three!']],
+ ['wind','Start winding','Match flow','0.5–1.3 s','P1','Charge phase starts.',['Paikot!','Paikutin ang trumpo!']],
+ ['count_3','Countdown · three','Match flow','0.25–0.6 s','P1','Countdown at three seconds remaining.',['Tatlo!']],
+ ['count_2','Countdown · two','Match flow','0.25–0.6 s','P1','Countdown at two seconds remaining.',['Dalawa!']],
+ ['count_1','Countdown · one','Match flow','0.25–0.6 s','P1','Countdown at one second remaining.',['Isa!']],
+ ['throw','Throw window','Match flow','0.4–0.8 s','P1','Throw window opens.',['Bitaw!','Ihagis na!']],
+ ['fight','Fight begins','Match flow','0.4–0.8 s','P1','The fight phase starts.',['Laban!','Simula na!']],
+ ['big_hit','Huge clash','Combat','0.6–1.2 s','P2','An especially intense clash.',['Banggaan!','Matinding salpukan!']],
+ ['steal','Spin stolen','Combat','0.6–1.2 s','P2','A significant steal event.',['Agaw-ikot!','Nabawi ang ikot!']],
+ ['kidlat','Lightning observed','Skills','0.6–1.4 s','P2','Optional shared commentary on Lightning Strike.',['Kidlat mula sa langit!','Lightning Strike!']],
+ ['tikbalang','Stampede observed','Skills','0.6–1.4 s','P2','Optional shared commentary on stampede activation.',['Tikbalang Stampede!','Sugod ng Tikbalang!']],
+ ['stomp','Stampede stomp','Skills','0.5–1 s','P2','The stampede ends in a stomp.',['Malakas na yabag!','Stomp!']],
+ ['agimat','Ward observed','Skills','0.6–1.5 s','P2','Optional shared commentary on shield activation.',['Nagliwanag ang Agimat!','May panangga na!']],
+ ['diwata','Blessing observed','Skills','0.6–1.5 s','P2','Optional shared commentary on blessing activation.',['Basbas ng Diwata!','Bumalik ang ikot!']],
+ ['bakunawa','Eclipse observed','Skills','0.6–1.6 s','P2','Optional shared commentary on eclipse activation.',['Nilamon ang buwan!','Eclipse ng Bakunawa!']],
+ ['dog_warn','Dog warning','Barangay','0.7–1.6 s','P1','The red dog-warning lane appears.',['Asong gala! Iwas sa pulang daan!','May aso! Umiwas sa daraanan!']],
+ ['dog_run','Dog enters','Barangay','0.5–1.1 s','P2','The dog begins its charge.',['Dadaan ang aso!','Tabi muna!']],
+ ['dog_hit','Dog contact','Barangay','0.6–1.4 s','P2','The dog knocks a top.',['Nasagi ng aso!','Uy! Tinamaan ng aso!']],
+ ['hen_warn','Hen warning','Barangay','0.7–1.6 s','P1','A hen heads into the ring.',['May manok sa bilog!','Ingat, may manok na paparating!']],
+ ['egg','Egg appears','Barangay','0.7–1.4 s','P2','An egg becomes a live obstacle.',['May itlog sa bilog!','Bagong hadlang: itlog!']],
+ ['crack','Egg smashed','Barangay','0.5–1.1 s','P2','A top breaks an egg obstacle.',['Basag ang itlog!','Nabasag!']],
+ ['hatch','Egg hatches','Barangay','0.7–1.4 s','P3','An egg expires with a hatch event.',['May sisiw na!','Napisa ang itlog!']],
+ ['squeeze','Ring shrinking','Barangay','0.7–1.6 s','P1','The circle begins shrinking.',['Sikip na! Lumiliit ang bilog!','Sa gitna! Lumiliit na ang bilog!']],
+ ['fall','Top falls','Results','0.4–1 s','P1','A top is eliminated by falling.',['Natumba!','Tumba ang trumpo!']],
+ ['out','Ring out','Results','0.4–1 s','P1','A top leaves the live ring.',['Labas!','Lumabas sa bilog!']],
+ ['ko','Brawl knockout','Results','0.7–1.5 s','P2','A credited brawl elimination.',['Knockout! May dagdag puntos!','May knockout!']],
+ ['two_left','Two left','Results','0.6–1.3 s','P2','Proposed: brawl live count first reaches two.',['Dalawa na lang!','Huling dalawang trumpo!']],
+ ['round_win','Round winner','Results','0.8–1.5 s','P1','A round winner is known.',['May panalo sa round!','Isang round, napanalunan!']],
+ ['last_spinning','Brawl round winner','Results','0.8–1.6 s','P2','A brawl round has a last surviving top.',['Huling trumpo na umiikot!','Sa huling umiikot ang round!']],
+ ['time','Time resolution','Results','1–2 s','P2','Round ends by time; faster spinner wins.',['Oras na! Mas mabilis na ikot ang panalo!','Ubos ang oras! Ikot ang magpapasya!']],
+ ['draw','Draw / replay','Results','0.7–1.5 s','P1','A tied round will be replayed.',['Tabla! Ulitin ang round!','Pantay! Isa pang round!']],
+ ['counterpick','Counterpick opens','Selection','1–2 s','P1','The losing duelist can switch or keep their trumpo.',['Counterpick! Palit o panatili?','Bagong diskarte! Pumili ng trumpo!']],
+ ['champion','Match champion','Results','0.8–2 s','P1','The champion is declared.',['May kampeon na ang barangay!','Kampeon ng Paikutan!']],
+ ['applause','Invite applause','Results','1–2 s','P2','After the champion’s personal line.',['Palakpakan ang ating kampeon!','Palakpakan ang lahat ng naglaro!']],
+ ['rematch','Rematch available','Social','0.8–1.6 s','P2','Match end rematch choice.',['Isa pang laban?','Handa na ba sa rematch?']],
+ ['practice','Practice begins','Match flow','1–2 s','P2','A practice session begins.',['Practice muna! Subukan ang ikot at bitaw.','Oras ng ensayo!']],
+ ['tutorial_wind','Winding instruction','Tutorial','2–4 s','P3','Optional voiced tutorial step.',['Gumuhit ng mabilis na mga bilog para umikot ang trumpo.']],
+ ['tutorial_throw','Throw instruction','Tutorial','2–4 s','P3','Optional voiced tutorial step.',['Kapag narinig ang bitaw, i-swipe para ihagis ang trumpo.']],
+ ['tutorial_skill','Skill instruction','Tutorial','2–4 s','P3','Optional voiced tutorial step.',['Kapag puno na ang skill meter, pindutin ang skill para gamitin ang kapangyarihan.']],
+ ['tutorial_dash','Dash instruction','Tutorial','2–4 s','P3','Optional voiced tutorial step.',['Gamitin ang dash para umiwas o sumugod. Bawas ikot ito, kaya tiyempuhan.']],
+ ['tutorial_boundary','Boundary instruction','Tutorial','2–4 s','P3','Optional voiced tutorial step.',['Panatilihin ang trumpo sa loob ng guhit. Kapag lumabas, talo sa round.']],
+ ['unavailable','Action unavailable','Interface','0.6–1.5 s','P3','Optional voice over an unavailable-action cue.',['Hindi pa pwede. Sandali lang.','Subukan muli mamaya.']],
+ ['room_full','Room full','Interface','0.8–1.7 s','P3','Lobby reports a full room.',['Puno na ang kuwarto.','Wala nang bakanteng puwesto.']],
+ ['connection','Connection problem','Interface','0.8–1.7 s','P3','A confirmed connection error.',['May problema sa koneksiyon.','Pakitingnan ang koneksiyon.']],
+ ['recenter','Tilt centered','Interface','0.7–1.5 s','P3','Tilt recalibration completes.',['Naka-sentro na ang kontrol.','Ayos na ang sentro.']]
+];
+for(const [event,label,group,duration,priority,trigger,lines] of ANNOUNCER) add('announcer',event,label,group,duration,priority,trigger,'Crisp emcee delivery. Finish within the cue’s time budget; record each alternative separately.',lines);
+
+entity('crowd','Barangay crowd','Announcer & crowd','Optional offscreen audience. Record 3–6 classmates together, then individual shouts. Leave slight timing differences so it feels like neighbors watching.');
+const CROWD = [
+ ['anticipation','Waiting for the throw','Match flow','1–2 s',['O, heto na!','Sige, sige!']],
+ ['throw','Throw cheer','Match flow','0.5–1.3 s',['Bitaw!','Laban!']],
+ ['clash','Big collision reaction','Combat','0.4–1.1 s',['Ooooh!','Ay, grabe!']],
+ ['near_miss','Near miss','Combat','0.4–1.2 s',['Uuuy!','Muntik na!']],
+ ['comeback','Comeback cheer','Combat','0.6–1.4 s',['Bawi! Bawi!','Kaya pa ’yan!']],
+ ['skill','Skill spectacle','Skills','0.6–1.4 s',['Aba, ang lakas!','Uy, may hiwaga!']],
+ ['dog','Dog surprise','Barangay','0.6–1.3 s',['Tabi, may aso!','Ay, may aso!']],
+ ['hen','Hen amusement','Barangay','0.6–1.3 s',['Pati manok, sumali!','Uy, manok!']],
+ ['fall','Top falls','Results','0.4–1.2 s',['Awww!','Sayang!']],
+ ['round_win','Round cheer','Results','0.8–1.8 s',['Panalo!','Galing ng tira!']],
+ ['draw','Tie reaction','Results','0.6–1.5 s',['Tabla!','Ulit! Ulit!']],
+ ['champion','Champion chant','Results','1.5–3 s',['Kampeon! Kampeon!','Paikutan! Paikutan!']],
+ ['applause','Applause & whoops','Efforts','3–5 s',['[Light applause, a few happy cheers]','[Big applause, staggered whoops, then a clean tail]']],
+ ['murmur','Crowd bed','World ambience','8–12 s',['[Quiet, indistinct friendly chatter; no foreground sentence]','[Soft anticipation murmur with one little laugh]']]
+];
+for(const [event,label,group,duration,lines] of CROWD) add('crowd',event,label,group,duration,'P3','Proposed shared audience reaction; use only during a clear gap.','Neighbors enjoying the game. Keep unrelated conversation out of the take; capture a clean start and end.',lines,event==='applause'||event==='murmur'?'vx':'vo');
+
+entity('dog','Asong gala / askal','Animals','Arena dog and optional parked scenery dog. Cartoon dog vocals by a classmate, with comfortable short bursts. No spoken sentences for the animal.');
+const DOG = [
+ ['warn','Warning bark','Barangay','0.3–0.8 s','P1','Red warning lane appears.',['[One alert “Arf!”]','[Two small alert barks: “Arf! Arf!”]']],
+ ['run','Charge bark','Barangay','0.5–1 s','P1','Dog starts crossing the circle.',['[Excited short “Aw-aw!”]','[Quick happy bark with a breathy finish]']],
+ ['bump','Bumped a trumpo','Barangay','0.2–0.6 s','P1','Dog contacts a top.',['[One punchy “Arf!”]','[One surprised bark]']],
+ ['pant','Panting','World ambience','2–4 s','P3','Optional scenery dog close-up / rest.',['[Light, relaxed dog panting]','[Happy panting, then one small sniff]']],
+ ['sniff','Sniffing','World ambience','0.6–1.3 s','P3','Optional parked askal detail.',['[Two short curious sniffs]','[Sniff, pause, little huff]']],
+ ['idle','Distant bark','World ambience','0.5–1.2 s','P3','Optional background village ambience.',['[One relaxed, distant-sounding bark]','[Two lazy woofs with space between them]']]
+];
+for(const [event,label,group,duration,priority,trigger,lines] of DOG) add('dog',event,label,group,duration,priority,trigger,'Perform an original, friendly cartoon dog. Record dry; the editor handles distance and layering.',lines,'vx');
+
+entity('hen','Hen / roaming chickens','Animals','Active egg-laying hazard, roaming scenery chickens, and the title-screen peeker. Curious, fussy, and funny rather than aggressive.');
+const HEN = [
+ ['warn','Hen enters arena','Barangay','0.4–0.9 s','P1','eggWarn: hen approaches the egg spot.',['[Alert cluck: “Putak!”]','[Two rising clucks: “Kok-kok!”]']],
+ ['lay','Egg laid','Barangay','0.5–1.1 s','P1','egg: obstacle appears.',['[Proud little “Kok-kok, putak!”]','[One effortful cluck, then a satisfied cluck]']],
+ ['retreat','Hen leaves','Barangay','0.5–1.2 s','P2','Optional hen departure after laying.',['[Quick receding clucks]','[Two flustered little “Pak-pak!” clucks]']],
+ ['idle','Roaming cluck','World ambience','0.4–0.9 s','P3','Optional local roaming chicken sound.',['[Soft inquisitive “Kok?”]','[Quiet double cluck]']],
+ ['peck','Pecking chatter','World ambience','1–2 s','P3','Optional chicken pecking detail.',['[Three tiny irregular clucks]','[Soft beak clicks and a content cluck]']],
+ ['peek','Title-screen peeker','World ambience','0.4–1 s','P3','Optional chicken peeks up toward the menu camera.',['[Curious questioning cluck]','[Small startled cluck, then silence]']]
+];
+for(const [event,label,group,duration,priority,trigger,lines] of HEN) add('hen',event,label,group,duration,priority,trigger,'Short mouth-made clucks; give each one its own clean tail. Avoid overlapping the emcee’s warning.',lines,'vx');
+
+entity('chick','Chick / hatch sound','Animals','Tiny hatch vocal. The current game has a hatch sound event; these takes can accompany it without adding a new playable animal.');
+add('chick','hatch','Hatch chirp','Barangay','0.3–0.8 s','P1','hatch: an egg expires and disappears.','Very light and bright. A short chirp should be audible without being sharp.',['[Two tiny “Piyok-piyok!” chirps]','[One chirp, pause, two quick chirps]'],'vx');
+add('chick','idle','Optional peeping','World ambience','1–2 s','P3','Optional future chick ambience.','Small, curious chirps with space between them.',['[Three soft irregular peeps]','[A short questioning peep, then a happy peep]'],'vx');
+
+entity('carabao','Carabao','Animals','Optional scenery animal near the fields. Background presence only; no arena powers or match result lines.');
+add('carabao','low','Lowing','World ambience','1–2.5 s','P3','Optional quiet village ambience near the carabao.','Comfortable low voice. The editor can deepen it.',['[Gentle nasal “Mmm-oo” with a soft tail]','[Short, sleepy lowing sound]'],'vx');
+add('carabao','breath','Snort & breath','World ambience','0.6–1.5 s','P3','Optional close scenery detail.','A relaxed breath, no force.',['[Soft nasal huff]','[Slow exhale, then a tiny snort]'],'vx');
+
+const SPIRITS = {
+ kidlat:{name:'Kidlat',direction:'Optional electric presence. Quick consonants, bright intent. Record a clean normal voice; add sparks in editing.',browse:['Kidlat.','Dinig mo ang kulog?'],select:['Handa ang kidlat.','Isang kisap, isang tama.'],cast:['Guhit ng kidlat!','Kulog, sumagot ka!'],win:['Mabilis ang naging wakas.','Kumikislap ang tagumpay.'],vocal:['[Short airy electric “tss-zzt”]','[Low soft “brrm,” like distant thunder]']},
+ tikbalang:{name:'Tikbalang',direction:'Optional powerful, playful forest presence. Grounded chest voice and hoof rhythm; the character still owns the skill call.',browse:['Tikbalang.','Naririnig mo ang yabag?'],select:['Handa ang mga yabag.','Lupa ang ating daan.'],cast:['Sugod ng Tikbalang!','Yabag, yumanig!'],win:['Tumahimik ang ating dinaanan.','Sa atin ang huling yabag.'],vocal:['[Two tongue-click hoofbeats, then a soft “hrrff”]','[A low breathy grunt and a short stomp effort]']},
+ agimat:{name:'Agimat',direction:'Optional calm ward presence. A centered, reassuring voice with a gentle metallic resonance added later.',browse:['Agimat.','May bantay ang iyong ikot.'],select:['Ako ang iyong panangga.','Manatiling matatag.'],cast:['Bantay ng Agimat!','Tatag, manatili!'],win:['Naging matatag ang ating ikot.','Nanatili hanggang dulo.'],vocal:['[Closed-mouth “mm” with an even, short sustain]','[Airy shimmer: soft “shhh,” fading out]']},
+ diwata:{name:'Diwata',direction:'Optional warm forest spirit. Clear and gently rising, with audible words; any classmate can play this voice.',browse:['Diwata.','May simoy na darating.'],select:['Muling sisigla ang ikot.','Dala ko ang basbas.'],cast:['Basbas at bagong sigla!','Simoy, ibalik ang ikot!'],win:['Sumayaw hanggang sa huli.','May bagong sigla ang tagumpay.'],vocal:['[Soft upward “oo,” ending in a gentle breath]','[Warm open “haa,” then a clean airy tail]']},
+ bakunawa:{name:'Bakunawa',direction:'Optional sea-serpent presence. Slow, resonant, theatrical. Use a comfortable register; pitch and layers provide size.',browse:['Bakunawa.','Sumisilip ang dilim.'],select:['Dumidilim ang buwan.','Sa dagat nagmumula ang gabi.'],cast:['Lunukin ang liwanag!','Baligtarin ang daan!'],win:['Sa dilim nagtapos ang ikot.','Tahimik na muli ang dagat.'],vocal:['[Comfortable low “oh,” growing into a breathy “grr”]','[Soft layered-sounding throat-free growl, then sea-air “shh”]']}
+};
+for(const [id,s] of Object.entries(SPIRITS)){
+  const eid='spirit_'+id;entity(eid,s.name+' · optional spirit','Trumpo spirits',s.direction+' Proposed flavor casting, separate from playable characters.');
+  add(eid,'browse','Optional trumpo name / whisper','Selection','0.4–1 s','P3','Optional vocal layer after the trumpo card settles.','Very short. Use instead of another foreground menu voice, never on every fast swipe.',s.browse);
+  add(eid,'select','Optional spirit confirmation','Selection','0.8–1.6 s','P3','Optional vocal layer when this trumpo is confirmed.','Keep beneath or separate from the character’s confirmation; choose one primary speaker.',s.select);
+  add(eid,'cast','Optional skill voice','Skills','0.7–1.6 s','P3','Optional spirit treatment during this power.','An alternate layer; prefer the active character’s skill call when both would overlap.',s.cast);
+  add(eid,'win','Optional trumpo victory flavor','Results','1–2 s','P3','Optional later result-screen flavor for the winning trumpo.','Only in a clear gap after the champion line.',s.win);
+  add(eid,'texture','Creature / magic vocal texture','Efforts','0.3–1.2 s','P3','Raw mouth-made layers for this trumpo’s identity.','Perform the bracketed sound. Record each component dry and separately.',s.vocal,'vx');
+}
+
+entity('ambience','Trumpo menu ambience','Selection effects','Production briefs for mouth-made sound and optional classroom Foley. Record components separately; an editor combines them into these short browse and confirm signatures.');
+const AMBIENCE = {
+ kidlat:{browse:'[Soft “tss-zzt” spark; tiny distant rumble, quick fade]',select:'[Rising “zzzt,” compact “brrm” thunder snap, fading fizz]'},
+ tikbalang:{browse:'[Two quiet hoof tongue-clicks, tiny breathy snort]',select:'[Four accelerating hoof clicks, deep breath, one compact stomp]'},
+ agimat:{browse:'[One delicate “ting,” then a very short airy shimmer]',select:'[Warm “mm” bloom, a gentle metal strike, soft shimmering tail]'},
+ diwata:{browse:'[Gentle “haa” breeze and two light wooden taps]',select:'[Rising “oo,” three bamboo-like taps, open warm airy finish]'},
+ bakunawa:{browse:'[Low breathy “vrrm,” with a soft gong-like “oh” tail]',select:'[Short low creature breath, dark “oh” resonance, fading sea air]'}
+};
+for(const [id,s] of Object.entries(AMBIENCE)){
+  add('ambience',id+'_browse',TOP_NAMES[id]+' · swipe ambience','Selection','0.35–0.8 s','P1','This trumpo card settles after a swipe.','Quiet one-shot. Record layers individually, then edit a small skill-related signature; no full-volume combat impact.',[s.browse],'amb');
+  add('ambience',id+'_select',TOP_NAMES[id]+' · confirm ambience','Selection','0.8–1.5 s','P1','This trumpo is confirmed.','Fuller than browse, quieter than combat. Fade quickly under the selected character’s line.',[s.select],'amb');
+}
+
+entity('world','Neighbors & street life','World flavor','Optional offscreen residents around existing scenery: store, sorbetes cart, jeepney, tricycle, court, videoke, and barangay hall. Suggested human ambience roles; these are not extra selectable characters.');
+const WORLD = [
+ ['suki','Store chatter','World ambience','1–2 s',['O, suki! Ano sa ’yo?','May malamig na inumin dito!']],
+ ['sorbetes','Sorbetes vendor','World ambience','1–2.5 s',['Sorbetes! Pampalamig!','Sorbetes, dito na!']],
+ ['jeepney','Jeepney neighbor','World ambience','0.5–1.5 s',['Para po!','Bayad po!']],
+ ['tricycle','Tricycle driver','World ambience','0.8–1.8 s',['Sakay na!','Saan tayo, boss?']],
+ ['basketball','Court neighbors','World ambience','0.4–1.2 s',['Pasa!','Shoot!']],
+ ['videoke','Videoke neighbor','World ambience','1–2 s',['Mic test! Isa, dalawa!','Salamat, mga kapitbahay!']],
+ ['hall','Barangay hall announcement','World ambience','1.5–3 s',['Mga kapitbahay, may laro sa plaza!','Paalala: panatilihing malinis ang plaza.']],
+ ['greeting','Neighbors greet','World ambience','0.8–1.8 s',['Magandang hapon!','O, kumusta ang laro?']],
+ ['idle_chatter','Indistinct conversation','World ambience','8–12 s',['[Two neighbors quietly chat with indistinct syllables, then laugh lightly]','[Soft distant conversational murmur with long gaps]']],
+ ['foley_string','String & release Foley','Foley','0.4–1.5 s',['[Pull cotton string through fingers, then a quick release]','[Soft string swish, then a dry wooden tap]']],
+ ['foley_wood','Wood contacts','Foley','0.1–0.7 s',['[Three separate gentle wooden knocks with quiet gaps]','[One heavier wooden knock, then a short rattle]']],
+ ['foley_egg','Egg sound substitute','Foley','0.2–0.8 s',['[A small dry crackle from paper or a thin wrapper]','[A small crisp tap followed by light paper crackle]']],
+ ['foley_wind','Plaza breeze','Foley','3–5 s',['[Soft steady “shh” air with a gentle swell and fade]','[Very light cloth flutter and breathy air recorded separately]']]
+];
+for(const [event,label,group,duration,lines] of WORLD) add('world',event,label,group,duration,'P3','Optional spatial ambience near the related scenery; use sparsely.','Background perspective. Record clean and dry; the editor handles distance. Videoke is spoken mic banter, with no song needed.',lines,event.startsWith('foley')?'amb':event==='idle_chatter'?'vx':'vo');
+
+entity('reserve_jun','Kuya Jun · reserve model','Reserve models','P3 only. The binata rig exists in the model file, but Kuya Jun is not in the current selectable roster. A sporty, confident optional future voice.');
+entity('reserve_tanod','Kuya Tanod · reserve model','Reserve models','P3 only. The male tanod model is a reserve; the current playable character is Kapitana. A friendly, alert neighborhood guard voice.');
+const RESERVE = {
+ reserve_jun:{browse:['O, tara!','Game ka na?'],select:['Ayos, tayo ang team.','Swabe ang pili mo.'],ready:['Ready na, laro na!','G na!'],win:['Panalo! Ganda ng tira!','Ayos, sa atin ’to!'],lose:['Galing. Bawi ako ulit.','May susunod pa, tara.']},
+ reserve_tanod:{browse:['Bantay sa bilog!','Tara, maayos na laro.'],select:['Ako ang bahala sa ikot.','Handa na ang tanod.'],ready:['Ayos ang paligid. Laban!','Handa na tayo.'],win:['Panalo! Ligtas ang ikot.','Sa atin ang laban!'],lose:['Mahusay. Tanggap ang resulta.','Bawi sa susunod na ronda.']}
+};
+for(const [id,script] of Object.entries(RESERVE)) for(const [event,lines] of Object.entries(script)) add(id,event,'Reserve · '+event,event==='win'||event==='lose'?'Results':'Selection','0.7–1.8 s','P3','Only if this reserve model becomes a selectable character.','Optional future casting audition; extend to the full character template only if added to the roster.',lines);
+
+// Self-contained catalog: no imports, requests, or audio playback required.
+const $ = id => document.getElementById(id);
+const esc = value => String(value).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const letter = i => String.fromCharCode(97+i);
+const keyFor = (cue,i) => cue.type+'_'+cue.entity+'_'+cue.event+'_'+letter(i);
+const filename = (cue,i) => keyFor(cue,i)+'_t01.wav';
+const STORAGE_KEY = 'paikutan-voicelines-progress-v1';
+let recorded = new Set();
+let storageAvailable = true;
+try{const stored=JSON.parse(localStorage.getItem(STORAGE_KEY)||'[]');if(Array.isArray(stored)) recorded=new Set(stored.filter(x=>typeof x==='string'));}catch{storageAvailable=false;}
+const validKeys = new Set(cues.flatMap(cue=>cue.lines.map((_,i)=>keyFor(cue,i))));
+recorded = new Set([...recorded].filter(key=>validKeys.has(key)));
+const totalTakes = cues.reduce((sum,cue)=>sum+cue.lines.length,0);
+$('stat-cues').textContent=cues.length;
+$('stat-takes').textContent=totalTakes;
+$('stat-core').textContent=cues.filter(cue=>cue.priority==='P1').length;
+for(const group of [...new Set(entities.map(e=>e.group))]){
+  const optgroup=document.createElement('optgroup');optgroup.label=group;
+  for(const e of entities.filter(e=>e.group===group)){const option=document.createElement('option');option.value=e.id;option.textContent=e.name;optgroup.append(option);}
+  $('entity-filter').append(optgroup);
+}
+for(const group of [...new Set(cues.map(cue=>cue.group))]){const option=document.createElement('option');option.value=group;option.textContent=group;$('group-filter').append(option);}
+let visible=[];
+function getVisible(){
+  const query=$('search').value.trim().toLocaleLowerCase(),entityFilter=$('entity-filter').value,groupFilter=$('group-filter').value,priorityFilter=$('priority-filter').value;
+  return cues.flatMap(cue=>{
+    const info=entities.find(e=>e.id===cue.entity);
+    if(entityFilter!=='all'&&cue.entity!==entityFilter||groupFilter!=='all'&&cue.group!==groupFilter||priorityFilter!=='all'&&cue.priority!==priorityFilter)return [];
+    const common=[info.name,info.group,info.direction,cue.entity,cue.event,cue.label,cue.group,cue.trigger,cue.direction,cue.priority].join(' ').toLocaleLowerCase();
+    const takes=cue.lines.flatMap((line,i)=>{
+      if($('a-only').checked&&i!==0||$('unrecorded').checked&&recorded.has(keyFor(cue,i)))return [];
+      return !query||(common+' '+line+' '+filename(cue,i)).toLocaleLowerCase().includes(query)?[{line,i}]:[];
+    });
+    return takes.length?[{cue,info,takes}]:[];
+  });
+}
+function updateProgress(){
+  $('progress').textContent=recorded.size+' / '+totalTakes+' variants captured'+(storageAvailable?' · saved in this browser':' · session only; export CSV to keep progress');
+}
+function render(){
+  visible=getVisible();
+  const visibleTakes=visible.reduce((n,row)=>n+row.takes.length,0);
+  const visibleEntities=entities.filter(e=>visible.some(row=>row.cue.entity===e.id));
+  $('visible-count').textContent=visible.length+' cues · '+visibleTakes+' variants · '+visibleEntities.length+' entities shown';
+  $('print-note').textContent='Filtered recording pack: '+$('visible-count').textContent+'. Check a box when the takes have been captured.';
+  updateProgress();
+  $('jump-links').innerHTML=visibleEntities.map(e=>'<a href="#entity-'+esc(e.id)+'">'+esc(e.name)+'</a>').join('');
+  $('catalog').innerHTML=visibleEntities.map(e=>{
+    const rows=visible.filter(row=>row.cue.entity===e.id),n=rows.reduce((sum,row)=>sum+row.takes.length,0);
+    return '<section class="entity" id="entity-'+esc(e.id)+'"><div class="entity-head"><div><h3>'+esc(e.name)+'</h3><p>'+esc(e.direction)+'</p></div><span class="entity-count">'+rows.length+' cues / '+n+' variants</span></div>'+rows.map(({cue,takes})=>{
+      const tier=cue.priority==='P1'?'core':cue.priority==='P2'?'extra':'optional';
+      return '<article class="cue"><div class="cue-meta"><h4>'+esc(cue.label)+'</h4><span class="tag '+tier+'">'+cue.priority+' · '+PRIORITIES[cue.priority]+'</span><p class="duration">'+esc(cue.duration)+'</p><p>'+esc(cue.trigger)+'</p></div><div class="takes"><p class="direction"><span class="type">'+esc(cue.group)+'</span>'+esc(cue.direction)+'</p>'+takes.map(({line,i})=>{
+        const key=keyFor(cue,i),done=recorded.has(key);
+        return '<div class="take'+(done?' done':'')+'"><input type="checkbox" id="'+key+'" data-take="'+key+'"'+(done?' checked':'')+' aria-label="Mark '+esc(e.name+' '+cue.label+' variant '+letter(i).toUpperCase())+' captured"><div><label for="'+key+'"><span class="script" lang="fil">'+esc(line)+'</span></label><small>'+letter(i).toUpperCase()+' / '+esc(filename(cue,i))+'</small></div></div>';
+      }).join('')+'</div></article>';
+    }).join('')+'</section>';
+  }).join('')||'<p class="empty">No matching takes. Change a filter or choose “Show full pack.”</p>';
+}
+$('catalog').addEventListener('change',event=>{
+  const input=event.target.closest('[data-take]');if(!input)return;
+  if(input.checked)recorded.add(input.dataset.take);else recorded.delete(input.dataset.take);
+  try{localStorage.setItem(STORAGE_KEY,JSON.stringify([...recorded]));storageAvailable=true;}catch{storageAvailable=false;$('live-status').textContent='Progress is available for this session only. Export CSV to keep a copy.';}
+  input.closest('.take').classList.toggle('done',input.checked);updateProgress();
+  if($('unrecorded').checked){
+    // Keep keyboard focus useful when the checked row leaves the filtered list.
+    const inputs=[...$('catalog').querySelectorAll('[data-take]')],index=inputs.indexOf(input);
+    const next=inputs[index+1]?.dataset.take||inputs[index-1]?.dataset.take;render();
+    const nextInput=next&&document.getElementById(next);(nextInput||$('unrecorded')).focus({preventScroll:true});
+  }
+});
+for(const id of ['entity-filter','group-filter','priority-filter','a-only','unrecorded'])$(id).addEventListener('change',render);
+$('search').addEventListener('input',render);
+function resetFilters(){for(const id of ['entity-filter','group-filter','priority-filter'])$(id).value='all';$('search').value='';$('a-only').checked=false;$('unrecorded').checked=false;}
+$('core-batch').addEventListener('click',()=>{resetFilters();$('priority-filter').value='P1';$('a-only').checked=true;render();$('live-status').textContent='Showing the essential first batch: variant A only. Choose an entity to split the session by actor.';});
+$('show-all').addEventListener('click',()=>{resetFilters();render();$('live-status').textContent='Showing the complete recording pack.';});
+$('print').addEventListener('click',()=>window.print());
+function csvCell(value){
+  let text=String(value);
+  // Keep copied script content as text when opened by spreadsheet software.
+  if(/^[=+@\-\t\r]/.test(text))text="'"+text;
+  return '"'+text.replace(/"/g,'""')+'"';
+}
+$('export').addEventListener('click',()=>{
+  const rows=[['Entity','Entity ID','Cue','Event ID','Event group','Priority','Variant','Script / performance','Direction','Trigger','Target duration','Suggested filename','Captured']];
+  for(const {cue,info,takes} of getVisible())for(const {line,i} of takes)rows.push([info.name,cue.entity,cue.label,cue.event,cue.group,cue.priority,letter(i).toUpperCase(),line,cue.direction,cue.trigger,cue.duration,filename(cue,i),recorded.has(keyFor(cue,i))?'Yes':'No']);
+  const blob=new Blob(['\uFEFF'+rows.map(row=>row.map(csvCell).join(',')).join('\r\n')],{type:'text/csv;charset=utf-8'});
+  const url=URL.createObjectURL(blob),link=document.createElement('a');link.href=url;link.download='paikutan-voicelines-'+new Date().toISOString().slice(0,10)+'.csv';document.body.append(link);link.click();link.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);
+  $('live-status').textContent='Exported '+(rows.length-1)+' visible variants, including their recording progress.';
+});
+render();
+</script>
+</body>
+</html>

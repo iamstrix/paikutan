@@ -435,4 +435,15 @@ body.host-playing #end-bar { bottom: 72px; }
 .chat-bubble::after { content: ''; position: absolute; left: calc(50% - 7px); bottom: -10px; border-left: 7px solid transparent; border-right: 7px solid transparent; border-top: 8px solid var(--pc); }
 .phone-page:not(.show-scene) .chat-bubble { left: 50% !important; top: 18% !important; }
 @keyframes bubble-in { from { opacity: 0; margin-top: 8px; } }
+/* Brawl podium: a name tag over each of the top three, and the Kampeon banner moved up off their heads. */
+.podium-tag { position: absolute; transform: translate(-50%, -100%); display: flex; align-items: center; gap: 7px; padding: 4px 12px 4px 4px;
+  border: 3px solid var(--pc); border-radius: 999px; background: #fff8e7; color: #241936; font-weight: 800; white-space: nowrap;
+  box-shadow: 0 5px 12px #0005; animation: bubble-in 0.25s ease-out; }
+.podium-tag b { display: grid; place-items: center; width: 1.7em; height: 1.7em; border-radius: 50%; font-family: Bungee, Impact, sans-serif; font-weight: 400; color: #2b1d12; }
+.podium-tag[data-place="1"] { font-size: 1.15rem; }
+.podium-tag[data-place="1"] b { background: #f2c14e; }
+.podium-tag[data-place="2"] b { background: #dfe5ea; }
+.podium-tag[data-place="3"] b { background: #e09a5c; }
+.podium-tag[hidden] { display: none; }
+body.brawl[data-phase=matchEnd] #banner { top: 5%; }
 @media (max-width: 360px) { .quick-chat button { padding: 9px 8px; font-size: 0.72rem; } }

@@ -107,7 +107,11 @@ export class Engine {
       // A draw is replayed, so it does not count as a round.
       if (w.winner < 0) this.round--;
     }
-    if (phase === 'matchEnd') this.result = { ...this.result, champion: this.champion() };
+    if (phase === 'matchEnd') {
+      this.result = { ...this.result, champion: this.champion() };
+      // A brawl ranks everyone, so the podium and each phone agree on 2nd and 3rd.
+      if (this.brawl) this.result.standings = this.standings();
+    }
     this.cpuT = this.players.map(() => rnd(0.6, 1.6));
     this.changed();
   }
@@ -115,14 +119,13 @@ export class Engine {
   // 1v1: more rounds won. Brawl: most points, then most rounds won.
   champion() {
     if (!this.brawl) return this.scores[0] > this.scores[1] ? 0 : 1;
-    let best = -1;
-    this.players.forEach((p, s) => {
-      if (!p) return;
-      const more = best < 0 || this.points[s] > this.points[best]
-        || (this.points[s] === this.points[best] && this.scores[s] > this.scores[best]);
-      if (more) best = s;
-    });
-    return best;
+    return this.standings()[0] ?? -1;
+  }
+
+  // Brawl seats from first place down: points, then rounds won, then who joined first.
+  standings() {
+    return this.players.map((p, s) => (p ? s : -1)).filter(s => s >= 0)
+      .sort((a, b) => this.points[b] - this.points[a] || this.scores[b] - this.scores[a] || a - b);
   }
 
   join(id, name, kind = 'remote') {

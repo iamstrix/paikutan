@@ -64,7 +64,7 @@ export class Avatar {
   update(dt, elapsed) {
     const r = this.rig;
     this.setExpression(
-      this.tumbleT > 0 ? 'dizzy' : this.mode === 'cheer' || this.mode === 'release' ? 'happy' : this.mode === 'sad' ? 'sad' : 'neutral',
+      this.tumbleT > 0 ? 'dizzy' : this.mode === 'cheer' || this.mode === 'clap' || this.mode === 'release' ? 'happy' : this.mode === 'sad' ? 'sad' : 'neutral',
     );
     const ease = (o, x, z = 0, k = 14) => {
       o.rotation.x += (x - o.rotation.x) * Math.min(1, dt * k);
@@ -141,6 +141,17 @@ export class Avatar {
         ease(r.head, -0.2);
         bob = Math.abs(Math.sin(elapsed * 7)) * 0.25;
         break;
+      case 'clap': {
+        // Arms out front, hands meeting in the middle.
+        const k = Math.abs(Math.sin(elapsed * 9));
+        ease(r.armL, -1.25, 0.15 + 0.4 * k, 30);
+        ease(r.armR, -1.25, -0.15 - 0.4 * k, 30);
+        ease(r.legL, 0);
+        ease(r.legR, 0);
+        ease(r.head, -0.1);
+        bob = k * 0.03;
+        break;
+      }
       case 'sad':
         ease(r.armL, 0.1, -0.05);
         ease(r.armR, 0.1, 0.05);

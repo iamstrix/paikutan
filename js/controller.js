@@ -73,7 +73,9 @@ export function createController(root, { mode = 'phone', send, myId, sounds = mo
   // Who this phone is waiting on, in words.
   const rivals = () => (brawl() ? 'the others' : opp() ? opp().name : 'your opponent');
   // Brawl standing: 1 = most points.
-  const place = () => 1 + st.players.filter((p, i) => p && i !== slot && st.points[i] > st.points[slot]).length;
+  // At match end the host's ranking breaks ties, so a phone shows the same place as the podium.
+  const place = () => (st.result && st.result.standings ? st.result.standings.indexOf(slot) + 1 : 0)
+    || 1 + st.players.filter((p, i) => p && i !== slot && st.points[i] > st.points[slot]).length;
   const ordinal = n => n + (n % 10 === 1 && n !== 11 ? 'st' : n % 10 === 2 && n !== 12 ? 'nd' : n % 10 === 3 && n !== 13 ? 'rd' : 'th');
   const remaining = () => Math.max(0, (deadline - performance.now()) / 1000);
 
