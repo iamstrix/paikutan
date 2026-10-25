@@ -52,6 +52,12 @@ Issue H: No &quot;Join Match&quot; Button: Players Must Host Just to Get a QR, a
 - No Join Entry Point: On index.html, #menu-main only offers &quot;Host a match&quot;, &quot;Practice vs CPU&quot; and &quot;How to play&quot;. There is no &quot;Join match&quot; button and no room-code field, so a player who opens the game cannot join an existing room from the menu.
 - Forced Host Detour: The only way to reach a join link is to tap Host a match -&gt; 1v1 / Brawl. hostRoom() in host.js (lines 54-67) creates a new room and renders the play.html?room=XXXX QR code. Players have to make a lobby just to generate a QR they can scan.
 - Host Can&#39;t Play in Their Own Lobby: The device that makes the lobby turns into the arena screen (start(&#39;host&#39;)) and never takes a player slot. #slots fills only with phones that scan the QR (or CPUs added with + CPU), so whoever made the lobby has to scan their own QR with a second device or sit out.
+
+Issue I: No &quot;You&quot; Label Under the Player&#39;s Trumpo
+- Lost in the Visuals: During a clash the arena is full of sparks, dust puffs, POW words, skill effects and up to 8 trumpos in Brawl. Players lose track of which top is theirs.
+- Colour Ring Only: In scene.js lines 63-65, the only ownership marker is a thin coloured chalk ring (RingGeometry 0.5-0.6) flat on the ground under each top. It is drawn with transparent: true, so it suffers the same depth sorting as Issue B and gets buried under dust and sparks. In Brawl, 8 player colours are hard to tell apart at a glance.
+- Phone Already Knows Who You Are: play.js line 75 calls scene.setView(slot) with the player&#39;s own slot, so scene.js knows which top belongs to the viewer but never marks it.
+- Fix Path: Add a &quot;You&quot; tag under the viewer&#39;s top, drawn in the player colour, on the phone (and in desktop Practice, where myId is &#39;me&#39;). The chat-bubble overlay in scene.js (chatLayer, lines 162-166; per-frame projection, lines 680-689) already projects a 3D point to a screen-space DOM element, so the tag can reuse it, projected just below the top instead of above the head. Keep it hidden on the shared host/TV screen, which has no single &quot;you&quot;; it could show P1/P2 or nicknames there instead.
 </pre>
 </body>
 </html>

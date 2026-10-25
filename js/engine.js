@@ -2,6 +2,7 @@
 // The host page runs one Engine; phones send it messages through handle().
 // Two modes: '1v1' (best of 3 with counterpicks) and 'brawl' (up to 8 trumpos, points over 3 rounds).
 import { CHARACTERS, TOPS } from './data.js';
+import { QUICK_CHAT, CHAT_COOLDOWN } from './chat.js';
 import { createWorld, launch, step, snapshot, forfeit, rivalOf, STEP, toLocal, MAX_SEATS } from './sim.js';
 
 export const WIN_ROUNDS = 2; // best of 3
@@ -34,6 +35,10 @@ export class Engine {
     this.cpuT = this.players.map(() => 0);
     this.cpuN = 0;
     this.switched = null; // last counterpick: { slot, from, to }
+    this.elapsed = 0;
+    this.fxSeq = 0;
+    this.snapSeq = 0;
+    this.effects = [];
     this.go('lobby');
   }
 
@@ -47,6 +52,7 @@ export class Engine {
       mode: this.mode, phase: this.phase, timer: Math.max(0, Math.round(this.timer * 10) / 10), round: this.round,
       rounds: this.brawl ? BRAWL_ROUNDS : WIN_ROUNDS * 2 - 1,
       scores: this.scores, points: this.points, result: this.result, switched: this.switched,
+      fx: this.recentEffects(),
       players: this.players.map(p => p && {
         id: p.id, name: p.name, kind: p.kind, char: p.char, top: p.top, picked: p.picked,
         spun: !!p.spun, spinPower: p.spun ? p.spun.power : 0, steadiness: p.spun ? p.spun.stability : 0,
@@ -56,6 +62,18 @@ export class Engine {
   }
 
   changed() { this.emit('state', this.state()); }
+
+  recentEffects() {
+    this.effects = this.effects.filter(e => this.elapsed - e.at < 2);
+    return this.effects;
+  }
+
+  emitEffects(events) {
+    const batch = events.map(e => ({ ...e, seq: ++this.fxSeq, at: this.elapsed }));
+    this.effects.push(...batch);
+    this.effects = this.effects.slice(-160);
+    this.emit('fx', batch);
+  }
 
   go(phase) {
     this.phase = phase;
@@ -69,6 +87,7 @@ export class Engine {
     if (phase === 'vs' || phase === 'counter') this.switched = null;
     if (phase === 'charge') {
       this.round++;
+      this.effects = [];
       this.world = null;
       this.result = null;
       ps.forEach(p => { p.spun = null; p.thrown = false; p.laps = 0; p.inRound = true; });
@@ -111,7 +130,7 @@ export class Engine {
       s = this.players.findIndex(p => !p);
       if (s < 0) return -1;
       this.players[s] = { id, kind, name: clean(name) || `Player ${s + 1}`, char: CHARACTERS[(s * 2) % CHARACTERS.length].id,
-        top: TOPS[s % TOPS.length].id, picked: false, spun: null, thrown: false, laps: 0, rematch: false, inRound: false };
+        top: TOPS[s % TOPS.length].id, picked: false, spun: null, thrown: false, laps: 0, rematch: false, inRound: false, chatAt: -Infinity };
       this.scores[s] = 0; this.points[s] = 0;
     } else if (name) this.players[s].name = clean(name);
     // 1v1 starts as soon as both seats fill; a brawl waits for the host's Start.
@@ -122,7 +141,7 @@ export class Engine {
 
   // Brawl lobby: fill a seat with a CPU player.
   addCpu() {
-    if (!this.brawl || !this.players.includes(null)) return -1;
+    if (!this.brawl || this.phase !== 'lobby' || !this.players.includes(null)) return -1;
     const used = new Set(this.present().map(p => p.name));
     const name = CPU_NAMES.find(n => !used.has(n)) || 'CPU';
     return this.join(`cpu-${++this.cpuN}`, name, 'cpu');
@@ -135,8 +154,11 @@ export class Engine {
     const s = this.slotOf(id);
     if (s < 0) return;
     this.players[s] = null;
+    this.scores[s] = 0; this.points[s] = 0; this.cpuT[s] = 0;
     if (!this.brawl || this.present().length < 2) {
       this.world = null;
+      this.round = 0; this.scores.fill(0); this.points.fill(0); this.result = null;
+      this.present().forEach(p => { p.inRound = false; p.picked = false; p.spun = null; p.thrown = false; });
       this.go('lobby');
       return;
     }
@@ -167,6 +189,12 @@ export class Engine {
     if (s < 0) return;
     const pl = this.players[s], tp = this.world && pl.inRound && this.world.tops[s];
     switch (type) {
+      case 'chat':
+        if (!Number.isInteger(p.i) || p.i < 0 || p.i >= QUICK_CHAT.length || this.elapsed - pl.chatAt < CHAT_COOLDOWN) return;
+        pl.chatAt = this.elapsed;
+        this.emitEffects([{ type: 'chat', slot: s, i: p.i }]);
+        this.changed();
+        break;
       case 'pick':
         if (this.phase !== 'pick') return;
         if (CHARACTERS.some(c => c.id === p.char)) pl.char = p.char;
@@ -224,6 +252,7 @@ export class Engine {
 
   update(dt) {
     dt = Math.min(dt, 0.1);
+    this.elapsed += dt;
     this.timer -= dt;
     this.runCpu(dt);
     const ph = this.phase;
@@ -249,8 +278,8 @@ export class Engine {
     if ((this.phase === 'throw' || this.phase === 'fight') && this.world) {
       this.acc += dt;
       while (this.acc >= STEP) { step(this.world, STEP); this.acc -= STEP; }
-      if (this.world.events.length) { this.emit('fx', this.world.events); this.world.events = []; }
-      this.emit('snap', snapshot(this.world));
+      if (this.world.events.length) { this.emitEffects(this.world.events); this.world.events = []; }
+      this.emit('snap', { ...snapshot(this.world), seq: ++this.snapSeq, fx: this.recentEffects() });
       if (this.world.over) this.go('roundEnd');
     }
   }

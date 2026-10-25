@@ -6,6 +6,7 @@ import { createController, charIcon, topIcon } from './controller.js';
 import { connect, makeRoomCode, isLocalNet } from './net.js';
 import { audio, playFx } from './audio.js';
 import { CHARACTERS, TOPS, PLAYER_COLORS, byId } from './data.js';
+import { requestMotion } from './input.js';
 
 const $ = s => document.querySelector(s);
 // Canvas signs and POW! bursts letter in Lilita One; give it a moment to load so they don't bake in a fallback.
@@ -14,6 +15,8 @@ const scene = createScene($('#view'));
 let engine = null, net = null, ctrl = null, mode = 'title', brawl = false;
 const CAMS = ['auto', 'top', 'close', 'orbit'];
 let camIdx = 0;
+let roomAttempt = 0;
+const HOST_ID = 'host-player';
 let state = null, snap = null, lastNetSnap = 0, lastPhase = '', bannerUntil = 0, squeezeUntil = 0, bannerHtml = '';
 
 const REASON = { fall: 'Natumba! Toppled over.', out: 'Labas! Out of the circle.', time: 'Time! Faster spinner wins.', draw: 'Tabla! Replay the round.' };
@@ -21,18 +24,24 @@ const nameOf = s => (state && state.players[s] ? state.players[s].name : `P${s +
 const tag = s => `<b style="color:${PLAYER_COLORS[s]}">${nameOf(s)}</b>`;
 
 function start(newMode, { matchMode = '1v1' } = {}) {
+  roomAttempt++;
   mode = newMode;
   brawl = matchMode === 'brawl';
   document.body.classList.toggle('brawl', brawl);
   showMenu('main');
-  if (net) { net.close(); net = null; }
+  if (net) { net.close('roomClosed', {}); net = null; }
   if (ctrl) { ctrl.destroy(); ctrl = null; }
+  audio.stop();
   document.body.dataset.mode = mode;
   document.body.classList.remove('lobby-open');
+  document.body.classList.remove('host-playing', 'host-room-open');
+  $('#btn-exit').hidden = !['host', 'practice', 'demo'].includes(mode);
+  $('#btn-room').hidden = true;
   $('#lobby').hidden = mode !== 'host';
-  state = snap = null; lastPhase = '';
+  state = snap = null; lastPhase = ''; lastNetSnap = 0;
   scene.reset();
   scene.setLocalSteer(-1, null);
+  scene.setView('spectator');
   scene.setCam(mode === 'title' ? 'menu' : CAMS[camIdx]);
   engine = new Engine(onEngine, { mode: matchMode });
   $('#ticker').innerHTML = '';
@@ -49,10 +58,12 @@ function start(newMode, { matchMode = '1v1' } = {}) {
 function showMenu(which) {
   $('#menu-main').hidden = which !== 'main';
   $('#menu-host').hidden = which !== 'host';
+  $('#menu-join').hidden = which !== 'join';
 }
 
 async function hostRoom(matchMode) {
   start('host', { matchMode });
+  const attempt = roomAttempt;
   const room = makeRoomCode();
   const url = new URL('play.html', location.href);
   url.searchParams.set('room', room);
@@ -68,11 +79,12 @@ async function hostRoom(matchMode) {
   $('#net-status').textContent = 'Connecting…';
   try {
     const n = await connect(room, onNet);
-    if (mode !== 'host') { n.close(); return; }
+    if (mode !== 'host' || attempt !== roomAttempt) { n.close(); return; }
     net = n;
     $('#net-status').textContent = net.kind === 'local' ? 'Local test mode (same PC tabs)' : 'Online · scan to join';
     net.send('state', engine.state());
   } catch (e) {
+    if (attempt !== roomAttempt) return;
     $('#net-status').textContent = 'Could not connect: ' + e.message + '. Check the internet, or add ?net=local to test on one PC.';
   }
 }
@@ -96,8 +108,14 @@ function onEngine(type, payload) {
     const now = performance.now();
     if (net && now - lastNetSnap > 100) { lastNetSnap = now; net.send('snap', payload); }
   } else if (type === 'fx') {
-    payload.forEach(e => { scene.fx(e); if (mode !== 'title') playFx(e); commentary(e); });
-    if (net) net.send('fx', payload);
+    payload.forEach(e => {
+      scene.fx(e);
+      if (mode !== 'title') {
+        if (e.type === 'chat') audio.chat(e.i, state?.players[e.slot]?.char);
+        else playFx(e);
+      }
+      commentary(e);
+    });
   }
 }
 
@@ -134,13 +152,18 @@ function renderLobby() {
   if (mode !== 'host') return;
   // A brawl lists everyone in, plus the next open seat; 1v1 always shows both seats.
   const open = state.players.findIndex(p => !p);
+  const playing = engine.slotOf(HOST_ID) >= 0;
+  $('#host-seat').hidden = playing;
+  $('#btn-host-spectate').hidden = !playing;
+  $('#btn-host-play').disabled = open < 0;
   const seats = brawl ? state.players.map((p, i) => (p || i === open ? i : -1)).filter(i => i >= 0) : [0, 1];
   $('#slots').innerHTML = seats.map(i => {
     const p = state.players[i];
     const who = p ? p.name + (p.kind === 'cpu' ? ' <span class="muted small">CPU</span>' : '') + (state.phase === 'pick' && p.picked ? ' ✓' : '')
       + (brawl && !p.inRound && !['lobby', 'pick'].includes(state.phase) ? ' <span class="muted small">next round</span>' : '')
       : '<span class="muted">waiting…</span>';
-    return `<li style="--pc:${PLAYER_COLORS[i]}"><b>P${i + 1}</b> ${who}</li>`;
+    const remove = p?.kind === 'cpu' && state.phase === 'lobby' ? `<button type="button" class="remove-cpu" data-remove-cpu="${i}" aria-label="Remove CPU ${p.name}">Remove</button>` : '';
+    return `<li style="--pc:${PLAYER_COLORS[i]}"><b>P${i + 1}</b> <span>${who}</span>${remove}</li>`;
   }).join('');
   $('#brawl-actions').hidden = !brawl || state.phase !== 'lobby';
   $('#btn-add-cpu').disabled = open < 0;
@@ -305,10 +328,50 @@ function commentary(e) {
 // ---------- buttons ----------
 document.addEventListener('pointerdown', () => audio.unlock(), { once: true });
 $('#btn-host').onclick = () => { audio.unlock(); showMenu('host'); };
+$('#btn-join').onclick = () => { showMenu('join'); $('#join-code').focus(); };
+$('#btn-join-back').onclick = () => showMenu('main');
+$('#menu-join').onsubmit = e => {
+  e.preventDefault();
+  const room = $('#join-code').value.trim().toUpperCase();
+  if (!/^[A-Z]{4}$/.test(room)) { $('#join-code').reportValidity(); return; }
+  const url = new URL('play.html', location.href); url.searchParams.set('room', room);
+  if (isLocalNet()) url.searchParams.set('net', 'local');
+  location.href = url.href;
+};
 $('#btn-host-1v1').onclick = () => hostRoom('1v1');
 $('#btn-host-brawl').onclick = () => hostRoom('brawl');
 $('#btn-host-back').onclick = () => showMenu('main');
 $('#btn-add-cpu').onclick = () => engine.addCpu();
+$('#slots').onclick = e => {
+  const button = e.target.closest('[data-remove-cpu]');
+  if (!button || mode !== 'host' || engine.phase !== 'lobby') return;
+  const player = engine.players[+button.dataset.removeCpu];
+  if (player?.kind === 'cpu') engine.leave(player.id);
+};
+$('#btn-host-play').onclick = async () => {
+  if (ctrl || mode !== 'host') return;
+  const attempt = roomAttempt, phone = matchMedia('(pointer: coarse)').matches;
+  audio.unlock();
+  if (phone) await requestMotion();
+  if (mode !== 'host' || attempt !== roomAttempt || ctrl) return;
+  const name = $('#host-name').value.trim() || 'Host';
+  try { localStorage.setItem('paikutan-name', name); } catch { /* optional */ }
+  ctrl = createController($('#ctrl'), { mode: phone ? 'phone' : 'desktop', myId: HOST_ID, sounds: false, send: (ev, p) => engine.handle(HOST_ID, ev, p) });
+  document.body.classList.add('host-playing');
+  if (engine.join(HOST_ID, name, 'local') < 0) { ctrl.destroy(); ctrl = null; document.body.classList.remove('host-playing'); return; }
+  ctrl.setState(engine.state());
+  if (phone) scene.setView(ctrl.slot);
+  $('#btn-room').hidden = false;
+};
+$('#btn-host-spectate').onclick = () => {
+  if (ctrl) { ctrl.destroy(); ctrl = null; }
+  document.body.classList.remove('host-playing', 'host-room-open');
+  $('#btn-room').hidden = true;
+  scene.setView('spectator'); scene.setLocalSteer(-1, null); scene.setCharge(-1);
+  engine.leave(HOST_ID);
+};
+$('#btn-room').onclick = () => document.body.classList.toggle('host-room-open');
+try { $('#host-name').value = localStorage.getItem('paikutan-name') || ''; } catch { /* optional */ }
 $('#btn-start').onclick = () => engine.start();
 $('#btn-practice').onclick = () => {
   audio.unlock();
@@ -319,6 +382,7 @@ $('#btn-help').onclick = () => { $('#help').hidden = false; };
 $('#help-close').onclick = () => { $('#help').hidden = true; };
 $('#btn-back').onclick = () => start('title');
 $('#btn-lobby-cancel').onclick = () => start('title');
+$('#btn-exit').onclick = () => start('title');
 $('#btn-rematch').onclick = () => {
   if (brawl) engine.rematch();
   else engine.players.forEach(p => p && engine.handle(p.id, 'rematch'));
@@ -362,5 +426,6 @@ function frame(now) {
 // ?demo runs a CPU vs CPU match with the full HUD (for trailers and showcase screens).
 // ?practice jumps straight into practice vs CPU.
 const q = new URLSearchParams(location.search);
+addEventListener('pagehide', () => { if (net) net.close('roomClosed', {}); });
 start(q.has('demo') ? 'demo' : q.has('practice') ? 'practice' : 'title');
 requestAnimationFrame(frame);

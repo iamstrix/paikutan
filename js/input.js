@@ -68,11 +68,18 @@ export class Motion {
     this.onFlick = null;
     this.peak = 0; this.peakAt = 0; this.aimAtStart = 0; this.moving = false;
     this.grav = null;
-    addEventListener('deviceorientation', e => {
+    this.orientationHandler = e => {
       if (e.beta == null) return;
       this.hasTilt = true; this.beta = e.beta; this.gamma = e.gamma;
-    });
-    addEventListener('devicemotion', e => this.motion(e));
+    };
+    this.motionHandler = e => this.motion(e);
+    addEventListener('deviceorientation', this.orientationHandler);
+    addEventListener('devicemotion', this.motionHandler);
+  }
+  destroy() {
+    this.onFlick = null;
+    removeEventListener('deviceorientation', this.orientationHandler);
+    removeEventListener('devicemotion', this.motionHandler);
   }
   // Left/right tilt as a throw angle (-0.6..0.6 rad).
   get aim() { return clamp((this.gamma - this.g0) / 40, -1, 1) * 0.6; }

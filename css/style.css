@@ -23,6 +23,13 @@ p { margin: 0.4em 0; line-height: 1.4; }
 a { color: var(--yellow); }
 
 #view { position: fixed; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; }
+/* Hangs under the player's own top; scene.js positions it each frame. Above the controls but never blocks a tap. */
+.you-tag { position: fixed; transform: translate(-50%, 6px); z-index: 11; pointer-events: none; padding: 2px 9px; border-radius: 999px;
+  background: var(--pc); color: #fff; font-family: Bungee, Impact, sans-serif; font-size: 0.8rem; letter-spacing: 0.04em;
+  text-transform: uppercase; text-shadow: 0 1px 2px rgba(0, 0, 0, 0.6); box-shadow: 0 2px 8px rgba(0, 0, 0, 0.45), 0 0 0 2px rgba(255, 255, 255, 0.85); }
+.you-tag::before { content: ''; position: absolute; left: 50%; top: -6px; transform: translateX(-50%);
+  border: 6px solid transparent; border-top: 0; border-bottom-color: rgba(255, 255, 255, 0.85); }
+.you-tag[hidden] { display: none; }
 
 .btn { font: inherit; font-weight: 800; border: 0; border-radius: 999px; padding: 0.7em 1.4em; cursor: pointer;
   background: var(--yellow); color: #2b1d14; box-shadow: 0 4px 0 #b8860b; transition: transform 0.08s; }
@@ -208,6 +215,7 @@ body.lobby-open #card1 { right: 372px; }
 /* ---------- phone page ---------- */
 body.phone-page #view { display: none; }
 body.phone-page.show-scene #view { display: block; }
+body.phone-page:not(.show-scene) .you-tag { display: none; }
 body.phone-page.show-scene .ctrl .panel:not(.throw) { background: var(--panel-soft); }
 /* Winding is a first-person view; the gesture guide floats over the hands and trumpo. */
 .ctrl[data-view=spin] .panel.spin {
@@ -336,3 +344,60 @@ body.brawl .pcard { display: none; }
 .fight .left { position: absolute; top: 62px; left: 50%; transform: translateX(-50%); font-family: Bungee, Impact, sans-serif; font-size: 0.9rem;
   color: var(--yellow); text-shadow: 0 2px 4px #000; pointer-events: none; }
 .brawl-vs .vs-mid { margin: 0; }
+
+/* Room navigation and controls stay reachable through every match phase. */
+.match-exit { position: fixed; z-index: 35; top: max(10px, env(safe-area-inset-top)); left: 12px; }
+body:not(.phone-page) .match-exit { top: auto; bottom: 16px; left: 50%; transform: translateX(-50%); }
+.phone-page #leave { z-index: 45; }
+.phone-page #corner { top: max(8px, env(safe-area-inset-top)); }
+#lost { top: 48px; font-size: 0.8rem; }
+.ctrl:empty { pointer-events: none; }
+.ctrl .panel { padding-top: 62px; padding-bottom: 74px; }
+#title { overflow-y: auto; }
+#menu-join label { font-weight: 800; }
+#join-code, #host-name { font: inherit; border: 2px solid #71637f; border-radius: 12px; background: #211831; color: var(--ink); padding: 10px 12px; min-width: 0; }
+#join-code { font-size: 1.5rem; letter-spacing: 0.25em; text-transform: uppercase; width: 100%; }
+#host-seat { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 8px; margin: 12px 0; }
+#host-seat label { width: 100%; font-size: 0.8rem; color: var(--muted); }
+#host-name { width: 120px; }
+#slots li { display: flex; align-items: center; gap: 8px; }
+#slots li > span { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.remove-cpu { border: 1px solid #bba9c9; border-radius: 999px; background: transparent; color: var(--ink); padding: 7px 9px; font: inherit; font-size: 0.75rem; cursor: pointer; }
+#lobby { max-height: calc(100dvh - 32px); overflow-y: auto; }
+#btn-room { position: fixed; z-index: 36; top: 10px; right: 12px; }
+body.host-playing.lobby-open #ctrl { right: 372px; }
+body.host-playing #lobby { z-index: 31; }
+body.host-playing #end-bar { bottom: 72px; }
+@media (max-width: 900px) {
+  body.host-playing.lobby-open #ctrl { right: 0; }
+  body.host-playing #lobby { display: none; }
+  body.host-playing.host-room-open #lobby { display: block; top: 54px; bottom: auto; max-height: calc(100dvh - 112px); }
+  #title { justify-content: flex-start; padding-top: max(24px, 5vh); padding-bottom: 58px; }
+  #title .logo { font-size: clamp(2.5rem, 9vw, 4rem); }
+  .menu { gap: 10px; margin-top: 1em; }
+  .menu .btn.big { padding: 0.6em 1.2em; }
+}
+
+/* Five illustrated steps replace the waiting screen's dense instructions. */
+.visual-howto { list-style: none; padding: 0; width: 100%; margin: 8px 0; }
+.visual-howto li { display: flex; align-items: center; gap: 14px; padding: 10px 12px; background: rgba(255,255,255,0.06); border-radius: 12px; margin: 7px 0; }
+.visual-howto svg { width: 44px; height: 44px; flex: none; fill: none; stroke: var(--yellow); stroke-width: 2.6; stroke-linecap: round; stroke-linejoin: round; }
+.visual-howto b, .visual-howto span { display: block; }
+.visual-howto span { font-size: 0.82rem; color: var(--muted); line-height: 1.35; margin-top: 2px; }
+
+/* Separate touch targets allow steering, dash, power, and chat at the same time. */
+.power { touch-action: none; }
+.quick-chat { position: absolute; left: 50%; bottom: max(12px, env(safe-area-inset-bottom)); transform: translateX(-50%); display: flex; gap: 5px; width: max-content; max-width: calc(100% - 16px); z-index: 14; }
+.quick-chat button { border: 1px solid #9988ae; background: #241936; color: var(--ink); font: inherit; font-weight: 800; font-size: 0.78rem; padding: 9px 11px; border-radius: 999px; touch-action: none; cursor: pointer; white-space: nowrap; }
+.quick-chat button:disabled { opacity: 0.45; }
+.quick-chat kbd { margin-left: 5px; opacity: 0.55; font: inherit; font-size: 0.7rem; }
+.ctrl[data-view=fight] .quick-chat { top: 125px; bottom: auto; }
+.phone .fight .bars { top: 52px; }
+.phone .fight .left { top: 100px; }
+.phone .fight .warn { top: 172px; font-size: 0.8rem; max-width: 96%; white-space: normal; text-align: center; }
+.chat-layer { position: fixed; inset: 0; pointer-events: none; z-index: 32; }
+.chat-bubble { position: absolute; transform: translate(-50%, -100%); border: 3px solid var(--pc); border-radius: 16px; padding: 9px 16px; background: #fff8e7; color: #241936; font-weight: 800; white-space: nowrap; box-shadow: 0 5px 12px #0005; animation: bubble-in 0.18s ease-out; }
+.chat-bubble::after { content: ''; position: absolute; left: calc(50% - 7px); bottom: -10px; border-left: 7px solid transparent; border-right: 7px solid transparent; border-top: 8px solid var(--pc); }
+.phone-page:not(.show-scene) .chat-bubble { left: 50% !important; top: 18% !important; }
+@keyframes bubble-in { from { opacity: 0; margin-top: 8px; } }
+@media (max-width: 360px) { .quick-chat button { padding: 9px 8px; font-size: 0.72rem; } }

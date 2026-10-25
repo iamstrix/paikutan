@@ -109,7 +109,8 @@ export class Particles {
       this.vel[o] *= drag;
       this.vel[o + 2] *= drag;
       this.pos[o] += this.vel[o] * dt;
-      this.pos[o + 1] = Math.max(0.02, this.pos[o + 1] + this.vel[o + 1] * dt);
+      this.pos[o + 1] = Math.max(0.03, this.pos[o + 1] + this.vel[o + 1] * dt);
+      if (this.pos[o + 1] <= 0.03 && this.vel[o + 1] < 0) this.vel[o + 1] = 0;
       this.pos[o + 2] += this.vel[o + 2] * dt;
       this.size[i] = this.baseSize[i] * (1 + (this.grow[i] - 1) * t);
       // Quick fade-in, long fade-out.

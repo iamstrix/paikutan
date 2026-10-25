@@ -6,6 +6,7 @@ import { createController } from './controller.js';
 import { connect, playerId } from './net.js';
 import { requestMotion } from './input.js';
 import { audio, playFx } from './audio.js';
+import { createFxReceiver } from './chat.js';
 
 const $ = s => document.querySelector(s);
 const params = new URLSearchParams(location.search);
@@ -16,40 +17,78 @@ await Promise.race([document.fonts.load('64px "Lilita One"').catch(() => {}), ne
 const scene = createScene($('#view'), { low: true });
 const SCENE_PHASES = ['charge', 'countdown', 'throw', 'fight', 'roundEnd'];
 let ctrl = null, net = null, engine = null, state = null, lastPhase = '', lastMsg = 0, snap = null;
+let session = 0, retryTimer = null, wakeLock = null, lastSnapSeq = 0;
+const effects = createFxReceiver(e => {
+  scene.fx(e);
+  if (e.type === 'chat') audio.chat(e.i, state?.players[e.slot]?.char);
+  else playFx(e);
+  if (e.type === 'hit' && navigator.vibrate) navigator.vibrate(Math.round(20 + 60 * e.i));
+});
 
 $('#room').value = (params.get('room') || '').toUpperCase();
-$('#name').value = localStorage.getItem('paikutan-name') || '';
+try { $('#name').value = localStorage.getItem('paikutan-name') || ''; } catch { /* optional */ }
+if (params.get('net') === 'local') $('#home').href = 'index.html?net=local';
 if (solo) { $('#room-row').hidden = true; $('#join').textContent = 'Play vs CPU'; }
 
 $('#join').onclick = async () => {
+  if ($('#join').disabled) return;
   const name = $('#name').value.trim() || 'Player';
   const room = $('#room').value.trim().toUpperCase();
-  localStorage.setItem('paikutan-name', name);
+  if (!solo && !/^[A-Z]{4}$/.test(room)) { $('#join-msg').textContent = 'Enter the 4-letter room code shown on the big screen.'; return; }
+  const attempt = ++session;
+  $('#join').disabled = true;
+  $('#leave').hidden = false;
+  $('#leave').textContent = 'Cancel joining';
+  try { localStorage.setItem('paikutan-name', name); } catch { /* optional */ }
   audio.unlock();
   await requestMotion();
-  try { await navigator.wakeLock?.request('screen'); } catch { /* not supported: fine */ }
+  if (attempt !== session) return;
+  try {
+    const lock = await navigator.wakeLock?.request('screen');
+    if (attempt !== session) { await lock?.release(); return; }
+    wakeLock = lock;
+  } catch { /* not supported: fine */ }
+  if (attempt !== session) return;
   if (solo) return startSolo(name);
-  if (!/^[A-Z]{4}$/.test(room)) { $('#join-msg').textContent = 'Enter the 4-letter room code shown on the big screen.'; return; }
-  $('#join').disabled = true;
   $('#join-msg').textContent = 'Connecting…';
   try {
-    net = await connect(room, onMessage);
+    const connection = await connect(room, (ev, p) => { if (attempt === session) onMessage(ev, p); });
+    if (attempt !== session) { connection.close(); return; }
+    net = connection;
   } catch (e) {
-    $('#join').disabled = false;
-    $('#join-msg').textContent = 'Could not connect (' + e.message + '). Check your internet and try again.';
+    if (attempt === session) leave('Could not connect (' + e.message + '). Check your internet and try again.');
     return;
   }
   $('#join-msg').textContent = 'Joining room ' + room + '…';
   ctrl = createController($('#ctrl'), { mode: 'phone', myId, send: (ev, p) => net.send(ev, { ...p, id: myId }) });
   const hello = () => net.send('hello', { id: myId, name });
+  lastMsg = performance.now();
+  const joinedAt = lastMsg;
   hello();
   // Keep saying hello until the host lists us (covers a host that opened late or refreshed).
-  setInterval(() => {
+  retryTimer = setInterval(() => {
     const listed = state && state.players.some(p => p && p.id === myId);
+    if (!listed && performance.now() - joinedAt > 14000) { leave('No host replied. Check the room code and try again.'); return; }
     if (!listed) hello();
     $('#lost').hidden = performance.now() - lastMsg < 7000;
   }, 2000);
 };
+
+function leave(message = '', notify = true) {
+  session++;
+  clearInterval(retryTimer); retryTimer = null;
+  if (ctrl) { ctrl.destroy(); ctrl = null; }
+  if (net) { net.close(notify ? 'leave' : undefined, { id: myId }); net = null; }
+  if (wakeLock) { wakeLock.release().catch(() => {}); wakeLock = null; }
+  engine = null; state = snap = null; lastPhase = ''; lastSnapSeq = 0; effects.reset();
+  audio.stop(); scene.reset(); scene.setPlayers([]); scene.setLocalSteer(-1, null);
+  document.body.classList.remove('show-scene');
+  $('#lost').hidden = true; $('#leave').hidden = true;
+  $('#join-screen').hidden = false; $('#join').disabled = false;
+  $('#join-msg').textContent = message;
+}
+$('#leave').onclick = () => leave();
+addEventListener('pagehide', () => leave());
 
 function startSolo(name) {
   audio.music(true, 0.25);
@@ -60,15 +99,18 @@ function startSolo(name) {
 }
 
 function onMessage(ev, p) {
+  if (!p) return;
   lastMsg = performance.now();
   if (ev === 'state') {
+    if (!ctrl) return;
     state = p;
     const mine = p.players.some(x => x && x.id === myId);
     if (!mine) return;
     $('#join-screen').hidden = true;
+    $('#leave').hidden = false; $('#leave').textContent = solo ? 'Back to practice setup' : 'Leave match';
     if (p.phase !== lastPhase) {
       if (p.phase === 'charge' || p.phase === 'countdown') scene.reset();
-      if (solo) audio.music(true, SCENE_PHASES.includes(p.phase) ? 0.1 : 0.25);
+      audio.music(true, SCENE_PHASES.includes(p.phase) ? 0.1 : 0.25);
       lastPhase = p.phase;
     }
     scene.setPlayers(p.players);
@@ -76,15 +118,21 @@ function onMessage(ev, p) {
     document.body.classList.toggle('show-scene', SCENE_PHASES.includes(p.phase));
     scene.resize();
     ctrl.setState(p);
+    if (!solo) effects.receive(p.fx);
   } else if (ev === 'snap') {
+    if (!ctrl || !state?.players.some(x => x?.id === myId)) return;
+    if (p.seq && p.seq <= lastSnapSeq) return;
+    lastSnapSeq = p.seq || lastSnapSeq;
     snap = decodeSnap(p);
     scene.applySnap(snap, solo);
     ctrl && ctrl.onSnap(snap);
+    if (!solo) effects.receive(p.fx);
   } else if (ev === 'fx') {
-    p.forEach(e => { scene.fx(e); playFx(e); if (e.type === 'hit' && navigator.vibrate) navigator.vibrate(Math.round(20 + 60 * e.i)); });
+    if (solo) effects.receive(p);
   } else if (ev === 'full' && p.id === myId) {
-    $('#join-msg').textContent = 'This room is full.';
-    $('#join').disabled = false;
+    leave('This room is full. Try another room.', false);
+  } else if (ev === 'roomClosed') {
+    leave('The host ended the room. Join another match.', false);
   }
 }
 
@@ -111,9 +159,10 @@ function frame(now) {
   const charging = state && state.phase === 'charge' && ctrl && state.players[ctrl.slot]?.inRound;
   scene.setCharge(charging ? ctrl.slot : -1, charging ? ctrl.localSpin() : null);
   if (document.body.classList.contains('show-scene')) scene.render(dt);
-  if (solo && snap && state) {
-    const on = ['throw', 'fight'].includes(state.phase);
-    [0, 1].forEach(i => audio.hum(i, on && snap.tops[i].alive ? snap.tops[i].spin : 0, snap.tops[i].wobble));
+  if (snap && state) {
+    const on = ['throw', 'fight'].includes(state.phase) && (solo || now - lastMsg < 7000);
+    const level = Math.min(1, 2 / Math.max(2, snap.tops.length));
+    snap.tops.forEach((top, i) => audio.hum(i, on && top.alive && top.launched ? top.spin : 0, on ? top.wobble : 0, level));
   }
 }
 requestAnimationFrame(frame);

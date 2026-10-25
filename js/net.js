@@ -4,11 +4,38 @@ import { CONFIG } from './config.js';
 
 export const isLocalNet = () => new URLSearchParams(location.search).get('net') === 'local';
 
+// Keep ordinary traffic below the socket budget. Continuous values replace queued older values.
+export function pacedTransport(kind, sendRaw, closeRaw) {
+  const queue = [];
+  const continuous = new Set(['steer', 'prog', 'snap', 'state', 'hello']);
+  let closed = false;
+  const timer = setInterval(() => {
+    const message = queue.shift();
+    if (message) Promise.resolve(sendRaw(message.ev, message.p)).catch(() => {});
+  }, 50);
+  return {
+    kind,
+    send(ev, p) {
+      if (closed) return;
+      const old = continuous.has(ev) && queue.find(m => m.ev === ev);
+      if (old) old.p = p;
+      else queue.push({ ev, p });
+    },
+    close(ev, p) {
+      if (closed) return;
+      closed = true; clearInterval(timer); queue.length = 0;
+      // A final leave/roomClosed must reach the socket before removing its channel.
+      if (ev) Promise.resolve(sendRaw(ev, p)).catch(() => {}).finally(closeRaw);
+      else closeRaw();
+    },
+  };
+}
+
 export async function connect(room, onMessage) {
   if (isLocalNet()) {
     const bc = new BroadcastChannel('paikutan-' + room);
     bc.onmessage = e => onMessage(e.data.ev, e.data.p);
-    return { kind: 'local', send: (ev, p) => bc.postMessage({ ev, p }), close: () => bc.close() };
+    return { kind: 'local', send: (ev, p) => bc.postMessage({ ev, p }), close: (ev, p) => { if (ev) bc.postMessage({ ev, p }); bc.close(); } };
   }
   const { createClient } = await import('https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.3/+esm');
   const sb = createClient(CONFIG.supabaseUrl, CONFIG.supabaseKey, {
@@ -17,18 +44,16 @@ export async function connect(room, onMessage) {
   });
   const ch = sb.channel('paikutan-' + room, { config: { broadcast: { self: false } } });
   ch.on('broadcast', { event: 'm' }, ({ payload }) => onMessage(payload.ev, payload.p));
-  await new Promise((resolve, reject) => {
+  try { await new Promise((resolve, reject) => {
     const timer = setTimeout(() => reject(new Error('Connection timed out')), 12000);
     ch.subscribe(status => {
       if (status === 'SUBSCRIBED') { clearTimeout(timer); resolve(); }
       else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') { clearTimeout(timer); reject(new Error(status)); }
     });
-  });
-  return {
-    kind: 'online',
-    send: (ev, p) => ch.send({ type: 'broadcast', event: 'm', payload: { ev, p } }),
-    close: () => sb.removeChannel(ch),
-  };
+  }); } catch (error) { await sb.removeChannel(ch); throw error; }
+  return pacedTransport('online',
+    (ev, p) => ch.send({ type: 'broadcast', event: 'm', payload: { ev, p } }),
+    () => sb.removeChannel(ch));
 }
 
 // Four letters, without ones that are easy to misread (I, O, L).

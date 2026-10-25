@@ -42,15 +42,22 @@
   <p class="tagline">The Filipino street game of <b>trumpo</b>, now a head-to-head esport. Spin it with your finger, throw it with your phone, and be the last trumpo spinning in the chalk circle.</p>
   <div class="menu" id="menu-main">
     <button class="btn big" id="btn-host">Host a match</button>
+    <button class="btn big" id="btn-join">Join match</button>
     <button class="btn big blue" id="btn-practice">Practice vs CPU</button>
     <button class="btn big ghost" id="btn-help">How to play</button>
   </div>
+  <form class="menu" id="menu-join" hidden>
+    <label for="join-code">Room code</label>
+    <input id="join-code" maxlength="4" pattern="[A-Za-z]{4}" autocomplete="off" autocapitalize="characters" placeholder="ABCD" required>
+    <button class="btn big" type="submit">Join match</button>
+    <button class="btn ghost" id="btn-join-back" type="button">Back</button>
+  </form>
   <div class="menu" id="menu-host" hidden>
     <button class="btn big" id="btn-host-1v1">1v1<small>Best of 3, head to head. The esports mode.</small></button>
     <button class="btn big blue" id="btn-host-brawl">Brawl<small>Up to 8 trumpos, everyone vs everyone.</small></button>
     <button class="btn big ghost" id="btn-host-back">Back</button>
   </div>
-  <p class="muted small" style="margin-top:1.2em">Host on a laptop or TV. Two players join by scanning the QR code with their phones.</p>
+  <p class="muted small" style="margin-top:1.2em">Join with a room code or scan the host’s QR. Hosts can play on this device too.</p>
   <div class="foot">Made for DOST Level Up 3.0 · Philippine Games and Sports</div>
 </div>
 
@@ -61,6 +68,12 @@
   <a id="room-url" target="_blank" rel="noopener"></a>
   <p class="small muted" id="net-status"></p>
   <ul id="slots"></ul>
+  <div id="host-seat">
+    <label for="host-name">Your name</label>
+    <input id="host-name" maxlength="14" autocomplete="nickname" placeholder="Juan">
+    <button class="btn small blue" id="btn-host-play">Play in this room</button>
+  </div>
+  <button class="btn ghost small" id="btn-host-spectate" hidden>Leave player seat</button>
   <div class="lobby-actions" id="brawl-actions" hidden>
     <button class="btn small blue" id="btn-add-cpu">+ CPU</button>
     <button class="btn small" id="btn-start" disabled>Start</button>
@@ -69,6 +82,8 @@
 </div>
 
 <div id="ctrl"></div>
+<button class="btn ghost small match-exit" id="btn-exit" hidden>Exit to menu</button>
+<button class="btn small" id="btn-room" hidden>Room</button>
 
 <div id="help" hidden>
   <div class="panel">

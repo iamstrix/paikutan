@@ -10,6 +10,8 @@ import { Avatar } from './entities/avatar.js';
 import { Critters, chicken } from './entities/critters.js';
 import { Effects, CLASH_WORDS } from './fx/effects.js';
 import { SkillEffects } from './fx/skills.js';
+import { QUICK_CHAT } from './chat.js';
+import { arenaCameraDistance } from './camera-fit.js';
 
 const CLOCK = 15 * 60 + 30; // merienda time: warm light, lamps still off
 
@@ -125,7 +127,7 @@ function makeDog() {
 function buildCircle(scene) {
   // Packed, darker earth inside the circle where everyone plays.
   const pit = new THREE.Mesh(new THREE.CircleGeometry(ARENA_R + 0.6, 64),
-    new THREE.MeshLambertMaterial({ map: canvasTex(512, 512, dirt('#a77b52', ['#7a5638', '#c9a274', '#5e432b']), 3), transparent: true, opacity: 0.95 }));
+    new THREE.MeshLambertMaterial({ map: canvasTex(512, 512, dirt('#a77b52', ['#7a5638', '#c9a274', '#5e432b']), 3) }));
   pit.rotation.x = -Math.PI / 2; pit.position.y = 0.005; pit.receiveShadow = true;
   scene.add(pit);
   const chalk = new THREE.Mesh(new THREE.RingGeometry(ARENA_R - 0.07, ARENA_R + 0.07, 128), new THREE.MeshBasicMaterial({ color: '#fbf6ea', transparent: true, opacity: 0.9 }));
@@ -157,6 +159,18 @@ export function createScene(canvas, { low = false } = {}) {
 
   const scene = new THREE.Scene();
   const camera = new THREE.PerspectiveCamera(45, 1, 0.1, 600);
+  const chatLayer = document.createElement('div');
+  chatLayer.className = 'chat-layer';
+  chatLayer.setAttribute('aria-live', 'polite');
+  document.body.append(chatLayer);
+  const bubbles = new Map();
+  const bubblePoint = new THREE.Vector3();
+  // "You" tag under this device's own top, so players don't lose it in the clash effects.
+  const youTag = document.createElement('div');
+  youTag.className = 'you-tag'; youTag.textContent = 'You'; youTag.hidden = true;
+  youTag.setAttribute('aria-hidden', 'true');
+  document.body.append(youTag);
+  const youPoint = new THREE.Vector3();
 
   const atmosphere = createAtmosphere(scene, { scale: WORLD_SCALE, low });
   const flash = new THREE.PointLight('#e8f4ff', 0, 30);
@@ -273,6 +287,8 @@ export function createScene(canvas, { low = false } = {}) {
     eggViews.clear(); eggSnap = []; ringR = ARENA_R;
     party = null;
     effects.reset(); skills.reset(); eclipse = 0;
+    bubbles.forEach(b => b.el.remove()); bubbles.clear();
+    youTag.hidden = true;
   }
 
   function makeEggView(e) {
@@ -363,6 +379,20 @@ export function createScene(canvas, { low = false } = {}) {
   function fx(e) {
     const x = u(e.x), z = u(e.z), tx = u(e.tx), tz = u(e.tz);
     switch (e.type) {
+      case 'chat': {
+        if (!QUICK_CHAT[e.i] || !people[e.slot]) break;
+        bubbles.get(e.slot)?.el.remove();
+        const el = document.createElement('div');
+        el.className = 'chat-bubble'; el.lang = 'fil';
+        el.style.left = '50%'; el.style.top = '20%';
+        el.textContent = QUICK_CHAT[e.i];
+        el.style.setProperty('--pc', PLAYER_COLORS[e.slot]);
+        chatLayer.append(el);
+        const bubble = { el, until: performance.now() + 2600 };
+        bubbles.set(e.slot, bubble);
+        setTimeout(() => { el.remove(); if (bubbles.get(e.slot) === bubble) bubbles.delete(e.slot); }, 2600);
+        break;
+      }
       case 'hit': {
         skills.hit(e.x, e.z, e.i);
         const power = e.i * 4;
@@ -562,11 +592,13 @@ export function createScene(canvas, { low = false } = {}) {
         look.set(mx * 0.3, 0, mz * 0.3);
       }
     }
-    // Widen the lens until the whole circle fits across the screen (portrait phones need more).
-    const dist = pos.distanceTo(look);
-    const fov = THREE.MathUtils.radToDeg(2 * Math.atan(Math.tan(Math.atan((ARENA_R + (a < 1 ? 2.5 : 1)) / dist)) / a));
     const tight = view === 'spectator' && (party || camMode === 'close' || camMode === 'menu');
-    camera.fov = winding ? 65 : tight ? 40 : THREE.MathUtils.clamp(fov, 42, 80);
+    camera.fov = winding ? 60 : tight ? 40 : 48;
+    if (!winding && !tight) {
+      const offset = pos.clone().sub(look);
+      offset.setLength(Math.max(offset.length(), arenaCameraDistance(a, camera.fov, ARENA_R + 0.75)));
+      pos = look.clone().add(offset);
+    }
     camera.near = winding ? 0.03 : 0.1;
     camera.updateProjectionMatrix();
     const k = 1 - Math.exp(-dt * (tight ? 5 : 3));
@@ -655,6 +687,29 @@ export function createScene(canvas, { low = false } = {}) {
     eclipse += ((cursed ? 0.28 : 0) - eclipse) * (1 - Math.exp(-dt * 6));
     atmosphere.setClock(CLOCK, eclipse);
     updateCamera(dt);
+    for (const [slot, bubble] of bubbles) {
+      const person = people[slot];
+      if (!person || performance.now() >= bubble.until) { bubble.el.remove(); bubbles.delete(slot); continue; }
+      person.avatar.rig.head.getWorldPosition(bubblePoint);
+      bubblePoint.y += 0.9;
+      bubblePoint.project(camera);
+      bubble.el.hidden = bubblePoint.z < -1 || bubblePoint.z > 1;
+      bubble.el.style.left = `${THREE.MathUtils.clamp((bubblePoint.x + 1) * 50, 12, 88)}%`;
+      bubble.el.style.top = `${THREE.MathUtils.clamp((1 - bubblePoint.y) * 50, 14, 80)}%`;
+    }
+    // Spectator screens (own < 0) have no single "you", so the tag only shows on a player's device.
+    const mine = own >= 0 ? tops[own] : null;
+    youTag.hidden = !(mine && mine.state && mine.root.visible && !party);
+    if (!youTag.hidden) {
+      // Anchor on the near edge of the ownership ring, so the tag sits just under the top on screen.
+      const p = mine.root.position;
+      youPoint.set(camera.position.x - p.x, 0, camera.position.z - p.z).setLength(0.7).add(p).setY(0);
+      youPoint.project(camera);
+      youTag.hidden = youPoint.z < -1 || youPoint.z > 1;
+      youTag.style.left = `${THREE.MathUtils.clamp((youPoint.x + 1) * 50, 6, 94)}%`;
+      youTag.style.top = `${THREE.MathUtils.clamp((1 - youPoint.y) * 50, 6, 94)}%`;
+      youTag.style.setProperty('--pc', PLAYER_COLORS[own]);
+    }
     effects.update(dt, camera, canvas.clientHeight);
     skills.update(dt, camera, canvas.clientHeight);
     atmosphere.follow(camera.position);

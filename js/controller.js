@@ -5,6 +5,7 @@ import { toWorld, BOOST_CD } from './sim.js';
 import { CircleTracker, SPIN_SECONDS, readSwipe, Motion } from './input.js';
 import { WIN_ROUNDS, BRAWL_ROUNDS } from './engine.js';
 import { audio } from './audio.js';
+import { QUICK_CHAT, CHAT_COOLDOWN } from './chat.js';
 
 const pct = v => Math.round(v * 100) + '%';
 const REASON = {
@@ -54,7 +55,10 @@ export function createController(root, { mode = 'phone', send, myId, sounds = mo
   let inverted = false; // Bakunawa eclipse, from the latest snapshot
   let rival = -1; // brawl: the rival shown in the second bar
   let spinFeedback = null; // local winding animation, without a network round trip
+  let chatUntil = 0;
+  const viewDisposers = [];
 
+  root.classList.remove('phone', 'desktop');
   root.classList.add('ctrl', phone ? 'phone' : 'desktop');
 
   const me = () => st && st.players[slot];
@@ -70,9 +74,10 @@ export function createController(root, { mode = 'phone', send, myId, sounds = mo
   function show(k, html, init) {
     if (k === key) return false;
     if (cleanup) cleanup();
+    viewDisposers.splice(0).forEach(dispose => dispose());
     cleanup = null;
     key = k;
-    root.innerHTML = html;
+    root.innerHTML = html + `<nav class="quick-chat" aria-label="Quick chat" lang="fil">${QUICK_CHAT.map((text, i) => `<button type="button" data-chat="${i}" aria-label="${text}${phone ? '' : ` (${i + 1})`}">${text}${phone ? '' : `<kbd>${i + 1}</kbd>`}</button>`).join('')}</nav>`;
     root.dataset.view = k;
     if (init) cleanup = init() || null;
     return true;
@@ -162,6 +167,7 @@ export function createController(root, { mode = 'phone', send, myId, sounds = mo
     });
     stage.addEventListener('pointercancel', () => { drag = null; settle(Math.round(pos)); });
     layout();
+    viewDisposers.push(() => cancelAnimationFrame(anim));
     return { get id() { return list[shown].id; } };
   }
 
@@ -178,14 +184,21 @@ export function createController(root, { mode = 'phone', send, myId, sounds = mo
   }
 
   function howTo() {
-    return `<ol class="howto">
-      <li><b>Pick</b> a player and a trumpo. Each trumpo has its own stats and a mythic power.</li>
-      <li><b>Paikot!</b> Draw fast circles on the ring. Faster = more spin, neater = steadier.</li>
-      <li><b>Bitaw!</b> ${phone ? 'Tilt to aim, then flick your phone forward like casting a line.' : 'Drag the mouse upward and let go, fast.'}</li>
-      <li><b>Laban!</b> ${phone ? 'Tilt to steer' : 'WASD / arrows to steer'}, ${phone ? 'tap Dash' : 'Shift to dash'} for a quick burst (costs a little spin), tap the power when it’s full. Behind on spin? Dash into your rival to steal some back.</li>
-      ${brawl() ? `<li><b>Brawl:</b> everyone against everyone. Last trumpo spinning gets 2 points, and every trumpo you knock out is 1 point. Most points after ${BRAWL_ROUNDS} rounds wins.</li>`
-      : '<li><b>Lost a round?</b> You may switch trumpo to counter your rival. The round winner stays locked. Last trumpo spinning inside the circle wins.</li>'}
-    </ol>`;
+    const paths = [
+      '<circle cx="17" cy="12" r="7"/><path d="M5 38v-9a12 12 0 0 1 21-8m6-2h10l3 8-9 15-9-15zM31 26h12"/>',
+      '<path d="M37 14a17 17 0 1 0 4 20M37 5v10H27m-7 7a7 7 0 1 0 10 9"/>',
+      '<rect x="10" y="17" width="19" height="29" rx="4" transform="rotate(-20 20 32)"/><path d="M25 14 35 4m-9 0h10v10M16 38l7-2"/>',
+      '<path d="m3 18 15 3 6 18 7-18 14-3-12-4-9-11-7 11zM5 41l8-8m23 0 8 8"/>',
+      '<path d="M14 5h20v13a10 10 0 0 1-20 0zM14 9H6v7a9 9 0 0 0 9 9m19-16h8v7a9 9 0 0 1-9 9M24 28v12m-9 3h18"/>',
+    ];
+    const steps = [
+      ['Pick', 'Choose your character and trumpo power.'],
+      ['Paikot!', 'Draw fast, neat circles on the ring.'],
+      ['Bitaw!', phone ? 'Tilt to aim, flick forward to throw. Or swipe up.' : 'Drag upward and release fast to throw.'],
+      ['Laban!', phone ? 'Tilt or drag to steer. Tap Dash and your charged power.' : 'WASD steer · Shift dash · Space power.'],
+      [brawl() ? 'Brawl / Win' : 'Win', brawl() ? `Last spinning: +2. Knockout: +1. Most points in ${BRAWL_ROUNDS} rounds wins.` : 'Stay in the circle. First to 2 wins! Lost? Pick a counter.'],
+    ];
+    return `<ol class="howto visual-howto">${steps.map(([title, text], i) => `<li><svg viewBox="0 0 48 48" aria-hidden="true">${paths[i]}</svg><div><b>${i + 1}. ${title}</b><span>${text}</span></div></li>`).join('')}</ol>`;
   }
 
   function viewPick() {
@@ -365,7 +378,7 @@ export function createController(root, { mode = 'phone', send, myId, sounds = mo
         if (navigator.vibrate) navigator.vibrate(60);
       };
       motion.onFlick = doThrow;
-      const pd = e => { sw = [e.clientX, e.clientY, performance.now()]; };
+      const pd = e => { if (!e.target.closest('button, nav')) sw = [e.clientX, e.clientY, performance.now()]; };
       const pm = e => {
         if (!sw) return;
         swipeAim = Math.max(-0.6, Math.min(0.6, Math.atan2(e.clientX - sw[0], sw[1] - e.clientY)));
@@ -429,28 +442,38 @@ export function createController(root, { mode = 'phone', send, myId, sounds = mo
       </div>`, () => {
       motion.calibrate();
       const btn = root.querySelector('[data-act=power]');
-      btn.onclick = () => send('ability', {});
+      btn.addEventListener('pointerdown', e => { e.preventDefault(); send('ability', {}); });
+      btn.onclick = e => { if (e.detail === 0) send('ability', {}); };
       root.querySelector('[data-act=dash]').addEventListener('pointerdown', e => { e.preventDefault(); send('boost', {}); });
+      root.querySelector('[data-act=dash]').onclick = e => { if (e.detail === 0) send('boost', {}); };
       const c = root.querySelector('[data-act=center]');
       if (c) c.onclick = () => motion.calibrate();
       const pad = root.querySelector('.joy');
       if (pad) {
         const knob = pad.querySelector('.joy-knob');
-        let origin = null;
-        pad.addEventListener('pointerdown', e => { pad.setPointerCapture(e.pointerId); origin = [e.clientX, e.clientY]; joy = [0, 0]; });
+        let origin = null, pointer = null;
+        pad.addEventListener('pointerdown', e => {
+          if (pointer !== null) return;
+          e.preventDefault(); pointer = e.pointerId; pad.setPointerCapture(pointer);
+          origin = [e.clientX, e.clientY]; joy = [0, 0];
+        });
         pad.addEventListener('pointermove', e => {
-          if (!origin) return;
+          if (!origin || e.pointerId !== pointer) return;
           let x = (e.clientX - origin[0]) / 60, y = -(e.clientY - origin[1]) / 60;
           const m = Math.hypot(x, y);
           if (m > 1) { x /= m; y /= m; }
           joy = [x, y];
           knob.style.transform = `translate(${x * 40}px, ${-y * 40}px)`;
         });
-        const end = () => { origin = null; joy = null; knob.style.transform = ''; };
+        const end = e => {
+          if (e.pointerId !== pointer) return;
+          origin = null; pointer = null; joy = null; knob.style.transform = '';
+        };
         pad.addEventListener('pointerup', end);
         pad.addEventListener('pointercancel', end);
+        pad.addEventListener('lostpointercapture', end);
       }
-      const timer = setInterval(sendSteer, 66);
+      const timer = setInterval(sendSteer, 100);
       return () => { clearInterval(timer); joy = null; send('steer', { x: 0, y: 0 }); };
     });
   }
@@ -630,7 +653,8 @@ export function createController(root, { mode = 'phone', send, myId, sounds = mo
 
   // Countdown beeps and timers shown in any view.
   let lastBeep = 0;
-  setInterval(() => {
+  const uiTimer = setInterval(() => {
+    root.querySelectorAll('[data-chat]').forEach(button => { button.disabled = performance.now() < chatUntil; });
     const t = root.querySelector('[data-timer]');
     if (t) t.textContent = Math.ceil(remaining()) + 's';
     if (sounds && st && st.phase === 'countdown') {
@@ -639,20 +663,42 @@ export function createController(root, { mode = 'phone', send, myId, sounds = mo
     } else lastBeep = 0;
   }, 100);
 
+  const chat = i => {
+    if (slot < 0 || performance.now() < chatUntil) return;
+    chatUntil = performance.now() + CHAT_COOLDOWN * 1000;
+    send('chat', { i });
+  };
+  const chatPointer = e => { const b = e.target.closest('[data-chat]'); if (b) { e.preventDefault(); chat(+b.dataset.chat); } };
+  const chatClick = e => { const b = e.target.closest('[data-chat]'); if (b && e.detail === 0) chat(+b.dataset.chat); };
+  root.addEventListener('pointerdown', chatPointer);
+  root.addEventListener('click', chatClick);
+  let keyDown = null, keyUp = null;
   if (!phone) {
     const map = { KeyW: 'up', ArrowUp: 'up', KeyS: 'down', ArrowDown: 'down', KeyA: 'left', ArrowLeft: 'left', KeyD: 'right', ArrowRight: 'right' };
-    addEventListener('keydown', e => {
+    keyDown = e => {
+      if (e.target.closest('input, textarea, select, [contenteditable=true]')) return;
+      if (/^Digit[1-4]$/.test(e.code) && !e.repeat) { e.preventDefault(); chat(+e.code.slice(-1) - 1); }
       if (map[e.code]) { keys.add(map[e.code]); e.preventDefault(); }
       if ((e.code === 'Space' || e.code === 'KeyE') && key === 'fight') { e.preventDefault(); send('ability', {}); }
       if ((e.code === 'ShiftLeft' || e.code === 'ShiftRight' || e.code === 'KeyQ') && key === 'fight' && !e.repeat) { e.preventDefault(); send('boost', {}); }
-    });
-    addEventListener('keyup', e => { if (map[e.code]) keys.delete(map[e.code]); });
+    };
+    keyUp = e => { if (map[e.code]) keys.delete(map[e.code]); };
+    addEventListener('keydown', keyDown);
+    addEventListener('keyup', keyUp);
   }
 
   return {
     setState, onSnap, localSteer,
     localSpin: () => spinFeedback,
     get slot() { return slot; },
-    destroy() { if (cleanup) cleanup(); cleanup = null; key = ''; root.innerHTML = ''; },
+    destroy() {
+      if (cleanup) cleanup(); cleanup = null;
+      viewDisposers.splice(0).forEach(dispose => dispose());
+      clearInterval(uiTimer); motion.destroy(); keys.clear();
+      root.removeEventListener('pointerdown', chatPointer); root.removeEventListener('click', chatClick);
+      if (keyDown) removeEventListener('keydown', keyDown);
+      if (keyUp) removeEventListener('keyup', keyUp);
+      key = ''; st = null; slot = -1; root.innerHTML = '';
+    },
   };
 }

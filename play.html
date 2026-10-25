@@ -17,6 +17,7 @@
 <div id="ctrl"></div>
 <div id="corner"><button id="btn-music" title="Music">🎵</button><button id="btn-mute" title="Mute">🔊</button></div>
 <div id="lost" hidden>Lost connection to the host… retrying</div>
+<button class="btn ghost small match-exit" id="leave" hidden>Leave match</button>
 
 <div id="join-screen">
   <h1 class="logo">PAIKUTAN</h1>
@@ -24,6 +25,7 @@
   <div id="room-row"><label>Room code<br><input id="room" maxlength="4" autocomplete="off" autocapitalize="characters" placeholder="ABCD"></label></div>
   <label>Your name<br><input id="name" maxlength="14" autocomplete="nickname" placeholder="Juan"></label>
   <button class="btn big" id="join">Join match</button>
+  <a class="small" id="home" href="index.html">Back to menu</a>
   <p class="small" id="join-msg"></p>
   <p class="muted small">Tip: allow motion access when asked, and turn up the volume.</p>
 </div>

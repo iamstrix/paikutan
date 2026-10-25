@@ -1,5 +1,6 @@
-// All sound is synthesized with WebAudio: no audio files.
+// WebAudio effects and music, plus bundled Filipino quick-chat voice clips.
 // Music is a kulintang-style gong loop (pentatonic gongs, agung, dabakan drum).
+import { QUICK_CHAT, CHAT_CLIPS } from './chat.js';
 let ctx = null, master, sfxBus, musicBus, noiseBuf;
 let muted = false;
 // Music can be switched off on its own (sound effects stay on); remembered per device.
@@ -8,6 +9,15 @@ try { musicMuted = localStorage.getItem('paikutan-music') === 'off'; } catch { /
 const hums = [];
 let whirNode = null;
 let musicTimer = null, musicStep = 0, musicNext = 0, musicWanted = null;
+const chatBuffers = new Map();
+let voice = null, voiceRequest = 0;
+
+function loadChat(i) {
+  if (!chatBuffers.has(i)) chatBuffers.set(i, fetch(CHAT_CLIPS[i])
+    .then(r => { if (!r.ok) throw new Error('Voice clip unavailable'); return r.arrayBuffer(); })
+    .then(bytes => ctx.decodeAudioData(bytes)).catch(() => null));
+  return chatBuffers.get(i);
+}
 
 function ensure() {
   if (ctx) return ctx;
@@ -85,6 +95,7 @@ export const audio = {
   unlock() {
     if (!ensure()) return;
     if (ctx.state === 'suspended') ctx.resume();
+    QUICK_CHAT.forEach((_, i) => loadChat(i));
     if (musicWanted) { const [on, level] = musicWanted; musicWanted = null; this.music(on, level); }
   },
   get muted() { return muted; },
@@ -96,7 +107,36 @@ export const audio = {
   },
   setMuted(m) {
     muted = m;
+    if (m) { voiceRequest++; if (voice) { voice.stop(); voice = null; } window.speechSynthesis?.cancel(); }
     if (ctx) master.gain.setTargetAtTime(m ? 0 : 0.9, ctx.currentTime, 0.05);
+  },
+  async chat(i, character = '') {
+    if (!QUICK_CHAT[i] || muted || !ctx) return;
+    const request = ++voiceRequest;
+    const buffer = await loadChat(i);
+    if (muted || request !== voiceRequest) return;
+    if (voice) { voice.stop(); voice = null; }
+    if (buffer) {
+      const source = ctx.createBufferSource(), gain = ctx.createGain();
+      source.buffer = buffer;
+      source.playbackRate.value = character === 'bata' ? 1.06 : character === 'tambay' ? 0.96 : 1;
+      gain.gain.value = 0.85;
+      source.connect(gain).connect(sfxBus); source.start(); voice = source;
+      source.onended = () => { source.disconnect(); gain.disconnect(); if (voice === source) voice = null; };
+    } else {
+      const speech = window.speechSynthesis;
+      const filipino = speech?.getVoices().find(v => /^(fil|tl)([-_]|$)/i.test(v.lang));
+      if (!filipino) return;
+      const line = new SpeechSynthesisUtterance(QUICK_CHAT[i]);
+      line.voice = filipino; line.lang = filipino.lang;
+      speech.cancel(); speech.speak(line);
+    }
+  },
+  stop() {
+    hums.forEach((_, i) => this.hum(i, 0, 0));
+    this.whir(0); this.music(false); voiceRequest++;
+    if (voice) { voice.stop(); voice = null; }
+    window.speechSynthesis?.cancel();
   },
   music(on, level = 0.32) {
     // Browsers block audio before the first tap, so remember the request until unlock().
