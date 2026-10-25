@@ -416,8 +416,8 @@ export function createScene(canvas, { low = false } = {}) {
       t.prec += dt * (2 + 7 * st.wobble);
       t.precess.rotation.y = t.prec;
       t.tilt.rotation.x = 0.03 + st.wobble * 0.5;
-      // Stylized stroboscopic spin: broad crown shapes remain readable at phone size.
-      t.spinner.rotation.y -= Math.min(st.spin * 16, 12) * dt;
+      // Fast launch rotation (up to ~16 turns/s), easing down as spin runs out.
+      t.spinner.rotation.y -= Math.min(st.spin * 110, 100) * dt;
     } else {
       // Toppled: roll onto its side and settle.
       t.fallT = Math.min(1, t.fallT + dt * 2.5);
@@ -439,7 +439,7 @@ export function createScene(canvas, { low = false } = {}) {
     }
     // Spin blur follows the spin; the contact shadow stays on the ground as the top drops in.
     t.blur.material.opacity += ((st.alive ? Math.min(0.45, st.spin * 0.45) : 0) - t.blur.material.opacity) * Math.min(1, dt * 10);
-    t.blur.rotation.z -= dt * 30;
+    t.blur.rotation.z -= dt * (st.alive ? Math.min(st.spin * 110, 100) : 3 * (1 - t.fallT));
     t.blob.position.y = 0.015 - t.root.position.y;
     t.blob.material.opacity = 1 / (1 + t.root.position.y * 2);
     t.shield.visible = st.shield && st.alive;

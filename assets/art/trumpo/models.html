@@ -50,7 +50,7 @@ try {
     const dt=Math.min(.05,(now-last)/1000);last=now;time+=dt;
     const distance=5.3/(Math.tan(THREE.MathUtils.degToRad(camera.fov/2))*camera.aspect);
     camera.position.set(0,Math.max(angled?distance*.78:distance,4),angled?distance*.72:.001);camera.lookAt(0,.25,0);
-    for(const m of models){if(spinning)m.body.rotation.y-=dt*10;m.aura.rotation.y=time*.4}
+    for(const m of models){if(spinning)m.body.rotation.y-=dt*100;m.aura.rotation.y=time*.4}
     effects.update(dt,camera,canvas.clientHeight);renderer.render(scene,camera);
   });
   document.querySelector('#status').textContent='Ready. Start with Top view.';
