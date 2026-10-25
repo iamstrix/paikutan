@@ -5,6 +5,8 @@ import { ARENA_R, LAUNCH_Z } from './sim.js';
 import { TOPS, CHARACTERS, PLAYER_COLORS, byId } from './data.js';
 import { buildBarangay, WORLD_SCALE } from './world/barangay.js';
 import { createAtmosphere } from './world/atmosphere.js';
+import { buildTrompo } from './entities/trompo.js';
+import { Avatar } from './entities/avatar.js';
 
 const CLOCK = 15 * 60 + 30; // merienda time: warm light, lamps still off
 
@@ -34,40 +36,19 @@ function dirt(base, specks) {
   };
 }
 
-// Trumpo profile (radius, height), from the steel tip up to the knob.
-const TIP = [[0, 0], [0.03, 0.015], [0.045, 0.06], [0.045, 0.15]];
-const BODY = [[0.045, 0.14], [0.11, 0.17], [0.25, 0.3], [0.38, 0.46], [0.43, 0.56], [0.42, 0.62],
-  [0.34, 0.68], [0.14, 0.72], [0.07, 0.76], [0.07, 0.86], [0.0, 0.88]];
-const lathe = (pts, seg) => new THREE.LatheGeometry(pts.map(([r, y]) => new THREE.Vector2(r, y)), seg);
-
-function topTexture(colors) {
-  return canvasTex(256, 256, (g, w, h) => {
-    // Canvas top is the crown of the trumpo (lathe v=1).
-    g.fillStyle = colors[0]; g.fillRect(0, 0, w, h);
-    g.fillStyle = colors[1]; g.fillRect(0, h * 0.18, w, h * 0.12);
-    g.fillStyle = '#fff8e7'; g.fillRect(0, h * 0.31, w, h * 0.03);
-    // Slanted stripes make the spin readable.
-    g.fillStyle = colors[1];
-    for (let i = 0; i < 6; i++) {
-      const x = (i / 6) * w;
-      g.beginPath();
-      g.moveTo(x, h * 0.36); g.lineTo(x + w * 0.07, h * 0.36);
-      g.lineTo(x + w * 0.16, h * 0.75); g.lineTo(x + w * 0.09, h * 0.75);
-      g.fill();
-    }
-    g.fillStyle = 'rgba(0,0,0,0.25)'; g.fillRect(0, h * 0.75, w, h * 0.25);
-  });
-}
-
 function makeTop(topId, slot, low) {
   const def = byId(TOPS, topId);
   const root = new THREE.Group(), precess = new THREE.Group(), tilt = new THREE.Group(), spinner = new THREE.Group();
   root.add(precess); precess.add(tilt); tilt.add(spinner);
-  const seg = low ? 20 : 36;
-  const body = new THREE.Mesh(lathe(BODY, seg), new THREE.MeshStandardMaterial({ map: topTexture(def.colors), roughness: 0.55, metalness: 0.05 }));
-  const tip = new THREE.Mesh(lathe(TIP, 12), new THREE.MeshStandardMaterial({ color: '#c9ced6', roughness: 0.3, metalness: 0.9 }));
-  body.castShadow = tip.castShadow = true;
-  spinner.add(body, tip);
+  // tromPOW's trompo, at his 1.35x readability boost, scaled into our world like the barangay.
+  const model = buildTrompo(def.colors, low);
+  const size = 1.35 * WORLD_SCALE;
+  model.body.scale.setScalar(size);
+  model.blur.scale.setScalar(size); model.blur.position.y *= size;
+  model.blob.scale.setScalar(WORLD_SCALE); model.blob.position.y = 0.015;
+  spinner.add(model.body);
+  tilt.add(model.blur);
+  root.add(model.blob);
   // Coloured chalk ring under each top shows whose it is.
   const ring = new THREE.Mesh(new THREE.RingGeometry(0.5, 0.6, 40), new THREE.MeshBasicMaterial({ color: PLAYER_COLORS[slot], transparent: true, opacity: 0.85 }));
   ring.rotation.x = -Math.PI / 2; ring.position.y = 0.02;
@@ -82,32 +63,25 @@ function makeTop(topId, slot, low) {
   const arrow = new THREE.Group();
   arrow.position.y = 0.025; arrow.visible = false; arrow.add(arrowMesh);
   root.add(ring, shield, arrow);
-  return { root, precess, tilt, spinner, ring, shield, arrow, prec: rand(0, 6), drop: 0, state: null, target: null, wasLaunched: false, fallT: 0 };
+  return { root, precess, tilt, spinner, ring, shield, arrow, blur: model.blur, blob: model.blob, prec: rand(0, 6), drop: 0, state: null, target: null, wasLaunched: false, fallT: 0 };
 }
 
-// A player as two blocks: a head with the emoji face, and a body in the character colour.
+// Our characters wear tromPOW's closest outfits: Tambay is his Mang Totoy, Aling Nena his Tita Marites.
+const CHAR_MODEL = { tambay: 'totoy', tindera: 'marites' };
+
+// A player as one of tromPOW's big-head characters, scaled into our world like the barangay.
 function makePerson(charId, slot) {
   const c = byId(CHARACTERS, charId);
-  const root = new THREE.Group(), pose = new THREE.Group();
-  root.add(pose);
-  const skin = new THREE.MeshLambertMaterial({ color: '#d9a066' });
-  const face = new THREE.MeshLambertMaterial({ map: canvasTex(128, 128, (g, w, h) => {
-    g.fillStyle = '#d9a066'; g.fillRect(0, 0, w, h);
-    g.font = '96px sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle';
-    g.fillText(c.emoji, w / 2, h / 2 + 6);
-  }) });
-  const body = new THREE.Mesh(new THREE.BoxGeometry(0.7, 1.0, 0.42), new THREE.MeshLambertMaterial({ color: c.color }));
-  body.position.y = 0.5;
-  // Box faces: +x, -x, +y, -y, +z (front, the face), -z.
-  const head = new THREE.Mesh(new THREE.BoxGeometry(0.56, 0.56, 0.56), [skin, skin, skin, skin, face, skin]);
-  head.position.y = 1.32;
-  pose.add(body, head);
+  const avatar = new Avatar(CHAR_MODEL[c.id] || c.id, c.color);
+  const root = avatar.group;
+  root.scale.setScalar(WORLD_SCALE);
   root.traverse(o => { if (o.isMesh) o.castShadow = true; });
   // Beside their own throwing line, on their right, facing the circle.
   const sz = slot === 0 ? 1 : -1;
-  root.position.set(-sz * 1.9, 0, sz * (LAUNCH_Z + 1.3));
+  // Out to the side: these characters are big enough to cover the circle from the phone camera.
+  root.position.set(-sz * 3, 0, sz * (LAUNCH_Z + 1.3));
   root.rotation.y = slot === 0 ? Math.PI : 0;
-  return { root, pose, threw: 0 };
+  return { root, avatar };
 }
 
 function makeDog() {
@@ -316,7 +290,7 @@ export function createScene(canvas, { low = false } = {}) {
         break;
       case 'launch':
         burst(e.x, 0.05, e.z, 18, '#d8b98c', 2.5, 1.2);
-        if (people[e.slot]) people[e.slot].threw = 1;
+        if (people[e.slot]) people[e.slot].avatar.release();
         break;
       case 'steal':
         // Sparks in the thief's colour, from the leader toward the thief.
@@ -412,6 +386,11 @@ export function createScene(canvas, { low = false } = {}) {
       t.arrow.scale.setScalar(0.6 + 0.4 * Math.min(1, am));
       t.arrow.children[0].material.opacity = 0.3 + 0.55 * Math.min(1, am / 0.4);
     }
+    // Spin blur follows the spin; the contact shadow stays on the ground as the top drops in.
+    t.blur.material.opacity += ((st.alive ? Math.min(0.45, st.spin * 0.45) : 0) - t.blur.material.opacity) * Math.min(1, dt * 10);
+    t.blur.rotation.z -= dt * 30;
+    t.blob.position.y = 0.015 - t.root.position.y;
+    t.blob.material.opacity = 1 / (1 + t.root.position.y * 2);
     t.shield.visible = st.shield && st.alive;
     t.shield.material.opacity = 0.18 + Math.sin(time * 8) * 0.06;
     t.ring.material.color.set(st.invert ? '#9b5de5' : PLAYER_COLORS[slot]);
@@ -482,15 +461,13 @@ export function createScene(canvas, { low = false } = {}) {
     } else dog.visible = false;
     people.forEach((p, s) => {
       if (!p) return;
-      // Idle sway; lean in on the throw; the round winner bounces and the loser slumps.
-      p.threw = Math.max(0, p.threw - dt * 2);
-      let lean = Math.sin(p.threw * Math.PI) * 0.45, y = Math.abs(Math.sin(time * 2 + s)) * 0.03;
-      if (party) {
-        if (party.slot === s) y = Math.abs(Math.sin(time * 7)) * 0.45;
-        else lean = -0.25;
+      // Watch your own top, slump when it falls; the round winner cheers. The throw plays out on its own.
+      const a = p.avatar, st = tops[s] && tops[s].state;
+      if (a.mode !== 'release') {
+        a.mode = party ? (party.slot === s ? 'cheer' : 'sad')
+          : st && st.launched ? (st.alive ? 'watch' : 'sad') : 'idle';
       }
-      p.pose.rotation.x = lean;
-      p.pose.position.y = y;
+      a.update(dt, time);
     });
     world.update(time);
     updateParticles(dt);
