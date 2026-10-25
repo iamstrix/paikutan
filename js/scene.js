@@ -1,8 +1,12 @@
-// three.js view of the plaza: chalk circle, banderitas, sari-sari store, trumpos and effects.
+// three.js view: the barangay around the chalk circle, the trumpos, the players and effects.
 // Used by the desktop spectator and the phones (which follow host snapshots).
 import * as THREE from 'three';
 import { ARENA_R, LAUNCH_Z } from './sim.js';
 import { TOPS, CHARACTERS, PLAYER_COLORS, byId } from './data.js';
+import { buildBarangay, WORLD_SCALE } from './world/barangay.js';
+import { createAtmosphere } from './world/atmosphere.js';
+
+const CLOCK = 15 * 60 + 30; // merienda time: warm light, lamps still off
 
 const rand = (a, b) => a + Math.random() * (b - a);
 
@@ -128,11 +132,8 @@ function makeDog() {
   return g;
 }
 
-function buildPlaza(scene, low) {
-  const ground = new THREE.Mesh(new THREE.PlaneGeometry(90, 90),
-    new THREE.MeshLambertMaterial({ map: canvasTex(512, 512, dirt('#c49a6c', ['#8b6844', '#e3c49a', '#6f5235', '#a88a5c']), 14) }));
-  ground.rotation.x = -Math.PI / 2; ground.receiveShadow = true;
-  scene.add(ground);
+// Our circle on top of the barangay's plaza: packed earth, the chalk line, each player's throwing line.
+function buildCircle(scene) {
   // Packed, darker earth inside the circle where everyone plays.
   const pit = new THREE.Mesh(new THREE.CircleGeometry(ARENA_R + 0.6, 64),
     new THREE.MeshLambertMaterial({ map: canvasTex(512, 512, dirt('#a77b52', ['#7a5638', '#c9a274', '#5e432b']), 3), transparent: true, opacity: 0.95 }));
@@ -141,106 +142,11 @@ function buildPlaza(scene, low) {
   const chalk = new THREE.Mesh(new THREE.RingGeometry(ARENA_R - 0.07, ARENA_R + 0.07, 128), new THREE.MeshBasicMaterial({ color: '#fbf6ea', transparent: true, opacity: 0.9 }));
   chalk.rotation.x = -Math.PI / 2; chalk.position.y = 0.012;
   scene.add(chalk);
-  // Each player's throwing line.
   [0, 1].forEach(s => {
     const line = new THREE.Mesh(new THREE.PlaneGeometry(1.6, 0.12), new THREE.MeshBasicMaterial({ color: PLAYER_COLORS[s], transparent: true, opacity: 0.8 }));
     line.rotation.x = -Math.PI / 2; line.position.set(0, 0.013, (s === 0 ? 1 : -1) * (LAUNCH_Z + 0.6));
     scene.add(line);
   });
-
-  const lam = c => new THREE.MeshLambertMaterial({ color: c });
-  const add = (mesh, x, y, z, ry = 0) => { mesh.position.set(x, y, z); mesh.rotation.y = ry; mesh.castShadow = !low; mesh.receiveShadow = !low; scene.add(mesh); return mesh; };
-
-  // Sari-sari store with a hand-painted sign.
-  const store = new THREE.Group();
-  const wall = new THREE.Mesh(new THREE.BoxGeometry(5, 3, 3.4), lam('#e9d8a6'));
-  wall.position.y = 1.5;
-  const roof = new THREE.Mesh(new THREE.BoxGeometry(5.6, 0.15, 4.2), lam('#7d8fa3'));
-  roof.position.set(0, 3.15, 0.2); roof.rotation.x = 0.12;
-  const sign = new THREE.Mesh(new THREE.PlaneGeometry(4.4, 0.8), new THREE.MeshBasicMaterial({ map: canvasTex(512, 96, (g, w, h) => {
-    g.fillStyle = '#c1121f'; g.fillRect(0, 0, w, h);
-    g.fillStyle = '#ffd23f'; g.font = 'bold 44px sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle';
-    g.fillText("ALING NENA'S STORE", w / 2, h / 2 + 3);
-  }) }));
-  sign.position.set(0, 2.55, 1.72);
-  const window_ = new THREE.Mesh(new THREE.PlaneGeometry(3.2, 1.2), new THREE.MeshBasicMaterial({ map: canvasTex(256, 96, (g, w, h) => {
-    g.fillStyle = '#3d2b1f'; g.fillRect(0, 0, w, h);
-    const cs = ['#ffd23f', '#e63946', '#3a86ff', '#2a9d8f', '#f4a261', '#fff'];
-    for (let i = 0; i < 40; i++) { g.fillStyle = cs[i % cs.length]; g.fillRect(8 + (i % 10) * 24, 10 + Math.floor(i / 10) * 21, 16, 15); }
-    g.strokeStyle = '#2b1d14'; g.lineWidth = 3;
-    for (let x = 0; x < w; x += 14) { g.beginPath(); g.moveTo(x, 0); g.lineTo(x, h); g.stroke(); }
-  }) }));
-  window_.position.set(0, 1.45, 1.71);
-  store.add(wall, roof, sign, window_);
-  store.traverse(o => { if (o.isMesh) { o.castShadow = !low; o.receiveShadow = !low; } });
-  store.position.set(-9, 0, -8); store.rotation.y = Math.PI / 4;
-  scene.add(store);
-
-  // Bahay kubo.
-  const kubo = new THREE.Group();
-  const kw = new THREE.Mesh(new THREE.BoxGeometry(3.4, 2, 3.4), lam('#d4b483')); kw.position.y = 2;
-  const kr = new THREE.Mesh(new THREE.ConeGeometry(3.4, 2.4, 4), lam('#8a6d3b')); kr.position.y = 4.2; kr.rotation.y = Math.PI / 4;
-  kubo.add(kw, kr);
-  for (const [x, z] of [[-1.5, -1.5], [1.5, -1.5], [-1.5, 1.5], [1.5, 1.5]]) {
-    const st = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.1, 1, 6), lam('#6b4f2a')); st.position.set(x, 0.5, z); kubo.add(st);
-  }
-  kubo.traverse(o => { if (o.isMesh) { o.castShadow = !low; o.receiveShadow = !low; } });
-  kubo.position.set(10, 0, -7); kubo.rotation.y = -0.5;
-  scene.add(kubo);
-
-  // Coconut palms.
-  const palm = (x, z, h) => {
-    const g = new THREE.Group();
-    const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.25, h, 7), lam('#8b6b47'));
-    trunk.position.y = h / 2; trunk.rotation.z = 0.08;
-    g.add(trunk);
-    for (let i = 0; i < 7; i++) {
-      const leaf = new THREE.Mesh(new THREE.BoxGeometry(2.4, 0.05, 0.5), lam(i % 2 ? '#3f8f3a' : '#4fa64a'));
-      leaf.geometry.translate(1.2, 0, 0);
-      leaf.position.y = h; leaf.rotation.set(0, (i / 7) * Math.PI * 2, -0.45);
-      g.add(leaf);
-    }
-    g.traverse(o => { if (o.isMesh) o.castShadow = !low; });
-    g.position.set(x, 0, z);
-    scene.add(g);
-  };
-  palm(-13, 4, 7); palm(13, 3, 6.5); palm(-6, -15, 7.5); palm(7, -14, 6.8); palm(15, -12, 7.2); palm(-15, -4, 6.2);
-
-  // Bamboo poles with banderitas (fiesta flags) strung between them.
-  const poles = [[-8, -8], [8, -8], [8, 8], [-8, 8]].map(([x, z]) => {
-    add(new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.11, 7.4, 6), lam('#c2a24f')), x, 3.7, z);
-    return new THREE.Vector3(x, 7.2, z);
-  });
-  const flagGeo = new THREE.BufferGeometry();
-  flagGeo.setAttribute('position', new THREE.Float32BufferAttribute([-0.16, 0, 0, 0.16, 0, 0, 0, -0.38, 0], 3));
-  flagGeo.computeVertexNormals();
-  const flagMats = ['#e63946', '#ffd23f', '#3a86ff', '#2a9d8f', '#ff70a6', '#fff8e7'].map(c => new THREE.MeshBasicMaterial({ color: c, side: THREE.DoubleSide }));
-  const flags = [];
-  // One string per side; the side facing the camera is hidden so it never blocks the circle.
-  const sides = {};
-  const lineMat = new THREE.LineBasicMaterial({ color: '#4a3b2a' });
-  const pairs = [[0, 1, 'nz'], [1, 2, 'px'], [2, 3, 'pz'], [3, 0, 'nx']];
-  pairs.forEach(([a, b, side], pi) => {
-    const A = poles[a], B = poles[b], n = Math.round(A.distanceTo(B) / 0.42), sag = 0.9;
-    const group = sides[side] = new THREE.Group();
-    scene.add(group);
-    const pts = [];
-    for (let i = 0; i <= n; i++) {
-      const t = i / n, p = A.clone().lerp(B, t);
-      p.y -= sag * 4 * t * (1 - t);
-      pts.push(p);
-      if (i > 0 && i < n) {
-        const f = new THREE.Mesh(flagGeo, flagMats[(i + pi) % flagMats.length]);
-        f.position.copy(p);
-        f.rotation.order = 'YXZ';
-        f.rotation.y = Math.atan2(B.x - A.x, B.z - A.z) + Math.PI / 2;
-        f.userData.phase = rand(0, 6);
-        group.add(f); flags.push(f);
-      }
-    }
-    group.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), lineMat));
-  });
-  return { flags, sides };
 }
 
 export function createScene(canvas, { low = false } = {}) {
@@ -248,24 +154,22 @@ export function createScene(canvas, { low = false } = {}) {
   renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, low ? 1.5 : 2));
   renderer.shadowMap.enabled = !low;
   renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  // The barangay's materials are tuned for filmic tone mapping.
+  renderer.toneMapping = THREE.ACESFilmicToneMapping;
+  renderer.toneMappingExposure = 1.05;
 
   const scene = new THREE.Scene();
-  const skyDay = new THREE.Color('#ffd9a8'), skyDark = new THREE.Color('#1b1035');
-  scene.background = skyDay.clone();
-  scene.fog = new THREE.Fog(skyDay.clone(), 28, 70);
-  const camera = new THREE.PerspectiveCamera(45, 1, 0.1, 200);
+  const camera = new THREE.PerspectiveCamera(45, 1, 0.1, 600);
 
-  const hemi = new THREE.HemisphereLight('#fff3d6', '#7a5a3a', 1.6);
-  const sun = new THREE.DirectionalLight('#fff0d0', 2.4);
-  sun.position.set(8, 16, 6);
-  sun.castShadow = !low;
-  sun.shadow.mapSize.set(2048, 2048);
-  Object.assign(sun.shadow.camera, { left: -12, right: 12, top: 12, bottom: -12, near: 1, far: 50 });
-  sun.shadow.bias = -0.0005;
+  const atmosphere = createAtmosphere(scene, { scale: WORLD_SCALE, low });
   const flash = new THREE.PointLight('#e8f4ff', 0, 30);
-  scene.add(hemi, sun, flash);
+  scene.add(flash);
 
-  const plaza = buildPlaza(scene, low);
+  const world = buildBarangay({ low });
+  // Sunk a little so its ground decals stay under our circle's layers.
+  world.group.position.y = -0.04;
+  scene.add(world.group);
+  buildCircle(scene);
   const dog = makeDog();
   scene.add(dog);
 
@@ -462,8 +366,6 @@ export function createScene(canvas, { low = false } = {}) {
 
   function setView(v) {
     view = v;
-    const front = v === 0 ? 'pz' : v === 1 ? 'nz' : 'px';
-    for (const k in plaza.sides) plaza.sides[k].visible = k !== front;
   }
 
   function resize() {
@@ -590,7 +492,7 @@ export function createScene(canvas, { low = false } = {}) {
       p.pose.rotation.x = lean;
       p.pose.position.y = y;
     });
-    plaza.flags.forEach(f => { f.rotation.x = Math.sin(time * 2.2 + f.userData.phase) * 0.35; });
+    world.update(time);
     updateParticles(dt);
     updateWaves(dt);
     if (party) {
@@ -611,11 +513,9 @@ export function createScene(canvas, { low = false } = {}) {
     flash.intensity = Math.max(0, flash.intensity - dt * 150);
     eclipse = Math.max(0, eclipse - dt);
     const dark = Math.min(1, eclipse * 1.5) * 0.75;
-    hemi.intensity = 1.6 * (1 - dark * 0.8);
-    sun.intensity = 2.4 * (1 - dark * 0.9);
-    scene.background.copy(skyDay).lerp(skyDark, dark);
-    scene.fog.color.copy(scene.background);
+    atmosphere.setClock(CLOCK, dark);
     updateCamera(dt);
+    atmosphere.follow(camera.position);
     renderer.render(scene, camera);
   }
 

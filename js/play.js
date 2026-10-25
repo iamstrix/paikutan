@@ -90,6 +90,15 @@ const musicBtn = () => $('#btn-music').classList.toggle('off', audio.musicMuted)
 $('#btn-music').onclick = () => { audio.unlock(); audio.setMusicMuted(!audio.musicMuted); musicBtn(); };
 musicBtn();
 
+const muteBtn = () => {
+  const el = $('#btn-mute');
+  if (el) el.textContent = audio.muted ? '🔇' : '🔊';
+};
+if ($('#btn-mute')) {
+  $('#btn-mute').onclick = () => { audio.unlock(); audio.setMuted(!audio.muted); muteBtn(); };
+  muteBtn();
+}
+
 let last = performance.now();
 function frame(now) {
   requestAnimationFrame(frame);

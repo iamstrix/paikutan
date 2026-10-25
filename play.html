@@ -8,12 +8,12 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bungee&family=Nunito:wght@400;700;800&display=swap">
 <link rel="stylesheet" href="css/style.css">
-<script type="importmap">{ "imports": { "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js" } }</script>
+<script type="importmap">{ "imports": { "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js", "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/" } }</script>
 </head>
 <body class="phone-page">
 <canvas id="view"></canvas>
 <div id="ctrl"></div>
-<div id="corner"><button id="btn-music" title="Music">🎵</button></div>
+<div id="corner"><button id="btn-music" title="Music">🎵</button><button id="btn-mute" title="Mute">🔊</button></div>
 <div id="lost" hidden>Lost connection to the host… retrying</div>
 
 <div id="join-screen">

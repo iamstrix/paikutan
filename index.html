@@ -9,7 +9,7 @@
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bungee&family=Nunito:wght@400;700;800&display=swap">
 <link rel="stylesheet" href="css/style.css">
 <script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.js"></script>
-<script type="importmap">{ "imports": { "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js" } }</script>
+<script type="importmap">{ "imports": { "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js", "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/" } }</script>
 </head>
 <body data-mode="title">
 <canvas id="view"></canvas>
@@ -17,12 +17,12 @@
 <div id="hud">
   <div class="pcard" id="card0" style="--pc:#e63946" hidden>
     <div class="who"></div>
-    <div class="spin"><b></b><em></em></div>
+    <div class="spin"><i class="dmg"></i><b></b><em></em></div>
     <div class="row">wobble <span class="wob"><b></b></span> power <span class="pips"><i></i><i></i><i></i></span> <span class="wins"></span></div>
   </div>
   <div class="pcard" id="card1" style="--pc:#3a86ff" hidden>
     <div class="who"></div>
-    <div class="spin"><b></b><em></em></div>
+    <div class="spin"><i class="dmg"></i><b></b><em></em></div>
     <div class="row">wobble <span class="wob"><b></b></span> power <span class="pips"><i></i><i></i><i></i></span> <span class="wins"></span></div>
   </div>
   <div id="banner" hidden></div>

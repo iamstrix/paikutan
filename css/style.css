@@ -74,8 +74,9 @@ body.lobby-open #card1 { right: 372px; }
 .pcard .who .txt b { display: block; font-size: 1.05rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .pcard .who .txt small { color: var(--muted); }
 .pcard .spin { position: relative; height: 18px; border-radius: 9px; background: rgba(0, 0, 0, 0.45); margin-top: 8px; overflow: hidden; }
-.pcard .spin b { position: absolute; inset: 0 auto 0 0; background: linear-gradient(90deg, var(--pc), var(--yellow)); transition: width 0.1s; }
-.pcard .spin em { position: absolute; right: 8px; top: 0; font-style: normal; font-size: 0.75rem; font-weight: 800; line-height: 18px; text-shadow: 0 1px 2px #000; }
+.pcard .spin .dmg { position: absolute; inset: 0 auto 0 0; background: #ff4757; transition: width 0.45s ease-out 0.2s; border-radius: 9px; }
+.pcard .spin b { position: absolute; inset: 0 auto 0 0; background: linear-gradient(90deg, var(--pc), var(--yellow)); transition: width 0.1s; border-radius: 9px; z-index: 1; }
+.pcard .spin em { position: absolute; right: 8px; top: 0; font-style: normal; font-size: 0.75rem; font-weight: 800; line-height: 18px; text-shadow: 0 1px 2px #000; z-index: 2; }
 .pcard .row { display: flex; align-items: center; gap: 8px; margin-top: 6px; font-size: 0.72rem; color: var(--muted); }
 .pcard .wob { flex: 1; height: 6px; border-radius: 3px; background: rgba(0, 0, 0, 0.45); overflow: hidden; }
 .pcard .wob b { display: block; height: 100%; background: #ff8c42; }

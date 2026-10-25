@@ -149,6 +149,8 @@ function updateHud() {
       label = p.spun ? 'ready!' : p.laps.toFixed(1) + ' ikot';
     }
     el.querySelector('.spin b').style.width = Math.round(spin * 100) + '%';
+    const dmg = el.querySelector('.spin .dmg');
+    if (dmg) dmg.style.width = Math.round(spin * 100) + '%';
     el.querySelector('.spin em').textContent = label;
     el.querySelector('.wob b').style.width = Math.round((tp ? tp.wobble : 0) * 100) + '%';
     const pips = el.querySelectorAll('.pips i'), charge = tp ? tp.charge : 0;

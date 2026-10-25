@@ -1,3 +1,15 @@
 node_modules/
 image*.png
 *.log
+
+# Local documentation, planning, and reference material (not deployed)
+/README.md
+/setup.html
+/priorities.html
+/package.json
+/level-up-handoff.md
+/txt.txt
+/txt2.txt
+/images/
+/DOST Level Up 3.0.pdf
+/Level Up 3.0 Full Mechanics.pdf
