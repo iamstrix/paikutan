@@ -213,7 +213,7 @@ export function createController(root, { mode = 'phone', send, myId, sounds = mo
       ['Pick', 'Choose your character and trumpo power.'],
       ['Paikot!', 'Draw fast, neat circles on the ring.'],
       ['Bitaw!', phone ? 'Tilt to aim, flick forward to throw. Or swipe up.' : 'Drag upward and release fast to throw.'],
-      ['Laban!', phone ? 'Tilt or drag to steer. Tap Dash and your charged power.' : 'WASD steer · Shift dash · Space power.'],
+      ['Laban!', phone ? 'Hold and drag on the left to steer. Tap Dash and your charged power.' : 'WASD steer · Shift dash · Space power.'],
       [brawl() ? 'Brawl / Win' : 'Win', brawl() ? `Last spinning: +2. Knockout: +1. Most points in ${BRAWL_ROUNDS} rounds wins.` : 'Stay in the circle. First to 2 wins! Lost? Pick a counter.'],
     ];
     return `<ol class="howto visual-howto">${steps.map(([title, text], i) => `<li><svg viewBox="0 0 48 48" aria-hidden="true">${paths[i]}</svg><div><b>${i + 1}. ${title}</b><span>${text}</span></div></li>`).join('')}</ol>`;

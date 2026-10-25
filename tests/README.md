@@ -6,6 +6,11 @@ location. The first run caches pinned Three.js and QR dependencies from jsDelivr
 The script starts its own local server and headless browser and closes them when
 finished. Screenshots and results go to `node_modules/.trumpo-check/audit/`.
 
+For a shorter controls and arena-zone check, run
+`node tests/browser-audit.mjs --controls-zones-only`. It covers floating/fixed
+joysticks, explicit tilt, multi-touch skills, neutral release/cancel, saved input
+preferences, zone warnings, active patches, and snapshot/reset cleanup.
+
 The browser checks exercise actual concurrent touches, CPU removal, same-device
 hosting, illustrated instructions, multiplayer hum and quick chat, room entry,
 leave/rejoin, host shutdown, and phone host controls. Separate tabs represent

@@ -65,7 +65,7 @@ function sample(key, { volume = 0.85, rate = 1 } = {}) {
 function cue(id, options = {}) {
   if (!ctx || muted) return false;
   const time = now();
-  const gap = id === 'hit' ? 0.055 : id === 'steal' ? 0.16 : id === 'countdown' ? 0.2 : 0.09;
+  const gap = id === 'hit' ? 0.055 : id === 'steal' ? 0.16 : id === 'countdown' ? 0.2 : id.endsWith('Enter') ? 1.2 : 0.09;
   if (!options.force && time - (lastCue.get(id) ?? -Infinity) < gap) return false;
   lastCue.set(id, time);
   if (UI_CUES.has(id)) lastUIAt = time;
@@ -225,7 +225,11 @@ export function playFx(event) {
     if (POWER_SAMPLES[event.top]) cue(event.top);
   } else if (event.type === 'steal') {
     if (event.amt > 0.012) cue('steal');
-  } else if (FX_CUES[event.type]) cue(FX_CUES[event.type]);
+  } else if (FX_CUES[event.type]) {
+    const mapping = FX_CUES[event.type];
+    const id = typeof mapping === 'string' ? mapping : mapping[event.zone];
+    if (id) cue(id);
+  }
   // `over` is announced by setMatchState, which knows the local player and final score.
 }
 

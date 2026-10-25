@@ -29,7 +29,8 @@ test('every catalog cue has a finite playable recipe at soft and hard intensitie
 
 test('all non-result simulation events have audio coverage', () => {
   const covered = new Set([...Object.keys(FX_CUES), 'hit', 'ability', 'over']);
-  for (const type of ['launch','ability','boost','stomp','hit','steal','dogWarn','dog','bark','eggWarn','egg','hatch','crack','squeeze','fall','out','over']) assert(covered.has(type), type);
+  for (const type of ['launch','ability','boost','stomp','hit','steal','dogWarn','dog','bark','eggWarn','egg','hatch','crack','squeeze','fall','out','over','zoneWarn','zoneLand','zoneEnter']) assert(covered.has(type), type);
+  for (const type of ['zoneWarn', 'zoneLand', 'zoneEnter']) for (const zone of ['swerte', 'ihi']) assert(cueRecipe(FX_CUES[type][zone]).length);
 });
 
 test('the countdown schedules three ticks once, and leaving cancels all of them', () => {

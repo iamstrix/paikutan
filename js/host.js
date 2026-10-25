@@ -333,6 +333,8 @@ function commentary(e) {
     case 'dogWarn': say('Uy! Asong gala! A stray dog is about to charge. Get out of the red lane!'); break;
     case 'bark': say(`Arf! The dog knocks ${n(e.slot)} aside!`); break;
     case 'eggWarn': say('Putak! A hen is running into the circle…'); break;
+    case 'zoneWarn': say(e.zone === 'swerte' ? 'Ibon! A lucky dropping is about to land. Watch the gold ring!' : 'The dog is marking a spot! Watch out for the puddle.'); break;
+    case 'zoneLand': say(e.zone === 'swerte' ? 'SWERTE! The gold patch restores spin, up to 10 points per player.' : 'MADULAS! The puddle drains spin and makes steering slippery.'); break;
     case 'crack': say(`${n(e.slot)} smashes the egg!`); break;
     case 'squeeze': say('Sikip na! The circle is shrinking!'); squeezeUntil = performance.now() + 1800; break;
     case 'fall': say(`${n(e.slot)}'s trumpo topples. Natumba!${ko()}`); break;

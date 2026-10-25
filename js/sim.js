@@ -302,7 +302,8 @@ function hens(w, dt) {
       // Somewhere inside the circle, clear of every top.
       const a = w.rand() * Math.PI * 2, r = 1 + w.rand() * Math.max(0.5, w.ring - 2);
       const x = Math.cos(a) * r, z = Math.sin(a) * r;
-      if (spinning.every(tp => Math.hypot(tp.x - x, tp.z - z) > 1.5)) {
+      if (spinning.every(tp => Math.hypot(tp.x - x, tp.z - z) > 1.5)
+        && w.zones.every(zone => Math.hypot(zone.x - x, zone.z - z) > zone.r + EGG_R + 0.35)) {
         w.eggs.push({ id: ++w.eggId, x, z, t: -EGG_WARN });
         ev(w, 'eggWarn', { x, z });
         break;
@@ -464,7 +465,7 @@ export function snapshot(w) {
     t: r2(w.t), ring: r2(w.ring),
     tops: w.tops.map(tp => [r2(tp.x), r2(tp.z), r3(Math.max(0, tp.spin)), r3(tp.wobble),
       +tp.launched, +tp.alive, +tp.out, r2(tp.charge), +(tp.shield > 0), +(tp.invert > 0), +(tp.dash > 0), r2(tp.wx || 0), r2(tp.wz || 0), r2(tp.boostCd), tp.zone === 'ihi' ? 2 : tp.zone === 'swerte' ? (tp.luckSpent ? 3 : 1) : 0]),
-    dog: w.dog ? [r2(w.dog.x), r2(w.dog.z), Math.sign(w.dog.vx), r2(Math.max(0, w.dog.warn)), r2(w.dog.mark)] : null,
+    dog: w.dog ? [r2(w.dog.x), r2(w.dog.z), Math.sign(w.dog.vx), r2(Math.max(0, w.dog.warn)), r2(w.dog.mark || 0)] : null,
     // t < 0: the hen is still running in (seconds left); t > 0: the egg is down.
     eggs: w.eggs.map(e => [e.id, r2(e.x), r2(e.z), r2(e.t)]),
     zones: w.zones.map(e => [e.id, e.type === 'swerte' ? 1 : 2, r2(e.x), r2(e.z), e.r, r3(e.age), e.life]),

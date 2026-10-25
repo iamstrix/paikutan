@@ -491,7 +491,7 @@ export function createScene(canvas, { low = false, cue = () => {} } = {}) {
     if (c >= STRIKE.hit && !S.hit) {
       S.hit = true;
       const p = alley(9.8);
-      effects.pow(u(p.x), 1.6, u(p.z), 'STRIKE!', 1.6);
+      effects.pow(u(p.x), 1.6, u(p.z), 'STRIKE!', camera.aspect < 1 ? 1 : 1.6); // smaller on a portrait phone so it fits
       effects.spark(u(p.x), 0.6, u(p.z), 30, 3);
       effects.ring(u(p.x), u(p.z), '#ffd23f', 2, 0.6);
       effects.puff(u(p.x), 0.05, u(p.z), { n: 16, speed: 2, size: 0.5 });
@@ -511,18 +511,25 @@ export function createScene(canvas, { low = false, cue = () => {} } = {}) {
   // The cutscene's cuts: [camera position, look-at point, fov]. Hard cuts, no easing between shots.
   function strikeShot() {
     const S = strike, c = S.c, w = people[S.win].root.position, l = people[S.lose].root.position;
+    // Phones in portrait are too narrow for side-on wide shots, so those look down the alley instead.
+    const tall = camera.aspect < 1;
     // Over the bowler's shoulder, down the alley at the pin, pushing in.
     if (c < BOWL_RELEASE) return [alley(-7 + 1.2 * c / BOWL_RELEASE, 2.4, 2.8), alley(5, 1.3), 45];
     // Chasing the ball at trumpo height.
     if (c < 1.9) return [alley(S.along - 1.8, 0.7, 0.25), alley(S.along + 3, 0.9), 65];
     // Reaction shot: close on the loser's face as they see it coming.
-    if (c < STRIKE.slowFrom) return [alley(8, 1.6, 1.8), alley(10, 2.3), 40];
-    // Side-on for the slow-motion hit, panning to follow the pin into the air.
-    if (c < STRIKE.land + 0.2) return [alley(7.6, 1, 6.8), l.clone().setY(l.y + 1), 42];
+    if (c < STRIKE.slowFrom) return tall ? [alley(7.2, 1.7, 2.2), alley(10, 2), 45] : [alley(8, 1.6, 1.8), alley(10, 2.3), 40];
+    // Side-on for the slow-motion hit, panning to follow the pin into the air
+    // (in portrait, from behind the ball once it hits, so the pin flies away into the frame).
+    if (c < STRIKE.land + 0.2) {
+      if (tall && c >= STRIKE.hit) return [alley(6.2, 1.8, 2.6), l.clone().setY(l.y + 1), 50];
+      return [alley(7.6, 1, 6.8), l.clone().setY(l.y + 1), 42];
+    }
     // Hero shot: low, looking up at the bowler.
     if (c < STRIKE.end) return [alley(5, 0.8, 2.4), w.clone().setY(2), 42];
-    // The aftermath, held until the rematch: the whole alley from the side.
-    return [alley(6.4, 3, 13), alley(6.4, 1.3), 50];
+    // The aftermath, held until the rematch: the whole alley from the side,
+    // or in portrait from high behind the bowler with the flattened pin down the far end.
+    return tall ? [alley(-4.5, 5, 1.2), alley(7, 0.4), 55] : [alley(6.4, 3, 13), alley(6.4, 1.3), 50];
   }
 
   function makeEggView(e) {

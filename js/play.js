@@ -14,10 +14,12 @@ const solo = params.has('solo');
 const myId = solo ? 'me' : playerId();
 // Canvas signs and POW! bursts letter in Lilita One; give it a moment to load so they don't bake in a fallback.
 await Promise.race([document.fonts.load('64px "Lilita One"').catch(() => {}), new Promise(r => setTimeout(r, 1500))]);
-const scene = createScene($('#view'), { low: true });
+const scene = createScene($('#view'), { low: true, cue: (name, arg) => audio[name]?.(arg) });
 const SCENE_PHASES = ['charge', 'countdown', 'throw', 'fight', 'roundEnd'];
 // The pick screen is see-through, so the arena shows behind it (music stays at menu volume).
 const VISIBLE_PHASES = [...SCENE_PHASES, 'pick', 'vs'];
+// A 1v1 ends with the bowling cutscene on every phone too; the result panel comes up after it.
+const bowling = p => p.phase === 'matchEnd' && p.mode !== 'brawl' && p.result && p.result.champion >= 0;
 let ctrl = null, net = null, engine = null, state = null, lastPhase = '', lastMsg = 0, snap = null;
 let session = 0, retryTimer = null, wakeLock = null, lastSnapSeq = 0;
 const effects = createFxReceiver(e => {
@@ -111,14 +113,15 @@ function onMessage(ev, p) {
     if (!mine) return;
     $('#join-screen').hidden = true;
     $('#leave').hidden = false; $('#leave').textContent = solo ? 'Back to practice setup' : 'Leave match';
+    scene.setPlayers(p.players);
     if (p.phase !== lastPhase) {
-      if (p.phase === 'charge' || p.phase === 'countdown') scene.reset();
+      if (p.phase === 'charge' || p.phase === 'countdown' || lastPhase === 'matchEnd') scene.reset();
+      if (bowling(p)) scene.showStrike(p.result.champion, 1 - p.result.champion);
       audio.music(true, SCENE_PHASES.includes(p.phase) ? 0.1 : 0.25);
       lastPhase = p.phase;
     }
-    scene.setPlayers(p.players);
     scene.setView(p.players.findIndex(x => x && x.id === myId));
-    document.body.classList.toggle('show-scene', VISIBLE_PHASES.includes(p.phase));
+    document.body.classList.toggle('show-scene', VISIBLE_PHASES.includes(p.phase) || bowling(p));
     scene.resize();
     audio.setMatchState(p, { slot: p.players.findIndex(x => x?.id === myId) });
     ctrl.setState(p);

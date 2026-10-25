@@ -7,6 +7,7 @@ import assert from 'node:assert/strict';
 import { CHAT_ENABLED } from '../js/chat.js';
 
 const root = process.cwd();
+const controlsAndZonesOnly = process.argv.includes('--controls-zones-only');
 const output = resolve(root, 'node_modules/.trumpo-check/audit');
 await mkdir(output, { recursive: true });
 await Promise.all([
@@ -31,11 +32,28 @@ window.sent=[];window.controller=createController(document.querySelector('#ctrl'
 controller.setState(engine.state());controller.onSnap({tops:[0,1].map(()=>({x:0,z:0,spin:1,charge:1,alive:true,launched:true,invert:false,boostCd:0}))});
 const dust=new Particles('soft',8);dust.emit(0,.01,0,{n:8,color:'#fff',speed:1,up:0,life:4,size:.1,gravity:4},()=>.5);for(let i=0;i<100;i++)dust.update(.02,500);
 window.particleFloor=Math.min(...Array.from({length:8},(_,i)=>dust.pos[i*3+1]));window.ready=true;
+window.fixtureEngine=engine;
+</script></body></html>`;
+const zoneFixture = `<!doctype html><html><head><meta name="viewport" content="width=device-width,initial-scale=1"><link rel="stylesheet" href="/css/style.css"><script type="importmap">{"imports":{"three":"/node_modules/.trumpo-check/vendor/three.module.js","three/addons/":"/node_modules/.trumpo-check/vendor/"}}</script></head><body><canvas id="view"></canvas><script type="module">
+import {createScene} from '/js/scene.js';
+import {createWorld,launch,snapshot,decodeSnap,step} from '/js/sim.js';
+import {placeZone} from '/js/arena-zones.js';
+window.zoneWorld=createWorld([{char:'bata',top:'kidlat'},{char:'lola',top:'diwata'}],()=>.5);
+zoneWorld.dogAt=zoneWorld.birdAt=zoneWorld.nextEgg=Infinity;
+launch(zoneWorld,0,{});launch(zoneWorld,1,{});
+Object.assign(zoneWorld.tops[0],{x:-3,z:2,vx:0,vz:0});Object.assign(zoneWorld.tops[1],{x:3,z:-2,vx:0,vz:0});
+placeZone(zoneWorld,'swerte',-1.4,0);placeZone(zoneWorld,'ihi',1.4,0);
+zoneWorld.dog={x:1.4,z:0,vx:6,warn:0,mark:1.2,marked:true,hit:[false,false]};
+window.zoneScene=createScene(document.querySelector('#view'),{low:true});
+zoneScene.setPlayers([{char:'bata',top:'kidlat',name:'Juan'},{char:'lola',top:'diwata',name:'Nena'}]);zoneScene.setCam('top');
+let last=performance.now();function frame(now){const dt=Math.min(.05,(now-last)/1000);last=now;zoneScene.applySnap(decodeSnap(snapshot(zoneWorld)),true);zoneScene.render(dt);requestAnimationFrame(frame)}requestAnimationFrame(frame);
+window.zoneFixtureReady=true;
 </script></body></html>`;
 const server = http.createServer(async (req, res) => {
   try {
     const url = new URL(req.url, 'http://127.0.0.1');
     if (url.pathname === '/__fixture') { res.setHeader('Content-Type', 'text/html'); res.end(fixture); return; }
+    if (url.pathname === '/__zones') { res.setHeader('Content-Type', 'text/html'); res.end(zoneFixture); return; }
     const path = resolve(root, '.' + decodeURIComponent(url.pathname));
     if (!path.startsWith(root + sep) || url.pathname.includes('/.git')) throw Error('Forbidden');
     let content = await readFile(path);
@@ -44,6 +62,7 @@ const server = http.createServer(async (req, res) => {
       .replace('renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, low ? 1.5 : 2))', 'renderer.setPixelRatio(0.5)')
       // Observe the actual camera without adding production debug APIs.
       .replace(/const camera = new THREE\.PerspectiveCamera\([^;]+;/, '$& window.auditCamera = camera;')
+      .replace('const arenaZones = new ArenaZoneViews(scene);', '$& window.auditZones = arenaZones;')
       .replace(/function setView\(v\) \{\s*view = v;/, '$& window.auditView = v;'));
     if (extname(path) === '.html') content = Buffer.from(content.toString()
       .replaceAll('https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js', '/node_modules/.trumpo-check/vendor/three.module.js')
@@ -99,25 +118,81 @@ try {
       throw Error('Timed out waiting for ' + expression + ' ' + await evaluate(`JSON.stringify({phase:document.body.dataset.phase,view:document.querySelector('#ctrl')?.dataset.view,text:document.querySelector('#banner')?.textContent})`) + '\n' + errors.join('\n'));
     };
     await send('Page.navigate', { url: base + url }, sessionId);
-    return { sessionId, evaluate, until, screenshot: async name => { const shot = await send('Page.captureScreenshot', {}, sessionId); await writeFile(resolve(output, name), Buffer.from(shot.data, 'base64')); } };
+    return { sessionId, evaluate, until, close: () => send('Target.closeTarget', { targetId }), screenshot: async name => { const shot = await send('Page.captureScreenshot', {}, sessionId); await writeFile(resolve(output, name), Buffer.from(shot.data, 'base64')); } };
   };
 
   const controls = await page('/__fixture', true);
   await controls.until('window.ready');
   assert(await controls.evaluate('particleFloor >= .0299'), 'particles remain above ground');
-  const rects = await controls.evaluate(`Object.fromEntries(['.joy','[data-act=power]','[data-act=dash]'].map(s=>{const r=document.querySelector(s).getBoundingClientRect();return [s,{x:r.x+r.width/2,y:r.y+r.height/2}]}))`);
+  await controls.evaluate(`(()=>{const select=document.querySelector('[data-steering-mode]');select.value='floating';select.dispatchEvent(new Event('change'));window.dispatchEvent(Object.assign(new Event('deviceorientation'),{beta:25,gamma:25}));})()`);
+  assert.deepEqual(await controls.evaluate(`controller.localSteer()`), [0,0], 'floating steering stays neutral despite phone tilt');
+  const rects = await controls.evaluate(`Object.fromEntries(['.joy-area','[data-act=power]','[data-act=dash]'].map(s=>{const r=document.querySelector(s).getBoundingClientRect();return [s,{x:r.x+r.width*.3,y:r.y+r.height*.4}]}))`);
   const touch = async points => send('Input.dispatchTouchEvent', { type: points.length ? 'touchStart' : 'touchEnd', touchPoints: points }, controls.sessionId);
-  const joystick = { ...rects['.joy'], id: 1 }, power = { ...rects['[data-act=power]'], id: 2 };
+  const joystick = { ...rects['.joy-area'], id: 1 }, power = { ...rects['[data-act=power]'], id: 2 };
   await touch([joystick]);
+  const origin = await controls.evaluate(`(()=>{const r=document.querySelector('.joy').getBoundingClientRect();return [r.x+r.width/2,r.y+r.height/2]})()`);
+  assert(Math.abs(origin[0]-joystick.x)<1 && Math.abs(origin[1]-joystick.y)<1, 'first touch establishes the visual joystick center');
+  assert.deepEqual(await controls.evaluate(`controller.localSteer()`), [0,0]);
   await send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ ...joystick, x: joystick.x + 35 }] }, controls.sessionId);
+  assert((await controls.evaluate(`controller.localSteer()`))[0]>0, 'floating drag steers');
   await touch([{ ...joystick, x: joystick.x + 35 }, power]);
-  await send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [{ ...joystick, x: joystick.x + 35 }] }, controls.sessionId);
+  await send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [power] }, controls.sessionId);
   assert.equal(await controls.evaluate(`sent.filter(e=>e.ev==='ability').length`), 1, 'skill fires while joystick remains captured');
+  const afterSecondFinger=await controls.evaluate(`(()=>{const r=document.querySelector('.joy').getBoundingClientRect();return {x:r.x+r.width/2,y:r.y+r.height/2,hidden:document.querySelector('.joy').hidden,steer:controller.localSteer()}})()`);
+  assert(Math.abs(afterSecondFinger.x-joystick.x)<1, 'second finger does not move the joystick origin: '+JSON.stringify(afterSecondFinger));
   await touch([{ ...joystick, x: joystick.x + 35 }, { ...rects['[data-act=dash]'], id: 3 }]);
   await touch([]);
   assert.equal(await controls.evaluate(`sent.filter(e=>e.ev==='boost').length`), 1);
+  assert.deepEqual(await controls.evaluate(`controller.localSteer()`), [0,0], 'release is neutral instead of falling back to tilt');
+  assert(await controls.evaluate(`document.querySelector('.joy').hidden`));
+  const secondOrigin={...joystick,x:joystick.x+40,y:joystick.y+80};
+  await touch([secondOrigin]);
+  assert(await controls.evaluate(`Math.abs(document.querySelector('.joy').getBoundingClientRect().x+85-${secondOrigin.x})<1`));
+  await send('Input.dispatchTouchEvent', {type:'touchCancel',touchPoints:[]},controls.sessionId);
+  assert.deepEqual(await controls.evaluate(`controller.localSteer()`), [0,0], 'cancel clears steering');
+  await controls.evaluate(`(()=>{const s=document.querySelector('[data-steering-mode]');s.value='fixed';s.dispatchEvent(new Event('change'))})()`);
+  assert(await controls.evaluate(`!document.querySelector('.joy').hidden && localStorage.getItem('paikutan-steering')==='fixed'`));
+  await controls.evaluate(`controller.destroy()`);
+  await send('Page.reload', {}, controls.sessionId); await controls.until('window.ready');
+  assert.equal(await controls.evaluate(`document.querySelector('[data-steering-mode]').value`),'fixed','steering preference persists across sessions');
+  const fixedOrigin=await controls.evaluate(`(()=>{const r=document.querySelector('.joy').getBoundingClientRect();return {x:r.x+r.width/2,y:r.y+r.height/2,id:1}})()`);
+  await touch([fixedOrigin]);
+  await send('Input.dispatchTouchEvent',{type:'touchMove',touchPoints:[{...fixedOrigin,y:fixedOrigin.y-60}]},controls.sessionId);
+  assert((await controls.evaluate(`controller.localSteer()`))[1]<-.9,'fixed joystick steers from its displayed center');
+  await touch([]);
+  await controls.evaluate(`(()=>{const s=document.querySelector('[data-steering-mode]');s.value='tilt';s.dispatchEvent(new Event('change'));window.dispatchEvent(Object.assign(new Event('deviceorientation'),{beta:-22,gamma:11}));})()`);
+  assert((await controls.evaluate(`controller.localSteer()`))[0]>.3,'explicit tilt mode reads the sensor');
+  assert(await controls.evaluate(`!document.querySelector('[data-act=center]').hidden`));
+  await controls.evaluate(`(()=>{const s=document.querySelector('[data-steering-mode]');s.value='floating';s.dispatchEvent(new Event('change'));})()`);
+  await touch([joystick]);
+  await send('Input.dispatchTouchEvent',{type:'touchMove',touchPoints:[{...joystick,y:joystick.y-30}]},controls.sessionId);
+  await controls.evaluate(`window.dispatchEvent(new Event('blur'))`);
+  assert.deepEqual(await controls.evaluate(`controller.localSteer()`),[0,0],'focus loss clears held steering');
+  await touch([]);
+  await controls.evaluate(`(()=>{const s=document.querySelector('[data-steering-mode]');s.value='floating';s.dispatchEvent(new Event('change'));const state=fixtureEngine.state();state.phase='roundEnd';state.result={winner:0,reason:'fall'};controller.setState(state);})()`);
+  assert.equal(await controls.evaluate(`document.querySelector('.joy-area')`),null,'phase cleanup removes the joystick');
+  await controls.evaluate(`controller.setState(fixtureEngine.state());controller.onSnap({tops:[0,1].map(()=>({x:0,z:0,spin:.7,charge:1,alive:true,launched:true,invert:false,boostCd:0,zone:'ihi'}))})`);
+  assert(await controls.evaluate(`document.querySelector('[data-zone-status]').textContent.includes('Madulas') && !document.querySelector('[data-zone-status]').hidden`));
   await controls.screenshot('mobile-controls.png');
+  await controls.close();
   console.log('PASS: real multi-touch joystick + power + dash; particle floor');
+
+  const zones = await page('/__zones'); await zones.until('window.zoneFixtureReady && window.auditZones?.views.size===2');
+  assert(await zones.evaluate(`[...auditZones.views.values()].every(v=>!v.patch.visible)`), 'warning patches do not look active');
+  await zones.screenshot('arena-zone-warning.png');
+  await zones.evaluate(`zoneWorld.zones.forEach(z=>z.age=0);zoneWorld.dog.mark=0`);
+  await zones.until(`[...auditZones.views.values()].every(v=>v.patch.visible)`);
+  await zones.screenshot('arena-zones.png');
+  await zones.evaluate(`zoneWorld.zones=[]`); await zones.until('auditZones.views.size===0');
+  await zones.evaluate(`zoneScene.reset()`); assert.equal(await zones.evaluate(`auditZones.views.size`),0);
+  await zones.close();
+  console.log('PASS: zone warnings, active visuals, snapshot removal and round-reset cleanup');
+
+  if (controlsAndZonesOnly) {
+    assert.deepEqual(errors.filter(e => !e.includes('WebGL context was lost')), []);
+    await writeFile(resolve(output,'controls-zones-result.json'),JSON.stringify({passed:true,screenshots:['mobile-controls.png','arena-zone-warning.png','arena-zones.png'],errors},null,2));
+    console.log('PASS: focused controls and zone browser checks; no runtime errors');
+  } else {
 
   const host = await page('/index.html?net=local');
   await host.until(`typeof document.querySelector('#btn-host')?.onclick === 'function'`);
@@ -214,8 +289,9 @@ try {
   console.log('PASS: desktop player and practice cameras; spectator restoration; centered desktop, portrait, and landscape winding rings');
   const failures = errors.filter(e => !e.includes('WebGL context was lost'));
   assert.deepEqual(failures, [], 'no browser runtime errors');
-  await writeFile(resolve(output, 'result.json'), JSON.stringify({ passed: true, screenshots: ['mobile-controls.png','desktop-lobby.png','mobile-waiting.png','desktop-spin.png','mobile-spin.png','mobile-match.png','mobile-host.png','landscape-spin.png'], errors }, null, 2));
+  await writeFile(resolve(output, 'result.json'), JSON.stringify({ passed: true, screenshots: ['mobile-controls.png','arena-zone-warning.png','arena-zones.png','desktop-lobby.png','mobile-waiting.png','desktop-spin.png','mobile-spin.png','mobile-match.png','mobile-host.png','landscape-spin.png'], errors }, null, 2));
   console.log('PASS: main-menu room-code entry; no browser runtime errors');
+  }
 } finally {
   socket?.close();
   chrome.kill();

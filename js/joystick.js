@@ -4,7 +4,7 @@ export function joystickVector(dx, dy) {
   const distance = Math.hypot(dx, dy), fraction = distance / JOYSTICK_RADIUS;
   if (fraction <= JOYSTICK_DEAD_ZONE) return [0, 0];
   const strength = Math.min(1, (fraction - JOYSTICK_DEAD_ZONE) / (1 - JOYSTICK_DEAD_ZONE));
-  return [dx / distance * strength, -dy / distance * strength];
+  return [dx / distance * strength || 0, -dy / distance * strength || 0];
 }
 
 // Capture only the steering finger; skill/dash keep their own independent pointers.

@@ -41,7 +41,7 @@ function labelTexture(text, lucky) {
     g.strokeStyle = lucky ? '#ffdf6c' : '#f4bd43'; g.lineWidth = 4; g.stroke();
     g.fillStyle = lucky ? '#fff4b5' : '#ffe195'; g.font = 'bold 40px system-ui';
     g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(text, w / 2, h / 2);
-  }, 512, 80);
+  }, 256, 80);
 }
 
 function bird() {
@@ -64,8 +64,8 @@ export class ArenaZoneViews {
     this.maps = { swerte: patchTexture(true), ihi: patchTexture(false) };
     this.labels = {};
     for (const type of ['swerte', 'ihi']) for (const pending of [true, false]) {
-      const name = type === 'swerte' ? 'SWERTE! + SPIN' : 'MADULAS! - SPIN';
-      this.labels[type + pending] = labelTexture(pending ? (type === 'swerte' ? 'IBON! PAPARATING' : 'IHI! PAPARATING') : name, type === 'swerte');
+      const name = type === 'swerte' ? 'SWERTE!' : 'MADULAS!';
+      this.labels[type + pending] = labelTexture(pending ? (type === 'swerte' ? 'IBON!' : 'IHI!') : name, type === 'swerte');
     }
   }
   make(zone) {
@@ -79,16 +79,18 @@ export class ArenaZoneViews {
       color: zone.type === 'swerte' ? '#ffdc65' : '#e7ae30', transparent: true, depthWrite: false, opacity: 0.85,
     }));
     ring.rotation.x = -Math.PI / 2; ring.position.y = 0.03;
-    const label = new THREE.Sprite(new THREE.SpriteMaterial({ map: this.labels[zone.type + true], depthWrite: false }));
-    label.position.set(0, 0.65, 0); label.scale.set(1.95, 0.305, 1);
-    group.add(patch, ring, label);
+    const label = new THREE.Sprite(new THREE.SpriteMaterial({ map: this.labels[zone.type + true], depthWrite: false, depthTest: false }));
+    label.position.set(0, 0.65, 0); label.scale.set(1.6, 0.5, 1); label.renderOrder = 20;
+    const shadow = new THREE.Mesh(new THREE.CircleGeometry(0.2, 16), new THREE.MeshBasicMaterial({ color: '#251b11', transparent: true, opacity: 0.3, depthWrite: false }));
+    shadow.rotation.x = -Math.PI / 2; shadow.position.y = 0.022;
+    group.add(patch, ring, label, shadow);
     let visitor = null, drop = null;
     if (zone.type === 'swerte') {
       visitor = bird(); group.add(visitor);
       drop = new THREE.Mesh(new THREE.SphereGeometry(0.075, 6, 5), new THREE.MeshBasicMaterial({ color: '#fff8e7' })); group.add(drop);
     }
     this.scene.add(group);
-    return { group, patch, ring, label, visitor, drop, state: { ...zone } };
+    return { group, patch, ring, label, shadow, visitor, drop, state: { ...zone } };
   }
   remove(id) {
     const view = this.views.get(id); if (!view) return;
@@ -114,6 +116,8 @@ export class ArenaZoneViews {
       const zone = view.state; zone.age += dt;
       const pending = zone.age < 0, fade = pending ? 1 : Math.min(1, (zone.life - zone.age) / 0.7);
       view.group.visible = fade > 0;
+      view.shadow.visible = pending && zone.type === 'swerte';
+      view.shadow.scale.setScalar(1 + Math.min(1, (zone.age + ZONE_WARN) / ZONE_WARN));
       view.patch.visible = !pending; view.patch.material.opacity = Math.max(0, fade);
       view.ring.material.opacity = Math.max(0, fade) * (pending ? 0.45 + 0.4 * Math.sin(this.time * 12) ** 2 : 0.65);
       view.ring.scale.setScalar(pending ? 1 + 0.12 * Math.sin(this.time * 8) : 1);

@@ -66,6 +66,12 @@ export function cueRecipe(id, intensity = 0.6, variation = 0.5) {
     case 'egg': wood(0, 0.085, 900); tone(380, 0.015, 0.055, 0.08, 'sine', 240); break;
     case 'crack': noise(0, 0.21, 0.055, 2200, 500, 'highpass'); [0,0.035,0.07].forEach((at,i) => wood(at, 0.065 / (i + 1), 840 + i * 270)); break;
     case 'hatch': [0,0.12].forEach(at => tone(2100, at, 0.045, 0.075, 'sine', 2900)); wood(0, 0.035, 800); break;
+    case 'birdWarn': [0, 0.17, 0.32].forEach(at => tone(1900, at, 0.05, 0.09, 'sine', 2850)); break;
+    case 'puddleWarn': tone(360, 0, 0.06, 0.09, 'triangle', 180); noise(0.13, 0.055, 0.32, 750, 350); break;
+    case 'luckyLand': noise(0, 0.075, 0.09, 600, 180, 'lowpass'); melody([784, 1175], 0.08, 0.055, 0.3); break;
+    case 'puddleLand': noise(0, 0.1, 0.17, 700, 200, 'lowpass'); tone(270, 0.02, 0.065, 0.12, 'sine', 90); break;
+    case 'luckyEnter': melody([988, 1318], 0.06, 0.035, 0.25); break;
+    case 'slipEnter': noise(0, 0.07, 0.24, 1600, 250); tone(520, 0, 0.035, 0.2, 'sine', 150); break;
     case 'squeeze': [392,294,196].forEach((f,i) => gong(f, i * 0.22, 0.14, 0.75)); wood(0, 0.13, 180); break;
     case 'roundWin': melody([392,523,659,784], 0.09, 0.11, 0.5); break;
     case 'roundLose': [523,440,330].forEach((f,i) => { wood(i * 0.13, 0.08, f); tone(f, i * 0.13, 0.025, 0.2, 'sine'); }); break;
