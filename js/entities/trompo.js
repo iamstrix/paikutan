@@ -1,25 +1,24 @@
-// 3D trompo model, ported from tromPOW's TrompoView (jmdgg): a lathed pear of wood with a painted
-// swirl and a steel tip, plus the spin-blur disc and soft contact shadow. Only the model comes over;
-// scene.js still animates it from our snapshots. Built in his units; callers scale it.
+// Turned wooden trumpos: independent pear profiles, winding pegs, steel points and lacquer.
+// Mythic identities live on the body; no flat attack discs or protruding blade crowns.
 import * as THREE from 'three';
 import { outline } from '../world/kit.js';
-import { buildSigil, MYTHIC } from './mythic.js';
+import { MYTHIC } from './mythic.js';
+import { trumpoSkin, TRUMPO_PAINT } from './trumpo-skins.js';
+import { shoulderGeometry, buildTrumpoRelief } from './trumpo-relief.js';
 
-const PROFILE = [
-  [0.0, 0.0],
-  [0.018, 0.02],
-  [0.022, 0.06],
-  [0.07, 0.1],
-  [0.15, 0.17],
-  [0.2, 0.25],
-  [0.19, 0.3],
-  [0.13, 0.35],
-  [0.06, 0.37],
-  [0.05, 0.42],
-  [0.0, 0.43],
-].map(([r, y]) => new THREE.Vector2(r, y));
+export const TRUMPO_FORMS = {
+  kidlat: { radius: .238, neckRadius: .056, neck: .46, height: .59,
+    profile: [[.022,.098],[.055,.132],[.112,.186],[.184,.264],[.226,.323],[.238,.354],[.235,.378],[.209,.414],[.151,.446],[.068,.464],[.056,.478],[.056,.58],[.05,.59],[0,.59]] },
+  tikbalang: { radius: .236, neckRadius: .058, neck: .433, height: .575,
+    profile: [[.022,.098],[.074,.144],[.149,.207],[.214,.278],[.236,.307],[.236,.338],[.228,.359],[.18,.397],[.106,.423],[.066,.437],[.058,.452],[.058,.565],[.05,.575],[0,.575]] },
+  agimat: { radius: .24, neckRadius: .061, neck: .406, height: .55,
+    profile: [[.023,.098],[.083,.146],[.174,.208],[.226,.26],[.24,.289],[.24,.321],[.223,.355],[.164,.386],[.077,.408],[.061,.423],[.061,.54],[.053,.55],[0,.55]] },
+  diwata: { radius: .215, neckRadius: .05, neck: .474, height: .62,
+    profile: [[.021,.098],[.052,.143],[.097,.213],[.161,.292],[.205,.349],[.215,.378],[.207,.407],[.17,.445],[.104,.471],[.059,.485],[.05,.498],[.05,.61],[.044,.62],[0,.62]] },
+  bakunawa: { radius: .224, neckRadius: .055, neck: .449, height: .593,
+    profile: [[.022,.098],[.065,.143],[.128,.212],[.193,.281],[.224,.326],[.222,.355],[.2,.394],[.15,.429],[.075,.451],[.055,.465],[.055,.583],[.047,.593],[0,.593]] },
+};
 
-const swirls = new Map();
 let grainNormal = null;
 
 /** Wavy turned-wood growth rings across the profile (canvas u = around, v = along). */
@@ -72,49 +71,6 @@ function grainNormalMap() {
   return grainNormal;
 }
 
-/** One painted texture per trumpo: its paint for the band, its paint and accent alternating in the swirl. */
-function swirlTexture([paint, accent]) {
-  const key = paint + accent;
-  const cached = swirls.get(key);
-  if (cached) return cached;
-  const c = document.createElement('canvas');
-  c.width = 256;
-  c.height = 128;
-  const x = c.getContext('2d');
-  x.fillStyle = '#e2b980';
-  x.fillRect(0, 0, 256, 128);
-  grainLines(x, 256, 128, 'rgba(128,82,40,0.45)');
-  // Bands across the profile, a diagonal swirl around it so spin reads. Paint sits
-  // slightly translucent over the grain, like years of lacquer and play.
-  x.globalAlpha = 0.92;
-  x.fillStyle = paint;
-  x.fillRect(0, 56, 256, 18);
-  x.fillStyle = '#2b1d12';
-  x.fillRect(0, 80, 256, 5);
-  x.fillRect(0, 50, 256, 3);
-  for (let i = 0; i < 4; i += 1) {
-    x.fillStyle = i % 2 ? accent : paint;
-    x.beginPath();
-    x.moveTo(i * 64, 74);
-    x.lineTo(i * 64 + 34, 74);
-    x.lineTo(i * 64 + 60, 128);
-    x.lineTo(i * 64 + 26, 128);
-    x.fill();
-  }
-  x.globalAlpha = 1;
-  x.fillStyle = '#8f6a3f';
-  x.fillRect(0, 0, 256, 14);
-  // Chipped paint from clashes: wood shows through on the painted band.
-  let seed = paint.length * 97 + paint.charCodeAt(1);
-  const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
-  x.fillStyle = '#d9ad72';
-  for (let i = 0; i < 26; i += 1) x.fillRect(rnd() * 256, 52 + rnd() * 70, 2 + rnd() * 5, 1 + rnd() * 3);
-  const t = new THREE.CanvasTexture(c);
-  t.colorSpace = THREE.SRGBColorSpace;
-  swirls.set(key, t);
-  return t;
-}
-
 let blurTex = null;
 let blobTex = null;
 
@@ -147,43 +103,43 @@ function fxTextures() {
   return { blur: blurTex, blob: blobTex };
 }
 
-// body: the spinning wood and tip. blur: the disc round its widest point (parent it where it leans
-// but doesn't spin). blob: the ground shadow. All three in tromPOW units.
+// Every model fits a .25-unit radial envelope; scene.js scales that to the existing TOP_R.
+// The tip rests at y=0. Paint maps, grain and soft shadows are cached across counterpicks.
 export function buildTrompo(def, low = false) {
-  const { id } = def;
-  const theme = MYTHIC[id] || MYTHIC.kidlat;
-  const body = new THREE.Group();
-  // Distinct shoulder profiles reinforce the crown silhouettes from oblique cameras.
-  const width = { kidlat: 1, tikbalang: 1.06, agimat: 1.12, diwata: 0.92, bakunawa: 0.94 }[id] || 1;
-  const segments = id === 'agimat' ? (low ? 6 : 12) : (low ? 16 : 28);
-  const profile = PROFILE.map(p => new THREE.Vector2(p.x * width, p.y));
-  const wood = new THREE.Mesh(
-    new THREE.LatheGeometry(profile, segments),
-    // Hero material: lacquered paint over turned wood.
-    new THREE.MeshPhysicalMaterial({
-      map: swirlTexture([theme.base, theme.metal]),
-      normalMap: grainNormalMap(),
-      normalScale: new THREE.Vector2(0.3, 0.3),
-      roughness: 0.55,
-      clearcoat: 0.6,
-      clearcoatRoughness: 0.28,
-    }),
-  );
+  const id = TRUMPO_FORMS[def.id] ? def.id : 'kidlat';
+  const theme = MYTHIC[id], form = TRUMPO_FORMS[id], paint = TRUMPO_PAINT[id];
+  const body = new THREE.Group(), turned = new THREE.Group();
+  body.name = `${id}-trumpo`; body.add(turned);
+  const segments = id === 'agimat' ? (low ? 16 : 32) : (low ? 24 : 40);
+  const geometry = new THREE.LatheGeometry(form.profile.map(([r, y]) => new THREE.Vector2(r, y)), segments);
+  // Lathe's default V follows point index. Map real height so neck/belly paint stays in place.
+  const pos = geometry.attributes.position, uv = geometry.attributes.uv;
+  const bottom = form.profile[0][1], height = form.height - bottom;
+  for (let i = 0; i < pos.count; i++) uv.setY(i, (pos.getY(i) - bottom) / height);
+  const lacquer = new THREE.MeshPhysicalMaterial({ map: trumpoSkin(id, form), normalMap: grainNormalMap(), normalScale: new THREE.Vector2(.16, .16), roughness: .47, metalness: .02, clearcoat: .5, clearcoatRoughness: .3 });
+  const wood = new THREE.Mesh(geometry, lacquer);
+  wood.name = `${id}-lacquered-wood`;
   wood.castShadow = true;
-  outline(wood, 0.01);
-  const tip = new THREE.Mesh(new THREE.ConeGeometry(0.018, 0.05, 6), new THREE.MeshStandardMaterial({ color: '#cfd4d6', metalness: 0.8, roughness: 0.3 }));
-  tip.rotation.x = Math.PI;
-  body.add(wood, tip);
-  body.position.y = 0.015;
+  outline(wood, .0035);
+  const tip = new THREE.Mesh(new THREE.LatheGeometry([[0,0],[.006,.023],[.015,.065],[.022,.098],[.023,.117]].map(([r,y]) => new THREE.Vector2(r,y)), low ? 10 : 16), new THREE.MeshStandardMaterial({ color: '#bdc7ce', metalness: .75, roughness: .38 }));
+  tip.name = 'steel-point'; tip.castShadow = true;
+  turned.add(wood, tip);
 
-  // Large horizontal relief, rather than side-only decoration, reads from above.
-  const crown = buildSigil(id, low);
-  crown.position.y = 0.38;
-  body.add(crown);
-  const collar = new THREE.Mesh(new THREE.CylinderGeometry(0.057, 0.065, 0.027, id === 'agimat' ? 3 : 12),
-    new THREE.MeshStandardMaterial({ color: theme.metal, roughness: 0.35, metalness: 0.7 }));
-  collar.position.y = 0.4;
-  body.add(collar);
+  // Painted relief hugs the shoulder, retaining a solid wooden pear from every side.
+  const crown = new THREE.Mesh(shoulderGeometry(form, low), new THREE.MeshPhysicalMaterial({ map: trumpoSkin(id, form, true), roughness: .46, metalness: .02, clearcoat: .5, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -1 }));
+  crown.name = `${id}-painted-shoulder`; crown.castShadow = false;
+  turned.add(crown, buildTrumpoRelief(id, form, paint, low));
+  // Normalize actual vertex radius, including small charms, to the existing collision envelope.
+  turned.updateMatrixWorld(true);
+  const point = new THREE.Vector3(); let radius = 0;
+  turned.traverse(mesh => {
+    if (!mesh.isMesh) return;
+    const p = mesh.geometry.attributes.position;
+    for (let i = 0; i < p.count; i++) { point.fromBufferAttribute(p, i).applyMatrix4(mesh.matrixWorld); radius = Math.max(radius, Math.hypot(point.x, point.z)); }
+  });
+  const widthScale = .25 / radius;
+  turned.scale.set(widthScale, 1, widthScale);
+  body.userData.radius = .25; body.userData.height = form.height;
 
   // Spin blur: streaked disc round the widest point, opacity follows spin speed.
   const tex = fxTextures();
@@ -192,13 +148,12 @@ export function buildTrompo(def, low = false) {
     new THREE.MeshBasicMaterial({ map: tex.blur, color: theme.glow, transparent: true, depthWrite: false, opacity: 0, toneMapped: false }),
   );
   blur.rotation.x = -Math.PI / 2;
-  blur.position.y = 0.26;
+  blur.position.y = form.profile.find(p => p[0] === form.radius)?.[1] || .33;
   const blob = new THREE.Mesh(new THREE.CircleGeometry(0.34, 16), new THREE.MeshBasicMaterial({ map: tex.blob, transparent: true, depthWrite: false }));
   blob.rotation.x = -Math.PI / 2;
-  // A slow independent aura keeps the theme readable without stopping the wooden top.
-  const aura = buildSigil(id, low, true);
-  aura.position.y = 0.12;
-  aura.scale.setScalar(1.18);
-  aura.traverse(o => { if (o.isMesh) { o.material.transparent = true; o.material.opacity = 0.16; o.material.depthWrite = false; } });
+  // Soft streaks stay outside the wood; they are light, not an extra physical attack ring.
+  const aura = new THREE.Group();
+  const halo = new THREE.Mesh(new THREE.CircleGeometry(.29, low ? 24 : 40), new THREE.MeshBasicMaterial({ map: tex.blur, color: theme.glow, transparent: true, opacity: .12, depthWrite: false, toneMapped: false, side: THREE.DoubleSide }));
+  halo.rotation.x = -Math.PI / 2; aura.add(halo); aura.position.y = .04;
   return { body, blur, blob, aura, crown };
 }

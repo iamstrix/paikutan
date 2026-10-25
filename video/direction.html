@@ -1,0 +1,1087 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Paikutan: Video Direction &amp; Camera Movement Simulator</title>
+  <style>
+    :root {
+      --bg: #0c1017;
+      --panel: #151c27;
+      --card: #1c2636;
+      --border: #2b394f;
+      --accent: #ffd23f;
+      --accent-red: #e63946;
+      --accent-blue: #3a86ff;
+      --accent-teal: #2a9d8f;
+      --text: #e6edf3;
+      --text-muted: #8b9bb4;
+      --font-display: "Bungee", Impact, system-ui, sans-serif;
+      --font-body: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+      --font-mono: "SF Mono", Consolas, Menlo, monospace;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--font-body);
+      line-height: 1.5;
+      padding-bottom: 80px;
+    }
+    header {
+      background: linear-gradient(180deg, #182333 0%, var(--bg) 100%);
+      border-bottom: 1px solid var(--border);
+      padding: 24px 32px 20px;
+    }
+    .header-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: var(--accent);
+      color: #101622;
+      font-weight: 800;
+      font-size: 11px;
+      padding: 4px 10px;
+      border-radius: 4px;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+    }
+    .badge.rec {
+      background: var(--accent-red);
+      color: white;
+      animation: pulse-badge 1.8s infinite;
+    }
+    @keyframes pulse-badge {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.4; }
+    }
+    h1 {
+      font-size: clamp(24px, 4vw, 36px);
+      letter-spacing: -0.02em;
+      font-weight: 800;
+      color: #fff;
+    }
+    .subtitle {
+      color: var(--text-muted);
+      font-size: 14px;
+      margin-top: 4px;
+    }
+    main {
+      max-width: 1300px;
+      margin: 0 auto;
+      padding: 24px 20px;
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 32px;
+    }
+
+    /* Director Studio Layout */
+    .studio-grid {
+      display: grid;
+      grid-template-columns: minmax(0, 1.6fr) minmax(340px, 1fr);
+      gap: 24px;
+      align-items: start;
+    }
+    @media (max-width: 980px) {
+      .studio-grid { grid-template-columns: 1fr; }
+    }
+
+    /* Viewport Simulator Frame */
+    .viewport-box {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      overflow: hidden;
+      box-shadow: 0 16px 36px rgba(0, 0, 0, 0.4);
+    }
+    .viewport-header {
+      background: #0f151f;
+      padding: 10px 16px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-family: var(--font-mono);
+      font-size: 12px;
+      color: var(--text-muted);
+    }
+    .viewport-meta {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .cam-status {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      color: #4ade80;
+      font-weight: 700;
+    }
+    .cam-status::before {
+      content: "";
+      width: 8px;
+      height: 8px;
+      background: #4ade80;
+      border-radius: 50%;
+      box-shadow: 0 0 8px #4ade80;
+    }
+
+    /* Monitor Display Stage */
+    .monitor-stage {
+      position: relative;
+      aspect-ratio: 16 / 9;
+      background: #06090e;
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .stage-image {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      transform-origin: center center;
+      transition: transform 1.2s cubic-bezier(0.2, 0.8, 0.2, 1), filter 0.6s ease;
+      display: block;
+    }
+
+    /* Camera Movement Animations simulated via classes */
+    .move-idle {
+      transform: scale(1) translate(0, 0);
+    }
+    .move-dolly-in {
+      transform: scale(1.35) translate(-4%, 3%);
+    }
+    .move-wheel-chase {
+      transform: scale(1.28) translate(5%, -4%);
+    }
+    .move-orbit {
+      animation: pan-orbit 14s infinite alternate ease-in-out;
+    }
+    @keyframes pan-orbit {
+      0% { transform: scale(1.08) translate(-6%, 0); }
+      100% { transform: scale(1.08) translate(6%, 0); }
+    }
+    .move-top-crane {
+      transform: scale(0.98) translate(0, 0);
+    }
+    .move-shake {
+      animation: camera-shake 0.4s ease-in-out;
+    }
+    @keyframes camera-shake {
+      0%, 100% { transform: scale(1.3) translate(0, 0); }
+      20% { transform: scale(1.3) translate(-8px, 6px); }
+      40% { transform: scale(1.3) translate(9px, -5px); }
+      60% { transform: scale(1.3) translate(-6px, -4px); }
+      80% { transform: scale(1.3) translate(4px, 5px); }
+    }
+
+    /* Overlays inside monitor */
+    .rec-indicator {
+      position: absolute;
+      top: 14px;
+      left: 16px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: rgba(0,0,0,0.65);
+      backdrop-filter: blur(4px);
+      padding: 4px 10px;
+      border-radius: 4px;
+      font-family: var(--font-mono);
+      font-size: 12px;
+      font-weight: 700;
+      color: #fff;
+      z-index: 5;
+    }
+    .rec-dot {
+      width: 10px;
+      height: 10px;
+      background: var(--accent-red);
+      border-radius: 50%;
+      box-shadow: 0 0 10px var(--accent-red);
+      animation: pulse-badge 1s infinite;
+    }
+    .timecode {
+      position: absolute;
+      top: 14px;
+      right: 16px;
+      background: rgba(0,0,0,0.65);
+      backdrop-filter: blur(4px);
+      padding: 4px 10px;
+      border-radius: 4px;
+      font-family: var(--font-mono);
+      font-size: 13px;
+      color: var(--accent);
+      z-index: 5;
+    }
+    .camera-banner {
+      position: absolute;
+      bottom: 14px;
+      left: 16px;
+      background: rgba(10, 16, 26, 0.85);
+      border-left: 4px solid var(--accent);
+      backdrop-filter: blur(6px);
+      padding: 8px 14px;
+      border-radius: 0 6px 6px 0;
+      z-index: 5;
+      max-width: 75%;
+    }
+    .camera-banner .shot-tag {
+      font-size: 11px;
+      font-weight: 800;
+      color: var(--accent);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    .camera-banner .shot-name {
+      font-size: 14px;
+      font-weight: 700;
+      color: #fff;
+    }
+    .camera-banner .shot-direction {
+      font-size: 12px;
+      color: var(--text-muted);
+      margin-top: 2px;
+    }
+
+    /* Director HUD lines / Safe zone overlay */
+    .grid-overlay {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      grid-template-rows: 1fr 1fr 1fr;
+      border: 1px dashed rgba(255, 255, 255, 0.15);
+      z-index: 3;
+      transition: opacity 0.3s;
+    }
+    .grid-overlay div {
+      border: 1px dashed rgba(255, 255, 255, 0.08);
+    }
+    .center-crosshair {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      width: 24px;
+      height: 24px;
+      transform: translate(-50%, -50%);
+      pointer-events: none;
+      z-index: 4;
+    }
+    .center-crosshair::before, .center-crosshair::after {
+      content: "";
+      position: absolute;
+      background: rgba(255, 210, 63, 0.6);
+    }
+    .center-crosshair::before { top: 11px; left: 0; width: 24px; height: 2px; }
+    .center-crosshair::after { top: 0; left: 11px; width: 2px; height: 24px; }
+
+    /* Motion Vector Graphic Overlay */
+    .motion-vector-overlay {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      z-index: 4;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .vector-arrow {
+      stroke: var(--accent);
+      stroke-width: 3;
+      stroke-dasharray: 6 4;
+      animation: dash 1s linear infinite;
+    }
+    @keyframes dash {
+      to { stroke-dashoffset: -20; }
+    }
+
+    /* Viewport Controls Bar */
+    .viewport-controls {
+      background: #101722;
+      padding: 14px 18px;
+      border-top: 1px solid var(--border);
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+    .playback-btns {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    button.ctl-btn {
+      background: var(--card);
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 8px 14px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: 700;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.2s;
+    }
+    button.ctl-btn:hover {
+      background: #253349;
+      border-color: var(--accent);
+      color: #fff;
+    }
+    button.ctl-btn.active {
+      background: var(--accent);
+      color: #0d131d;
+      border-color: var(--accent);
+    }
+    .toggle-group {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 12px;
+      color: var(--text-muted);
+    }
+
+    /* Director Side Deck (Shot Selection & Cues) */
+    .director-deck {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 20px;
+    }
+    .deck-title {
+      font-size: 16px;
+      font-weight: 800;
+      margin-bottom: 14px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .mode-tabs {
+      display: flex;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 3px;
+      margin-bottom: 16px;
+    }
+    .mode-tab {
+      flex: 1;
+      padding: 7px 10px;
+      font-size: 12px;
+      font-weight: 700;
+      border: none;
+      background: transparent;
+      color: var(--text-muted);
+      cursor: pointer;
+      border-radius: 6px;
+      text-align: center;
+      transition: all 0.2s;
+    }
+    .mode-tab.active {
+      background: var(--card);
+      color: var(--accent);
+      box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+    }
+
+    .shot-list {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      max-height: 480px;
+      overflow-y: auto;
+      padding-right: 4px;
+    }
+    .shot-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 12px 14px;
+      cursor: pointer;
+      transition: all 0.2s;
+      position: relative;
+    }
+    .shot-card:hover {
+      border-color: #4b6285;
+      background: #233145;
+    }
+    .shot-card.active {
+      border-color: var(--accent);
+      background: #202d40;
+      box-shadow: 0 0 0 1px var(--accent);
+    }
+    .shot-card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      margin-bottom: 4px;
+    }
+    .shot-idx {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--accent);
+    }
+    .shot-dur {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      color: var(--text-muted);
+    }
+    .shot-title {
+      font-size: 13px;
+      font-weight: 700;
+      color: #fff;
+    }
+    .shot-desc {
+      font-size: 12px;
+      color: var(--text-muted);
+      margin-top: 4px;
+      line-height: 1.4;
+    }
+    .shot-tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 4px;
+      margin-top: 8px;
+    }
+    .mini-tag {
+      background: #0f1722;
+      border: 1px solid var(--border);
+      border-radius: 3px;
+      padding: 2px 6px;
+      font-size: 10px;
+      font-family: var(--font-mono);
+      color: var(--text-muted);
+    }
+
+    /* Comprehensive Cue Sheet Table */
+    .section-card {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 24px;
+    }
+    .section-card h2 {
+      font-size: 20px;
+      font-weight: 800;
+      color: #fff;
+      margin-bottom: 8px;
+    }
+    .section-card p.lead {
+      color: var(--text-muted);
+      font-size: 14px;
+      margin-bottom: 20px;
+    }
+    .table-scroll {
+      overflow-x: auto;
+    }
+    table.cue-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+      text-align: left;
+    }
+    table.cue-table th {
+      background: #0e141f;
+      color: var(--accent);
+      padding: 12px 14px;
+      border: 1px solid var(--border);
+      font-weight: 800;
+      text-transform: uppercase;
+      font-size: 11px;
+      letter-spacing: 0.05em;
+    }
+    table.cue-table td {
+      padding: 12px 14px;
+      border: 1px solid var(--border);
+      background: var(--card);
+      vertical-align: top;
+      line-height: 1.45;
+    }
+    table.cue-table tr:hover td {
+      background: #222f42;
+    }
+    table.cue-table strong {
+      color: #fff;
+    }
+    .cue-code {
+      display: inline-block;
+      background: #0a1017;
+      border: 1px solid var(--border);
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-family: var(--font-mono);
+      font-size: 11px;
+      color: #4ade80;
+    }
+
+    /* Motion Direction Guides Visuals */
+    .motion-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 16px;
+      margin-top: 16px;
+    }
+    .motion-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 16px;
+      border-left: 4px solid var(--accent-blue);
+    }
+    .motion-card.dolly { border-color: var(--accent-red); }
+    .motion-card.crane { border-color: var(--accent-teal); }
+    .motion-card.orbit { border-color: var(--accent); }
+    .motion-card h3 {
+      font-size: 15px;
+      color: #fff;
+      margin-bottom: 6px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .motion-card p {
+      font-size: 13px;
+      color: var(--text-muted);
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <div class="header-top">
+      <div style="display:flex; align-items:center; gap:10px;">
+        <span class="badge rec">● Director Rec Mode</span>
+        <span class="badge">DOST Level Up 3.0</span>
+      </div>
+      <div style="font-family:var(--font-mono); font-size:12px; color:var(--text-muted);">
+        Deadline: Today (2026-10-25) · Companion File to <code>video/index.html</code>
+      </div>
+    </div>
+    <h1>Paikutan: Video Direction &amp; Camera Movement Simulator</h1>
+    <div class="subtitle">
+      Interactive Director Cut · Simulated Camera Rig Movements · Timed Audio &amp; Visual Cue Sheets
+    </div>
+  </header>
+
+  <main>
+
+    <!-- SECTION: LIVE DIRECTOR VIEWPORT SIMULATOR -->
+    <div class="studio-grid">
+
+      <!-- Viewport Stage -->
+      <div class="viewport-box">
+        <div class="viewport-header">
+          <div class="viewport-meta">
+            <span class="cam-status">LIVE RIG SIMULATOR</span>
+            <span id="cam-rig-label">Camera: Low Wheel-Height Chase</span>
+          </div>
+          <div style="display:flex; gap:14px;">
+            <span id="cam-lens-label">Lens: 24mm Wide (FOV 45°)</span>
+            <span id="cam-preset-label">Key: [C] &gt; close</span>
+          </div>
+        </div>
+
+        <div class="monitor-stage" id="monitor-stage">
+          <!-- Active Screen Image -->
+          <img id="stage-img" class="stage-image move-wheel-chase" src="../reports/trumpo-models/in-game-kidlat-tikbalang.png" alt="Active Simulated Camera View">
+
+          <!-- Director HUD Overlays -->
+          <div class="rec-indicator">
+            <span class="rec-dot"></span> REC [STORYBOARD]
+          </div>
+          <div class="timecode" id="tc-display">00:00:06:14</div>
+
+          <!-- Dynamic Camera Banner -->
+          <div class="camera-banner">
+            <div class="shot-tag" id="shot-phase-label">SHOT 01 / THE HOOK</div>
+            <div class="shot-name" id="shot-title-label">Wheel-Height Clash &amp; Kinetic Sparks</div>
+            <div class="shot-direction" id="shot-dir-label">Camera dolly-in tracking collision point; trigger shake on contact.</div>
+          </div>
+
+          <!-- Rule of Thirds Grid Overlay -->
+          <div class="grid-overlay" id="grid-overlay">
+            <div></div><div></div><div></div>
+            <div></div><div></div><div></div>
+            <div></div><div></div><div></div>
+          </div>
+          <div class="center-crosshair"></div>
+
+          <!-- SVG Motion Direction Arrows -->
+          <div class="motion-vector-overlay" id="motion-vector-overlay">
+            <svg width="220" height="140" viewBox="0 0 220 140" fill="none">
+              <path id="vector-path" d="M 30 70 L 170 70 M 150 50 L 175 70 L 150 90" stroke="#ffd23f" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" class="vector-arrow" />
+              <text x="110" y="42" fill="#ffd23f" font-family="monospace" font-size="11" font-weight="bold" text-anchor="middle" id="vector-text">SLOW DOLLY IN &rarr;</text>
+            </svg>
+          </div>
+        </div>
+
+        <!-- Viewport Controls & Scrubber -->
+        <div class="viewport-controls">
+          <div class="playback-btns">
+            <button class="ctl-btn" id="btn-prev">&larr; Prev Shot</button>
+            <button class="ctl-btn active" id="btn-play">Pause Motion</button>
+            <button class="ctl-btn" id="btn-next">Next Shot &rarr;</button>
+            <button class="ctl-btn" id="btn-shake" title="Simulate trumpo collision impact shake">💥 Impact Shake</button>
+          </div>
+
+          <div class="toggle-group">
+            <label style="cursor:pointer; display:flex; align-items:center; gap:4px;">
+              <input type="checkbox" id="chk-grid" checked> Framing Grid
+            </label>
+            <label style="cursor:pointer; display:flex; align-items:center; gap:4px; margin-left:10px;">
+              <input type="checkbox" id="chk-vectors" checked> Camera Vectors
+            </label>
+          </div>
+        </div>
+      </div>
+
+      <!-- Director's Shot Deck -->
+      <div class="director-deck">
+        <div class="deck-title">
+          <span>Director's Timeline</span>
+          <span style="font-size:11px; font-weight:700; color:var(--text-muted);" id="timeline-duration">90s Trailer Cut</span>
+        </div>
+
+        <div class="mode-tabs">
+          <button class="mode-tab active" id="tab-trailer">1–2 Min Trailer</button>
+          <button class="mode-tab" id="tab-walkthrough">3–5 Min Walkthrough</button>
+        </div>
+
+        <div class="shot-list" id="shot-list">
+          <!-- Populated dynamically by JS -->
+        </div>
+      </div>
+
+    </div>
+
+    <!-- SECTION: CAMERA MOTION DIRECTIVE & RIG RECIPES -->
+    <div class="section-card">
+      <h2>Camera Motion Directives &amp; Execution Recipes</h2>
+      <p class="lead">
+        Specific instructions for capturing each in-engine shot using the host keyboard shortcuts (<kbd>C</kbd> to cycle camera modes, <kbd>H</kbd> to hide HUD, and local server parameters).
+      </p>
+
+      <div class="motion-grid">
+        <div class="motion-card dolly">
+          <h3><span>🎥</span> 1. The Wheel-Height Low Dolly</h3>
+          <p>
+            <strong>Hotkeys:</strong> Press <kbd>C</kbd> until camera mode is <code>close</code>. Press <kbd>H</kbd> for clean mode.<br>
+            <strong>Simulated Move:</strong> Camera stays 0.35m off the asphalt, tracking the midpoint between both spinning tops. Smoothly creeps forward as they draw close.<br>
+            <strong>Director's Cue:</strong> Cut right on the spark explosion. Ideal for high-tempo trailer drops.
+          </p>
+        </div>
+
+        <div class="motion-card orbit">
+          <h3><span>🔄</span> 2. The 360° Barangay Orbit</h3>
+          <p>
+            <strong>Hotkeys:</strong> Press <kbd>C</kbd> until camera mode is <code>orbit</code>. Press <kbd>H</kbd> for clean mode.<br>
+            <strong>Simulated Move:</strong> Continuous smooth 360-degree rotation at height 4.0m, distance 9.0m.<br>
+            <strong>Director's Cue:</strong> Shows the sari-sari store, street props, roaming chickens, and sky lighting. Establishes authentic Filipino culture for theme scoring.
+          </p>
+        </div>
+
+        <div class="motion-card crane">
+          <h3><span>📐</span> 3. The Birds-Eye Tactical Crane</h3>
+          <p>
+            <strong>Hotkeys:</strong> Press <kbd>C</kbd> until camera mode is <code>top</code>.<br>
+            <strong>Simulated Move:</strong> Fixed overhead crane at height 15m looking straight down.<br>
+            <strong>Director's Cue:</strong> Reveals steering guide arrows, dash trajectory, and edge-tension (*labas* / ring-out threat). Proves competitive esports fairness.
+          </p>
+        </div>
+
+        <div class="motion-card" style="border-left-color: #a855f7;">
+          <h3><span>📱</span> 4. Dual-Device Sync (Physical OTS)</h3>
+          <p>
+            <strong>Camera Rig:</strong> Physical camera positioned over the players' shoulders.<br>
+            <strong>Simulated Move:</strong> Slow tilt from player thumbs winding the circle down to the laptop screen showing the trumpo launching.<br>
+            <strong>Director's Cue:</strong> Visual proof of zero-install phone controller technology.
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <!-- SECTION: COMPREHENSIVE SHOT-BY-SHOT CUE SHEET -->
+    <div class="section-card">
+      <h2>Master Video Cue Sheet &amp; Edit Guide</h2>
+      <p class="lead">
+        Frame-accurate shot breakdown matching the competition video requirements for DOST Level Up 3.0.
+      </p>
+
+      <div class="table-scroll">
+        <table class="cue-table">
+          <thead>
+            <tr>
+              <th>Shot #</th>
+              <th>Timecode</th>
+              <th>Camera Rig &amp; Preset</th>
+              <th>Motion / Direction</th>
+              <th>On-Screen Action &amp; VFX</th>
+              <th>Audio &amp; Commentary Track</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><strong>T-01</strong></td>
+              <td><code>00:00 - 00:08</code></td>
+              <td>In-Engine: <code>close</code> (Key: <kbd>C</kbd>)</td>
+              <td>Dolly-in low angle; impact shake on collision</td>
+              <td>Kidlat vs Tikbalang clash; burst of sparks and wood dust. Clean HUD (<kbd>H</kbd>).</td>
+              <td>Sudden loud crack SFX, rising pitch hum, fast beat drops in.</td>
+            </tr>
+            <tr>
+              <td><strong>T-02</strong></td>
+              <td><code>00:08 - 00:16</code></td>
+              <td>In-Engine: <code>orbit</code> (Key: <kbd>C</kbd>)</td>
+              <td>Smooth 360° sweeping rotation around arena</td>
+              <td>Showcases the full barangay plaza, sari-sari store, roaming dog and chickens.</td>
+              <td>Kulintang gong rhythm full stereo; title card <em>Paikutan: Trumpo Showdown</em>.</td>
+            </tr>
+            <tr>
+              <td><strong>T-03</strong></td>
+              <td><code>00:16 - 00:32</code></td>
+              <td>Physical OTS + In-Engine Split</td>
+              <td>Over-the-shoulder medium shot tilting down</td>
+              <td>Two players scan QR on laptop with phones; instantaneous connection without app store install.</td>
+              <td>Voiceover: <em>"Zero install. Any smartphone. Playable in seconds."</em></td>
+            </tr>
+            <tr>
+              <td><strong>T-04</strong></td>
+              <td><code>00:32 - 00:50</code></td>
+              <td>Split-Screen Action Sync</td>
+              <td>Side-by-side: Phone hand cam &amp; In-Engine</td>
+              <td>1. Finger rapidly drawing circles (Paikot).<br>2. Phone forward flick (Bitaw).<br>3. In-game tops landing in chalk ring.</td>
+              <td>Whoosh throw SFX; high RPM spinning hum.</td>
+            </tr>
+            <tr>
+              <td><strong>T-05</strong></td>
+              <td><code>00:50 - 01:10</code></td>
+              <td>In-Engine: <code>close</code> &amp; <code>auto</code></td>
+              <td>Rapid montage cuts on power activation</td>
+              <td>Kidlat golden lightning bolt strike, Tikbalang spectral charge, Agimat jade amulet shield ward.</td>
+              <td>Heavy sub-bass hit on each ability; commentary shoutcast.</td>
+            </tr>
+            <tr>
+              <td><strong>T-06</strong></td>
+              <td><code>01:10 - 01:22</code></td>
+              <td>In-Engine: <code>top</code> (Tactical View)</td>
+              <td>Overhead static with slow push down</td>
+              <td>Late-match ring-out (*labas*) dash, steering guide arrows, near-miss on chalk perimeter.</td>
+              <td>Fast heartbeat tempo; tense match announcer voice.</td>
+            </tr>
+            <tr>
+              <td><strong>T-07</strong></td>
+              <td><code>01:22 - 01:30</code></td>
+              <td>In-Engine: Winner Orbit Rig</td>
+              <td>Slow orbit around standing champion trumpo</td>
+              <td>Opponent wobbles and topples (*natumba*), confetti explosion, celebration fireworks.</td>
+              <td>Gong finale fanfare, tournament winner screen, DOST Level Up 3.0 logo.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+  </main>
+
+  <script>
+    // Director's Storyboard Database
+    const SHOTS = {
+      trailer: [
+        {
+          id: "T-01",
+          phase: "01 / THE HOOK",
+          title: "Wheel-Height Clash & Kinetic Sparks",
+          timecode: "00:00:06:14",
+          duration: "8s",
+          img: "../reports/trumpo-models/in-game-kidlat-tikbalang.png",
+          moveClass: "move-wheel-chase",
+          rig: "Camera: Low Wheel-Height Chase",
+          lens: "Lens: 24mm Wide (FOV 45°)",
+          preset: "Key: [C] > close",
+          direction: "Camera dolly-in tracking collision point; trigger shake on contact.",
+          vectorText: "SLOW DOLLY IN →",
+          vectorPath: "M 30 70 L 170 70 M 150 50 L 175 70 L 150 90",
+          tags: ["close", "clean-hud", "slow-dolly", "impact-shake"]
+        },
+        {
+          id: "T-02",
+          phase: "02 / ATMOSPHERE",
+          title: "Barangay Plaza 360° Orbit",
+          timecode: "00:00:12:00",
+          duration: "8s",
+          img: "../reports/trumpo-models/in-game-agimat-diwata.png",
+          moveClass: "move-orbit",
+          rig: "Camera: 360° Circular Crane",
+          lens: "Lens: 35mm Normal (FOV 52°)",
+          preset: "Key: [C] > orbit",
+          direction: "Smooth horizontal orbit showing sari-sari store and ambient street setting.",
+          vectorText: "CIRCULAR ORBIT ⟳",
+          vectorPath: "M 40 90 Q 110 30 180 90 M 160 85 L 180 90 L 175 70",
+          tags: ["orbit", "cultural-props", "ambient-lighting"]
+        },
+        {
+          id: "T-03",
+          phase: "03 / TACTICAL DUEL",
+          title: "Overhead Arena & Steering Vectors",
+          timecode: "00:00:24:18",
+          duration: "10s",
+          img: "../reports/trumpo-models/lineup-top.png",
+          moveClass: "move-top-crane",
+          rig: "Camera: Top-Down Birds-Eye Crane",
+          lens: "Lens: 50mm Ortho-style (FOV 60°)",
+          preset: "Key: [C] > top",
+          direction: "High-angle perspective showing steering arrows, boundary safety, and dash timing.",
+          vectorText: "CRANE HOLD / ZOOM OUT ↓",
+          vectorPath: "M 110 30 L 110 110 M 90 95 L 110 115 L 130 95",
+          tags: ["top", "tactical", "esports-readiness"]
+        },
+        {
+          id: "T-04",
+          phase: "04 / ARSENAL",
+          title: "Mythic Arsenal Lineup Display",
+          timecode: "00:00:40:02",
+          duration: "12s",
+          img: "../reports/trumpo-models/lineup-side.png",
+          moveClass: "move-idle",
+          rig: "Camera: Studio Tracking Dolly",
+          lens: "Lens: 70mm Telephoto (FOV 40°)",
+          preset: "Key: [C] > close",
+          direction: "Horizontal pan across all 5 mythical trumpos (Kidlat, Tikbalang, Agimat, Diwata, Bakunawa).",
+          vectorText: "SLOW LATERAL PAN →",
+          vectorPath: "M 20 70 L 180 70 M 160 55 L 185 70 L 160 85",
+          tags: ["lineup", "mythic-roster", "stat-balance"]
+        },
+        {
+          id: "T-05",
+          phase: "05 / CLIMAX",
+          title: "End-Match Knockout & Victory Fireworks",
+          timecode: "00:01:18:22",
+          duration: "12s",
+          img: "../reports/trumpo-models/in-game-kidlat-tikbalang.png",
+          moveClass: "move-dolly-in",
+          rig: "Camera: Winner Orbit & Celebration Tilt",
+          lens: "Lens: 28mm Wide (FOV 48°)",
+          preset: "Key: Auto Celebration",
+          direction: "Slow orbit around champion trumpo, confetti burst, loser toppled (natumba).",
+          vectorText: "SPIRAL DOLLY IN ⤹",
+          vectorPath: "M 30 110 Q 70 30 150 50 Q 180 70 170 100",
+          tags: ["confetti", "fireworks", "victory-orbit"]
+        }
+      ],
+      walkthrough: [
+        {
+          id: "W-01",
+          phase: "PART 1: SETUP",
+          title: "QR Code Room Pairing & Zero-Install",
+          timecode: "00:00:30:00",
+          duration: "45s",
+          img: "../reports/trumpo-models/lineup-side.png",
+          moveClass: "move-idle",
+          rig: "Camera: Static Studio Wide",
+          lens: "Lens: 35mm Normal",
+          preset: "Key: Lobby UI",
+          direction: "Explain host setup on TV/laptop and two phones pairing instantly over Supabase.",
+          vectorText: "STATIC FOCUS ⦿",
+          vectorPath: "M 90 70 A 20 20 0 1 0 130 70 A 20 20 0 1 0 90 70",
+          tags: ["onboarding", "lobby", "supabase-realtime"]
+        },
+        {
+          id: "W-02",
+          phase: "PART 2: GEAR",
+          title: "Trumpo Roster & Stat Trade-Offs",
+          timecode: "00:01:15:00",
+          duration: "45s",
+          img: "../reports/trumpo-models/lineup-top.png",
+          moveClass: "move-top-crane",
+          rig: "Camera: Top-Down Tactical Inspection",
+          lens: "Lens: 50mm",
+          preset: "Key: [C] > top",
+          direction: "Walk through Strength, Longevity, and Stability stats with counter cycle display.",
+          vectorText: "TACTICAL INSPECT ↓",
+          vectorPath: "M 110 30 L 110 110 M 90 95 L 110 115 L 130 95",
+          tags: ["stats", "counterpick", "selection-ui"]
+        },
+        {
+          id: "W-03",
+          phase: "PART 3: ROUND 1",
+          title: "Paikot, Bitaw, & Laban Execution",
+          timecode: "00:02:10:00",
+          duration: "60s",
+          img: "../reports/trumpo-models/in-game-kidlat-tikbalang.png",
+          moveClass: "move-wheel-chase",
+          rig: "Camera: Low Wheel-Height Follow",
+          lens: "Lens: 24mm Wide",
+          preset: "Key: [C] > close",
+          direction: "Break down winding RPM, throw flick angle, tilt steering friction, and Dash cooldown.",
+          vectorText: "TRACKING ACTION →",
+          vectorPath: "M 30 70 L 170 70 M 150 50 L 175 70 L 150 90",
+          tags: ["gameplay", "motion-sensors", "dash-button"]
+        },
+        {
+          id: "W-04",
+          phase: "PART 4: COMEBACKS",
+          title: "Agaw-Ikot & Counterpick Dynamics",
+          timecode: "00:03:15:00",
+          duration: "60s",
+          img: "../reports/trumpo-models/in-game-agimat-diwata.png",
+          moveClass: "move-orbit",
+          rig: "Camera: 360° Circular Orbit",
+          lens: "Lens: 35mm",
+          preset: "Key: [C] > orbit",
+          direction: "Demonstrate spin steal when dashing into the leader, plus loser trumpo switch.",
+          vectorText: "ORBIT OVERVIEW ⟳",
+          vectorPath: "M 40 90 Q 110 30 180 90 M 160 85 L 180 90 L 175 70",
+          tags: ["agaw-ikot", "comeback", "fairness"]
+        }
+      ]
+    };
+
+    let currentMode = "trailer";
+    let currentIdx = 0;
+    let isPlaying = true;
+    let timerInterval = null;
+
+    const stageImg = document.getElementById("stage-img");
+    const shotList = document.getElementById("shot-list");
+    const shotPhaseLabel = document.getElementById("shot-phase-label");
+    const shotTitleLabel = document.getElementById("shot-title-label");
+    const shotDirLabel = document.getElementById("shot-dir-label");
+    const camRigLabel = document.getElementById("cam-rig-label");
+    const camLensLabel = document.getElementById("cam-lens-label");
+    const camPresetLabel = document.getElementById("cam-preset-label");
+    const tcDisplay = document.getElementById("tc-display");
+    const vectorText = document.getElementById("vector-text");
+    const vectorPath = document.getElementById("vector-path");
+    const btnPlay = document.getElementById("btn-play");
+    const btnPrev = document.getElementById("btn-prev");
+    const btnNext = document.getElementById("btn-next");
+    const btnShake = document.getElementById("btn-shake");
+    const chkGrid = document.getElementById("chk-grid");
+    const chkVectors = document.getElementById("chk-vectors");
+    const gridOverlay = document.getElementById("grid-overlay");
+    const motionVectorOverlay = document.getElementById("motion-vector-overlay");
+    const tabTrailer = document.getElementById("tab-trailer");
+    const tabWalkthrough = document.getElementById("tab-walkthrough");
+    const timelineDuration = document.getElementById("timeline-duration");
+
+    function renderShotList() {
+      const list = SHOTS[currentMode];
+      shotList.innerHTML = "";
+      list.forEach((s, idx) => {
+        const card = document.createElement("div");
+        card.className = "shot-card" + (idx === currentIdx ? " active" : "");
+        card.innerHTML = `
+          <div class="shot-card-header">
+            <span class="shot-idx">${s.id} · ${s.phase}</span>
+            <span class="shot-dur">${s.duration}</span>
+          </div>
+          <div class="shot-title">${s.title}</div>
+          <div class="shot-desc">${s.direction}</div>
+          <div class="shot-tags">
+            ${s.tags.map(t => `<span class="mini-tag">${t}</span>`).join("")}
+          </div>
+        `;
+        card.addEventListener("click", () => selectShot(idx));
+        shotList.appendChild(card);
+      });
+    }
+
+    function selectShot(idx) {
+      const list = SHOTS[currentMode];
+      currentIdx = (idx + list.length) % list.length;
+      const s = list[currentIdx];
+
+      // Update monitor image & movement animation
+      stageImg.className = "stage-image " + (isPlaying ? s.moveClass : "move-idle");
+      stageImg.src = s.img;
+
+      // Update HUD Labels
+      shotPhaseLabel.textContent = s.id + " / " + s.phase;
+      shotTitleLabel.textContent = s.title;
+      shotDirLabel.textContent = s.direction;
+      camRigLabel.textContent = s.rig;
+      camLensLabel.textContent = s.lens;
+      camPresetLabel.textContent = s.preset;
+      tcDisplay.textContent = s.timecode;
+      vectorText.textContent = s.vectorText;
+      vectorPath.setAttribute("d", s.vectorPath);
+
+      // Highlight active card
+      document.querySelectorAll(".shot-card").forEach((c, i) => {
+        c.classList.toggle("active", i === currentIdx);
+      });
+    }
+
+    // Controls
+    btnNext.addEventListener("click", () => selectShot(currentIdx + 1));
+    btnPrev.addEventListener("click", () => selectShot(currentIdx - 1));
+
+    btnPlay.addEventListener("click", () => {
+      isPlaying = !isPlaying;
+      btnPlay.textContent = isPlaying ? "Pause Motion" : "Resume Motion";
+      btnPlay.classList.toggle("active", isPlaying);
+      selectShot(currentIdx);
+    });
+
+    btnShake.addEventListener("click", () => {
+      stageImg.classList.remove("move-shake");
+      void stageImg.offsetWidth; // trigger reflow
+      stageImg.classList.add("move-shake");
+    });
+
+    chkGrid.addEventListener("change", e => {
+      gridOverlay.style.opacity = e.target.checked ? "1" : "0";
+    });
+
+    chkVectors.addEventListener("change", e => {
+      motionVectorOverlay.style.opacity = e.target.checked ? "1" : "0";
+    });
+
+    tabTrailer.addEventListener("click", () => {
+      currentMode = "trailer";
+      currentIdx = 0;
+      tabTrailer.classList.add("active");
+      tabWalkthrough.classList.remove("active");
+      timelineDuration.textContent = "90s Trailer Cut";
+      renderShotList();
+      selectShot(0);
+    });
+
+    tabWalkthrough.addEventListener("click", () => {
+      currentMode = "walkthrough";
+      currentIdx = 0;
+      tabWalkthrough.classList.add("active");
+      tabTrailer.classList.remove("active");
+      timelineDuration.textContent = "240s Walkthrough Cut";
+      renderShotList();
+      selectShot(0);
+    });
+
+    // Timecode live tick simulation
+    let frames = 14;
+    setInterval(() => {
+      if (!isPlaying) return;
+      frames = (frames + 1) % 30;
+      const base = SHOTS[currentMode][currentIdx].timecode.slice(0, 8);
+      tcDisplay.textContent = `${base}:${frames < 10 ? '0' : ''}${frames}`;
+    }, 100);
+
+    // Initial render
+    renderShotList();
+    selectShot(0);
+  </script>
+</body>
+</html>

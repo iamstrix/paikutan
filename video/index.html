@@ -5,7 +5,7 @@
   <title>Video Demo and B-Roll Guide - Paikutan: Trumpo Showdown</title>
 </head>
 <body>
-  <h1>Paikutan: Trumpo Showdown - Video Demo &amp; B-Roll Guide</h1>
+  <h1>Paikutan: Trumpo Showdown - Video Demo &amp; B-Roll Visual Guide</h1>
   <p>DOST Level Up 3.0 Esports Game Dev Challenge (Theme: Philippine Games and Sports)</p>
   <p>Submission Deadline: October 25, 2026</p>
 
@@ -16,15 +16,15 @@
     <li>
       <strong>Record Video Footage (Top Priority):</strong>
       <ul>
-        <li><strong>Trailer Video (1 to 2 minutes):</strong> Fast-paced, high energy, looped display at events, highlights physical phone controls and clash physics.</li>
-        <li><strong>Gameplay Walkthrough (3 to 5 minutes):</strong> Clear step-by-step match explanation with commentary or captions covering phone connection, winding, throwing, steering, dash, comebacks, and winning.</li>
+        <li><strong>Trailer Video (1 to 2 minutes):</strong> High energy, looped at events, fast cuts of clashes, powers, and phone motion.</li>
+        <li><strong>Gameplay Walkthrough (3 to 5 minutes):</strong> Comprehensive match walkthrough with voiceover or captions covering phone connection, winding, throwing, steering, dash, comebacks, and winning.</li>
       </ul>
     </li>
     <li>
       <strong>Complete Submission Documents:</strong>
       <ul>
         <li><strong>Form 01:</strong> Team roles (team name, institution, game title, members + course/year + role, coach).</li>
-        <li><strong>Form 02:</strong> Waiver and Declaration of Originality (signed by members and coach).</li>
+        <li><strong>Form 02:</strong> Waiver and Declaration of Originality (signed by all members and coach).</li>
         <li><strong>Form 03:</strong> Asset and AI Usage Disclosure (documenting AI use in physics tuning, 3D math, synthesized WebAudio, and testing).</li>
         <li><strong>Template 01:</strong> Game title and synopsis (mechanics and gameplay summary within character/word limits).</li>
       </ul>
@@ -41,7 +41,7 @@
   <hr>
 
   <h2>2. Built-in Host Shortcuts for Capturing B-Roll</h2>
-  <p>Use the local host web server to capture artifact-free footage without network lag.</p>
+  <p>Use the local host web server to capture clean, high-framerate footage without network jitter.</p>
   <ul>
     <li><strong>URL:</strong> <code>http://localhost:8000/index.html?demo</code> (Autonomous CPU vs CPU match, loops infinitely).</li>
     <li><strong>URL:</strong> <code>http://localhost:8000/index.html?practice</code> (Player vs CPU practice).</li>
@@ -53,71 +53,170 @@
 
   <hr>
 
-  <h2>3. In-Engine B-Roll Shot List</h2>
-  <table border="1" cellpadding="6" cellspacing="0">
+  <h2>3. In-Engine Arena B-Roll Shots (Simulated Environment)</h2>
+
+  <h3>Shot 1: In-Circle Clash &amp; Barangay Street Atmosphere</h3>
+  <p>Low oblique / wheel-height camera showing the chalk circle, pavement textures, and the background sari-sari store and houses.</p>
+  <p>
+    <img src="../reports/trumpo-models/in-game-kidlat-tikbalang.png" alt="In-game battle screenshot: Kidlat vs Tikbalang in the barangay circle" width="960">
+  </p>
+  <p><em>Scene setup: Mode <code>?demo</code>, Camera mode <code>close</code>, HUD toggled with <kbd>H</kbd>. Kidlat (sparks) clashes with Tikbalang inside the chalk perimeter.</em></p>
+
+  <h3>Shot 2: Mid-Arena Duel &amp; Hazard Tension</h3>
+  <p>Secondary match matchup illustrating lighting, ground shadows, and boundary tension near the chalk ring.</p>
+  <p>
+    <img src="../reports/trumpo-models/in-game-agimat-diwata.png" alt="In-game battle screenshot: Agimat vs Diwata in the circle" width="960">
+  </p>
+  <p><em>Scene setup: Agimat facing Diwata. Demonstrates collision sparks, steering trajectories, and dog/chicken roaming area.</em></p>
+
+  <hr>
+
+  <h2>4. Camera Perspectives &amp; 3D Model Arsenal</h2>
+
+  <h3>Side View / Oblique Chase Perspective (<kbd>C</kbd> &rarr; <code>close</code> or <code>orbit</code>)</h3>
+  <p>Profiles of the five mythical trumpos (Left to right: Kidlat, Tikbalang, Agimat, Diwata, Bakunawa).</p>
+  <p>
+    <img src="../reports/trumpo-models/lineup-side.png" alt="Side lineup of all five trumpo 3D models" width="960">
+  </p>
+
+  <h3>Bird's-Eye Tactical Perspective (<kbd>C</kbd> &rarr; <code>top</code>)</h3>
+  <p>Top-down view showing the crown sigils, directional orientation, and rotational symmetry.</p>
+  <p>
+    <img src="../reports/trumpo-models/lineup-top.png" alt="Top-down lineup of all five trumpo 3D models" width="960">
+  </p>
+
+  <hr>
+
+  <h2>5. Mythic Powers &amp; Special Ability Asset Reference</h2>
+  <table border="1" cellpadding="8" cellspacing="0">
     <thead>
       <tr>
-        <th>Shot Name</th>
-        <th>Camera Mode &amp; Keys</th>
-        <th>Visual Action to Capture</th>
-        <th>Purpose in Video</th>
+        <th>Trumpo &amp; Element</th>
+        <th>Skill Icon &amp; Concept</th>
+        <th>Side 3D Model</th>
+        <th>Top 3D Model</th>
+        <th>In-Game Action &amp; Visual Effect</th>
       </tr>
     </thead>
     <tbody>
       <tr>
-        <td><strong>Wheel-Height Clash</strong></td>
-        <td>Mode: <code>?demo</code><br>Keys: <kbd>H</kbd> (Clean), <kbd>C</kbd> to <code>close</code></td>
-        <td>Ground-level perspective following tops at rim height. Capture sparks, dust puffs on contact, screen shake, and shockwave rings when powers activate.</td>
-        <td>Impact and game feel showcase; high-intensity trailer clips.</td>
+        <td>
+          <strong>Kidlat</strong><br>
+          <em>Lightning (Speed/Offense)</em><br>
+          Strong vs Diwata
+        </td>
+        <td align="center">
+          <img src="../assets/art/trumpo/skills/kidlat.png" alt="Kidlat Lightning Strike" width="120">
+        </td>
+        <td align="center">
+          <img src="../reports/trumpo-models/kidlat-side.png" alt="Kidlat model side" width="140">
+        </td>
+        <td align="center">
+          <img src="../reports/trumpo-models/kidlat-top.png" alt="Kidlat model top" width="140">
+        </td>
+        <td>Descending branched golden lightning bolt with bright impact core and ground sparks. High burst damage.</td>
       </tr>
       <tr>
-        <td><strong>Barangay Street Orbit</strong></td>
-        <td>Mode: <code>?demo</code><br>Keys: <kbd>H</kbd> (Clean), <kbd>C</kbd> to <code>orbit</code></td>
-        <td>Slow 360-degree sweep around the chalk circle showing the sari-sari store, street environment, ambient day lighting, and wandering chickens or stray dog.</td>
-        <td>Establishes the cultural setting and Philippine street aesthetics for theme scoring.</td>
+        <td>
+          <strong>Tikbalang</strong><br>
+          <em>Charge (Heavy Knockback)</em><br>
+          Strong vs Agimat
+        </td>
+        <td align="center">
+          <img src="../assets/art/trumpo/skills/tikbalang.png" alt="Tikbalang Dash" width="120">
+        </td>
+        <td align="center">
+          <img src="../reports/trumpo-models/tikbalang-side.png" alt="Tikbalang model side" width="140">
+        </td>
+        <td align="center">
+          <img src="../reports/trumpo-models/tikbalang-top.png" alt="Tikbalang model top" width="140">
+        </td>
+        <td>Spectral crimson horse-head rush with hoof-stomp shockwave on impact, pushing opponents toward the chalk boundary.</td>
       </tr>
       <tr>
-        <td><strong>Bird's-Eye Tactical</strong></td>
-        <td>Mode: <code>?demo</code><br>Keys: <kbd>H</kbd> (Clean), <kbd>C</kbd> to <code>top</code></td>
-        <td>Overhead view of the chalk arena. Shows steering guide arrows, dash lunges, and boundary tension near the chalk line (&quot;labas&quot; ring-out).</td>
-        <td>Demonstrates esports mechanics, positioning, and balance.</td>
+        <td>
+          <strong>Agimat</strong><br>
+          <em>Amulet Shield (Defense)</em><br>
+          Strong vs Kidlat
+        </td>
+        <td align="center">
+          <img src="../assets/art/trumpo/skills/agimat.png" alt="Agimat Amulet Shield" width="120">
+        </td>
+        <td align="center">
+          <img src="../reports/trumpo-models/agimat-side.png" alt="Agimat model side" width="140">
+        </td>
+        <td align="center">
+          <img src="../reports/trumpo-models/agimat-top.png" alt="Agimat model top" width="140">
+        </td>
+        <td>Golden triangular sun medallion forming a protective jade shield that negates spin drain and deflects collisions.</td>
       </tr>
       <tr>
-        <td><strong>Climax &amp; Celebration</strong></td>
-        <td>Mode: <code>?demo</code> or <code>?practice</code><br>Camera: Automatic on round/match win</td>
-        <td>Slow orbit around the standing victor top while the losing top wobbles and topples (&quot;natumba&quot;), followed by confetti bursts and winner fireworks.</td>
-        <td>Celebratory payoff, match conclusion, and esports victory vibe.</td>
+        <td>
+          <strong>Diwata</strong><br>
+          <em>Blessing (Spin Restoration)</em><br>
+          Strong vs Bakunawa
+        </td>
+        <td align="center">
+          <img src="../assets/art/trumpo/skills/diwata.png" alt="Diwata Blessing" width="120">
+        </td>
+        <td align="center">
+          <img src="../reports/trumpo-models/diwata-side.png" alt="Diwata model side" width="140">
+        </td>
+        <td align="center">
+          <img src="../reports/trumpo-models/diwata-top.png" alt="Diwata model top" width="140">
+        </td>
+        <td>Blooming floral crown with rising violet sparkles and soothing pulses that steadily recover lost spin RPM.</td>
       </tr>
       <tr>
-        <td><strong>Counterpick Reveal</strong></td>
-        <td>Mode: <code>?practice</code> or 2-player lobby<br>Phase: Post-round counter phase</td>
-        <td>Show 8-second counterpick screen where round loser selects an advantageous trumpo counter (Agimat &gt; Kidlat &gt; Diwata &gt; Bakunawa &gt; Tikbalang &gt; Agimat).</td>
-        <td>Highlights competitive depth and mind-games for judges.</td>
+        <td>
+          <strong>Bakunawa</strong><br>
+          <em>Eclipse (Curse / Inversion)</em><br>
+          Strong vs Tikbalang
+        </td>
+        <td align="center">
+          <img src="../assets/art/trumpo/skills/bakunawa.png" alt="Bakunawa Eclipse" width="120">
+        </td>
+        <td align="center">
+          <img src="../reports/trumpo-models/bakunawa-side.png" alt="Bakunawa model side" width="140">
+        </td>
+        <td align="center">
+          <img src="../reports/trumpo-models/bakunawa-top.png" alt="Bakunawa model top" width="140">
+        </td>
+        <td>Coiled sea serpent swallowing the moon, temporarily reversing rival steering controls and inflicting shadow drain.</td>
       </tr>
     </tbody>
   </table>
 
   <hr>
 
-  <h2>4. Physical Real-World B-Roll Shots (Phones as Controllers)</h2>
+  <h2>6. Concept Art &amp; Design Evolution</h2>
+  <p>Original hand-drawn design sketches for trumpo silhouettes, winding mechanics, and carousel interaction from the team notebook:</p>
+  <p>
+    <img src="../images/image%20copy.png" alt="Hand-drawn concept art and mechanics sketch" width="680">
+  </p>
+  <p><em>Use this comparison in the gameplay walkthrough video to emphasize originality and the design iteration from notebook sketch to 3D playable game.</em></p>
+
+  <hr>
+
+  <h2>7. Physical Real-World B-Roll Shots (Phones as Controllers)</h2>
   <p>Judges need to see the zero-install mobile controller mechanic in physical action.</p>
-  <table border="1" cellpadding="6" cellspacing="0">
+  <table border="1" cellpadding="8" cellspacing="0">
     <thead>
       <tr>
         <th>Shot Setup</th>
-        <th>Action</th>
-        <th>Framing</th>
+        <th>Action to Film</th>
+        <th>Framing &amp; Composition</th>
       </tr>
     </thead>
     <tbody>
       <tr>
         <td><strong>Over-the-Shoulder Battle</strong></td>
-        <td>Two players standing or sitting side-by-side holding their smartphones, reacting to collisions on a shared laptop or TV screen.</td>
+        <td>Two players standing or sitting side-by-side holding smartphones, physically reacting to collisions on a laptop/TV screen.</td>
         <td>Medium wide shot from behind the players, keeping both phones and the big screen in focus.</td>
       </tr>
       <tr>
         <td><strong>Winding (Paikot!) Close-Up</strong></td>
-        <td>Player rapidly tracing tight circles on their phone screen with their finger or thumb during the 3-second preparation phase.</td>
+        <td>Player rapidly tracing tight circles on their phone screen with their thumb during the 3-second preparation phase.</td>
         <td>Tight close-up on hands and screen, showing the winding ring and RPM meter filling.</td>
       </tr>
       <tr>
@@ -135,7 +234,7 @@
 
   <hr>
 
-  <h2>5. Suggested Video Structures</h2>
+  <h2>8. Suggested Video Timelines</h2>
 
   <h3>A. 1 to 2 Minute Trailer Video (Pacing: Fast &amp; Dynamic)</h3>
   <ul>

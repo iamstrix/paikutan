@@ -44,8 +44,8 @@ function makeTop(topId, slot, low) {
   const root = new THREE.Group(), precess = new THREE.Group(), tilt = new THREE.Group(), spinner = new THREE.Group();
   root.add(precess); precess.add(tilt); tilt.add(spinner);
   const model = buildTrompo(def, low);
-  // The old world-art scale made bodies less than half their actual hit radius.
-  // Crown tips now reach the collision boundary, making clashes visually honest.
+  // The turned wood and shallow trim fit the model's .25-unit radial envelope.
+  // Match that envelope to the unchanged collision radius so clashes read correctly.
   const size = TOP_R / 0.25;
   model.body.scale.setScalar(size);
   model.blur.scale.setScalar(size); model.blur.position.y *= size;
