@@ -13,6 +13,7 @@ import { Effects, CLASH_WORDS } from './fx/effects.js';
 import { SkillEffects } from './fx/skills.js';
 import { QUICK_CHAT } from './chat.js';
 import { arenaCameraDistance } from './camera-fit.js';
+import { ArenaZoneViews } from './entities/arena-zones.js';
 
 const CLOCK = 15 * 60 + 30; // merienda time: warm light, lamps still off
 
@@ -110,6 +111,8 @@ function makeDog() {
   const ear1 = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.16, 0.08), dark); ear1.position.set(0.5, 0.98, 0.1);
   const ear2 = ear1.clone(); ear2.position.z = -0.1;
   const tail = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.07, 0.07), fur); tail.position.set(-0.55, 0.75, 0); tail.rotation.z = 0.7;
+  const stream = new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.018, 0.38, 5), new THREE.MeshBasicMaterial({ color: '#eec647', transparent: true, opacity: 0.55 }));
+  stream.position.set(-0.3, 0.22, 0.27); stream.rotation.x = -0.6; stream.visible = false; g.add(stream);
   g.add(body, head, snout, ear1, ear2, tail);
   const legs = [];
   for (const [x, z] of [[0.3, 0.12], [0.3, -0.12], [-0.3, 0.12], [-0.3, -0.12]]) {
@@ -118,7 +121,7 @@ function makeDog() {
     l.position.set(x, 0.42, z); g.add(l); legs.push(l);
   }
   g.traverse(o => { if (o.isMesh) o.castShadow = true; });
-  g.userData.legs = legs; g.userData.tail = tail;
+  g.userData.legs = legs; g.userData.tail = tail; g.userData.stream = stream;
   g.visible = false;
   return g;
 }
@@ -217,6 +220,7 @@ export function createScene(canvas, { low = false, cue = () => {} } = {}) {
   // Hens and their eggs, keyed by the sim's egg id.
   const eggViews = new Map();
   let eggSnap = [];
+  const arenaZones = new ArenaZoneViews(scene);
 
   // tromPOW's pooled effects (dust, sparks, rings, POW! bursts, the Kidlat bolt) work in his units,
   // so the group is scaled like the barangay and every position goes in divided by WORLD_SCALE.
@@ -301,6 +305,7 @@ export function createScene(canvas, { low = false, cue = () => {} } = {}) {
     dog.visible = false; dogTarget = null; lane.visible = false;
     for (const v of eggViews.values()) scene.remove(v.group);
     eggViews.clear(); eggSnap = []; ringR = ARENA_R;
+    arenaZones.reset();
     party = null;
     effects.reset(); skills.reset(); eclipse = 0;
     bubbles.forEach(b => b.el.remove()); bubbles.clear();
@@ -602,12 +607,20 @@ export function createScene(canvas, { low = false, cue = () => {} } = {}) {
     snap.tops.forEach((s, i) => { if (tops[i]) tops[i].target = s; });
     dogTarget = snap.dog;
     eggSnap = snap.eggs || [];
+    arenaZones.sync(snap.zones);
     ringR = snap.ring || ARENA_R;
   }
 
   function fx(e) {
     const x = u(e.x), z = u(e.z), tx = u(e.tx), tz = u(e.tz);
     switch (e.type) {
+      case 'zoneLand':
+        effects.ring(x, z, e.zone === 'swerte' ? '#ffe486' : '#e9b738', 1.1, 0.5);
+        effects.pow(x, 0.9, z, e.zone === 'swerte' ? 'SWERTE!' : 'MADULAS!', 0.8);
+        break;
+      case 'zoneEnter':
+        effects.puff(x, 0.12, z, { n: 5, color: e.zone === 'swerte' ? '#ffe595' : '#dcb549', size: 0.12, up: 0.5 });
+        break;
       case 'chat': {
         if (!QUICK_CHAT[e.i] || !people[e.slot]) break;
         bubbles.get(e.slot)?.el.remove();
@@ -884,10 +897,14 @@ export function createScene(canvas, { low = false, cue = () => {} } = {}) {
       dog.position.x += (dogTarget.x - dog.position.x) * (instant ? 1 : 1 - Math.exp(-dt * 12));
       dog.position.z = dogTarget.z;
       dog.rotation.y = dogTarget.dir > 0 ? 0 : Math.PI;
-      const waiting = dogTarget.warn > 0;
+      const waiting = dogTarget.warn > 0, marking = dogTarget.mark > 0;
       // Waiting at the edge it hops on the spot; then it runs.
       dog.position.y = waiting ? Math.abs(Math.sin(time * 9)) * 0.12 : 0;
-      dog.userData.legs.forEach((l, i) => { l.rotation.z = waiting ? 0 : Math.sin(time * 22 + (i % 2) * Math.PI) * 0.7; });
+      dog.userData.legs.forEach((l, i) => {
+        l.rotation.z = waiting || marking ? 0 : Math.sin(time * 22 + (i % 2) * Math.PI) * 0.7;
+        l.rotation.x = marking && i === 2 ? -1.2 : 0;
+      });
+      dog.userData.stream.visible = marking;
       dog.userData.tail.rotation.x = Math.sin(time * 30) * 0.5;
       lane.visible = waiting;
       if (waiting) {
@@ -898,6 +915,7 @@ export function createScene(canvas, { low = false, cue = () => {} } = {}) {
       }
     } else { dog.visible = false; lane.visible = false; }
     updateEggs(dt);
+    arenaZones.update(dt);
     chalk.scale.setScalar(ringR / ARENA_R);
     chalk.material.color.set(ringR < ARENA_R - 0.01 ? '#ff8a7a' : '#fbf6ea');
     people.forEach((p, s) => {

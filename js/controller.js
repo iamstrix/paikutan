@@ -7,6 +7,7 @@ import { WIN_ROUNDS, BRAWL_ROUNDS } from './engine.js';
 import { audio } from './audio.js';
 import { modelShot, liveModel } from './preview.js';
 import { QUICK_CHAT, CHAT_COOLDOWN, CHAT_ENABLED } from './chat.js';
+import { bindJoystick } from './joystick.js';
 
 const pct = v => Math.round(v * 100) + '%';
 const REASON = {
@@ -57,6 +58,8 @@ export function createController(root, { mode = 'phone', send, myId, sounds = mo
   let lastPhase = '';
   const keys = new Set();
   let joy = null; // active touch joystick vector
+  let steeringMode = 'floating';
+  try { const saved = localStorage.getItem('paikutan-steering'); if (['floating', 'fixed', 'tilt'].includes(saved)) steeringMode = saved; } catch { /* optional */ }
   let lastSteer = [0, 0], lastSteerAt = 0;
   let inverted = false; // Bakunawa eclipse, from the latest snapshot
   let rival = -1; // brawl: the rival shown in the second bar
@@ -221,7 +224,7 @@ export function createController(root, { mode = 'phone', send, myId, sounds = mo
     if (!sel.char) sel = { char: p.char, top: p.top };
     if (p.picked) {
       show('pickWait', `
-        <div class="panel center">
+        <div class="panel center pick-wait">
           <div class="vs-row">${modelImg('char', p.char, 110) || charIcon(p.char, 72)}${modelImg('top', p.top, 110) || topIcon(p.top, 72)}</div>
           <h2>Ready!</h2><p class="muted">Waiting for ${rivals()}…${brawl() ? ' <span data-timer></span>' : ''}</p>
           <button class="btn ghost" data-act="unready">Change pick</button>
@@ -253,17 +256,16 @@ export function createController(root, { mode = 'phone', send, myId, sounds = mo
         <div class="panel center brawl-vs">
           <h1 class="vs-mid">BRAWL!</h1>
           <p class="muted">${ps.length} trumpos · ${BRAWL_ROUNDS} rounds · most points wins</p>
-          <ul class="brawl-list">${ps.map(({ p, i }) => `<li style="--pc:${PLAYER_COLORS[i]}" class="${i === slot ? 'me' : ''}">${topIcon(p.top, 30)}<b>${p.name}</b></li>`).join('')}</ul>
+          <ul class="brawl-list">${ps.map(({ p, i }) => `<li style="--pc:${PLAYER_COLORS[i]}" class="${i === slot ? 'me' : ''}">${modelImg('top', p.top, 34) || topIcon(p.top, 30)}<b>${p.name}</b></li>`).join('')}</ul>
         </div>`);
       return;
     }
+    // Each side: their 3D character with their trumpo at its feet, like the pick screen.
+    const side = (p, i) => `<div class="vs-side" style="--pc:${PLAYER_COLORS[i]}">
+      <div class="vs-models">${modelImg('char', p.char, 150) || charFigure(p.char, 124)}${modelImg('top', p.top, 84) || topIcon(p.top, 56)}</div>
+      <b>${p.name}</b><small>${byId(CHARACTERS, p.char).name} · ${byId(TOPS, p.top).name}</small></div>`;
     const [a, b] = st.players;
-    show('vs', `
-      <div class="panel center vs">
-        <div class="vs-side" style="--pc:${PLAYER_COLORS[0]}">${charIcon(a.char, 80)}<b>${a.name}</b>${topIcon(a.top, 48)}</div>
-        <div class="vs-mid">VS</div>
-        <div class="vs-side" style="--pc:${PLAYER_COLORS[1]}">${charIcon(b.char, 80)}<b>${b.name}</b>${topIcon(b.top, 48)}</div>
-      </div>`);
+    show('vs', `<div class="panel center vs">${side(a, 0)}<div class="vs-mid">VS</div>${side(b, 1)}</div>`);
   }
 
   function viewSpin() {
@@ -443,8 +445,17 @@ export function createController(root, { mode = 'phone', send, myId, sounds = mo
           <div class="bar" data-bar="opp" style="--pc:${PLAYER_COLORS[1 - slot]}"><span data-n="opp">${brawl() ? '' : o.name}</span><i><b data-b="opp"></b></i></div>
         </div>${brawl() ? '<div class="left" data-left></div>' : ''}` : ''}
         <div class="warn" data-warn hidden>Bakunawa! Your steering is reversed!</div>
-        ${phone ? `<div class="joy"><div class="joy-knob"></div><span>${motion.hasTilt ? 'Tilt to steer · or drag here' : 'Drag here to steer'}</span></div>
-          <button class="btn ghost small center-btn" data-act="center">Re-center tilt</button>`
+        <div class="zone-status" data-zone-status role="status" hidden></div>
+        ${phone ? `<div class="joy-area" data-steering="${steeringMode}" aria-label="Drag on the left side to steer">
+            <div class="joy" aria-hidden="true" hidden><div class="joy-knob"></div></div>
+            <span class="joy-hint">Hold &amp; drag on this side to steer</span>
+          </div>
+          <label class="steer-settings">Steering<select data-steering-mode aria-label="Steering mode">
+            <option value="floating" ${steeringMode === 'floating' ? 'selected' : ''}>Floating joystick</option>
+            <option value="fixed" ${steeringMode === 'fixed' ? 'selected' : ''}>Fixed joystick</option>
+            <option value="tilt" ${steeringMode === 'tilt' ? 'selected' : ''}>Tilt</option>
+          </select></label>
+          <button class="btn ghost small center-btn" data-act="center" ${steeringMode === 'tilt' ? '' : 'hidden'}>Re-center tilt</button>`
         : `<div class="keys-hint">WASD / arrows steer · <b>Shift</b> dash · <b>Space</b> power · steering and dashing cost a little spin</div>`}
         <button class="dash" data-act="dash">
           <svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="45" class="track"/><circle cx="50" cy="50" r="45" class="fill" data-dring/></svg>
@@ -463,44 +474,32 @@ export function createController(root, { mode = 'phone', send, myId, sounds = mo
       root.querySelector('[data-act=dash]').onclick = e => { if (e.detail === 0) send('boost', {}); };
       const c = root.querySelector('[data-act=center]');
       if (c) c.onclick = () => motion.calibrate();
-      const pad = root.querySelector('.joy');
+      const pad = root.querySelector('.joy-area');
+      let joystick = null;
       if (pad) {
-        const knob = pad.querySelector('.joy-knob');
-        let origin = null, pointer = null;
-        pad.addEventListener('pointerdown', e => {
-          if (pointer !== null) return;
-          e.preventDefault(); pointer = e.pointerId; pad.setPointerCapture(pointer);
-          origin = [e.clientX, e.clientY]; joy = [0, 0];
-        });
-        pad.addEventListener('pointermove', e => {
-          if (!origin || e.pointerId !== pointer) return;
-          let x = (e.clientX - origin[0]) / 60, y = -(e.clientY - origin[1]) / 60;
-          const m = Math.hypot(x, y);
-          if (m > 1) { x /= m; y /= m; }
-          joy = [x, y];
-          knob.style.transform = `translate(${x * 40}px, ${-y * 40}px)`;
-        });
-        const end = e => {
-          if (e.pointerId !== pointer) return;
-          origin = null; pointer = null; joy = null; knob.style.transform = '';
+        joystick = bindJoystick(pad, { mode: steeringMode, onChange: vector => { joy = vector; }, onRelease: () => {
+          lastSteer = [0, 0]; lastSteerAt = performance.now(); send('steer', { x: 0, y: 0 });
+        } });
+        root.querySelector('[data-steering-mode]').onchange = event => {
+          steeringMode = event.target.value; joystick.setMode(steeringMode);
+          try { localStorage.setItem('paikutan-steering', steeringMode); } catch { /* optional */ }
+          c.hidden = steeringMode !== 'tilt';
+          if (steeringMode === 'tilt') motion.calibrate();
+          sendSteer();
         };
-        pad.addEventListener('pointerup', end);
-        pad.addEventListener('pointercancel', end);
-        pad.addEventListener('lostpointercapture', end);
       }
       const timer = setInterval(sendSteer, 100);
-      return () => { clearInterval(timer); joy = null; send('steer', { x: 0, y: 0 }); };
+      return () => { clearInterval(timer); joystick?.dispose(); joy = null; send('steer', { x: 0, y: 0 }); };
     });
   }
 
   function readSteer() {
-    if (joy) return joy;
     if (!phone) {
       const x = (keys.has('right') ? 1 : 0) - (keys.has('left') ? 1 : 0), y = (keys.has('up') ? 1 : 0) - (keys.has('down') ? 1 : 0);
       const m = Math.hypot(x, y) || 1;
       return [x / m, y / m];
     }
-    return motion.steer();
+    return steeringMode === 'tilt' ? motion.steer() : joy || [0, 0];
   }
 
   // Steering in world space straight from local input, so the guide arrow needs no host round trip.
@@ -661,6 +660,11 @@ export function createController(root, { mode = 'phone', send, myId, sounds = mo
     root.querySelector('.power').classList.toggle('ready', ready);
     root.querySelector('[data-ready]').textContent = ready ? 'TAP!' : 'charging…';
     root.querySelector('[data-warn]').hidden = !a.invert;
+    const zoneStatus = root.querySelector('[data-zone-status]');
+    zoneStatus.hidden = !a.alive || !a.zone;
+    zoneStatus.dataset.zone = a.zone || '';
+    zoneStatus.textContent = a.zone === 'ihi' ? 'Madulas! Slippery · spin draining'
+      : a.luckSpent ? 'Swerte · luck used for this patch' : 'Swerte! Spin recovering · max +10';
     inverted = a.invert;
     root.querySelector('[data-dring]').style.strokeDashoffset = String(283 * (a.boostCd / BOOST_CD));
     root.querySelector('.dash').classList.toggle('ready', a.boostCd <= 0 && a.alive);

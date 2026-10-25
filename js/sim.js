@@ -1,6 +1,7 @@
 // Trumpo physics for one round. Pure functions with no DOM, so the host can run it
 // authoritatively (and Node can test it). Phones only render snapshots of it.
 import { TOPS, byId } from './data.js';
+import { advanceZones, applyZone, zoneAt, canPlaceZone, placeZone, ZONE_RULES, ZONE_WARN } from './arena-zones.js';
 
 export const ARENA_R = 5;        // chalk circle radius
 export const TOP_R = 0.42;       // trumpo body radius
@@ -48,6 +49,7 @@ export function makeTop(slot, charId, topId, seated = true) {
     spin: 0, wobble: 0, steady: 1,
     charge: 0, shield: 0, invert: 0, dash: 0, stampede: 0, boostCd: 0, hitBy: -1, hitAt: -99,
     sx: 0, sy: 0, wantAbility: false, wantBoost: false,
+    zone: '', zoneId: 0, luckSpent: false,
   };
 }
 
@@ -65,6 +67,7 @@ export function createWorld(seats, rand = Math.random) {
     // Rounds often end inside 10 s, so the barangay shows up early: the dog by 6-12 s, hens from 3.5 s.
     dog: null, dogDone: false, dogAt: 6 + rand() * 6,
     eggs: [], eggId: 0, nextEgg: 3.5 + rand() * 1.5,
+    zones: [], zoneId: 0, birdDone: false, birdAt: 4 + rand() * 1.5,
   };
 }
 
@@ -255,7 +258,7 @@ function collidePair(w, a, b, pair) {
 function strayDog(w, dt) {
   if (!w.dog && !w.dogDone && w.t >= w.dogAt) {
     const dir = w.rand() < 0.5 ? 1 : -1;
-    w.dog = { x: -8.5 * dir, z: (w.rand() - 0.5) * 5, vx: 6 * dir, hit: w.tops.map(() => false), warn: DOG_WARN };
+    w.dog = { x: -8.5 * dir, z: (w.rand() - 0.5) * 5, vx: 6 * dir, hit: w.tops.map(() => false), warn: DOG_WARN, mark: 0, marked: false };
     ev(w, 'dogWarn', { z: w.dog.z, dir });
   }
   const dog = w.dog;
@@ -263,6 +266,13 @@ function strayDog(w, dt) {
   if (dog.warn > 0) {
     dog.warn -= dt;
     if (dog.warn <= 0) ev(w, 'dog', {});
+    return;
+  }
+  if (dog.mark > 0) { dog.mark = Math.max(0, dog.mark - dt); return; }
+  // Pause once to mark a clear spot along the lane, with a full warning before it is slippery.
+  if (!dog.marked && Math.abs(dog.x) < w.ring * 0.5 && canPlaceZone(w, 'ihi', dog.x, dog.z)) {
+    placeZone(w, 'ihi', dog.x, dog.z);
+    dog.mark = ZONE_WARN; dog.marked = true;
     return;
   }
   dog.x += dog.vx * dt;
@@ -334,6 +344,7 @@ export function step(w, dt = STEP) {
     w.ring = Math.max(SQUEEZE_R, ARENA_R - (w.t - SQUEEZE_T) / SQUEEZE_DUR * (ARENA_R - SQUEEZE_R));
   }
   for (const k in w.pairCd) w.pairCd[k] = Math.max(0, w.pairCd[k] - dt);
+  advanceZones(w, dt);
   for (const tp of w.tops) {
     if (!tp.launched || !tp.alive) continue;
     tp.shield = Math.max(0, tp.shield - dt);
@@ -355,14 +366,15 @@ export function step(w, dt = STEP) {
       tp.wantBoost = false;
       if (tp.boostCd <= 0) boost(w, tp, wx, wz);
     }
-    const grip = 7 * (0.35 + 0.65 * tp.spin) * (tp.stampede > 0 ? 1.4 : 1);
+    const slippery = zoneAt(w, tp)?.type === 'ihi';
+    const grip = 7 * (0.35 + 0.65 * tp.spin) * (tp.stampede > 0 ? 1.4 : 1) * (slippery ? ZONE_RULES.ihi.grip : 1);
     // The ground dips slightly toward the middle, so tops keep meeting.
     let ax = wx * grip - tp.x * 0.35, az = wz * grip - tp.z * 0.35;
     const wander = tp.wobble * 2.2;
     ax += Math.cos(w.t * 3 + tp.slot * 2) * wander;
     az += Math.sin(w.t * 3 + tp.slot * 2) * wander;
     tp.vx += ax * dt; tp.vz += az * dt;
-    const fr = Math.exp(-dt * (1.0 + 1.2 * (1 - tp.spin)));
+    const fr = Math.exp(-dt * (1.0 + 1.2 * (1 - tp.spin)) * (slippery ? ZONE_RULES.ihi.drag : 1));
     tp.vx *= fr; tp.vz *= fr;
     tp.x += tp.vx * dt; tp.z += tp.vz * dt;
 
@@ -371,6 +383,7 @@ export function step(w, dt = STEP) {
     const target = clamp((0.45 - tp.spin) / 0.45, 0, 1) * 0.85;
     if (tp.wobble < target) tp.wobble += (target - tp.wobble) * dt;
     else tp.wobble = Math.max(target, tp.wobble - dt * (0.015 + 0.012 * tp.sta));
+    applyZone(w, tp, dt);
     // A top behind the spin leader charges its power up to 1.5x faster.
     let lead = -1;
     for (const o of w.tops) if (o !== tp && live(o)) lead = Math.max(lead, o.spin);
@@ -450,10 +463,11 @@ export function snapshot(w) {
   return {
     t: r2(w.t), ring: r2(w.ring),
     tops: w.tops.map(tp => [r2(tp.x), r2(tp.z), r3(Math.max(0, tp.spin)), r3(tp.wobble),
-      +tp.launched, +tp.alive, +tp.out, r2(tp.charge), +(tp.shield > 0), +(tp.invert > 0), +(tp.dash > 0), r2(tp.wx || 0), r2(tp.wz || 0), r2(tp.boostCd)]),
-    dog: w.dog ? [r2(w.dog.x), r2(w.dog.z), Math.sign(w.dog.vx), r2(Math.max(0, w.dog.warn))] : null,
+      +tp.launched, +tp.alive, +tp.out, r2(tp.charge), +(tp.shield > 0), +(tp.invert > 0), +(tp.dash > 0), r2(tp.wx || 0), r2(tp.wz || 0), r2(tp.boostCd), tp.zone === 'ihi' ? 2 : tp.zone === 'swerte' ? (tp.luckSpent ? 3 : 1) : 0]),
+    dog: w.dog ? [r2(w.dog.x), r2(w.dog.z), Math.sign(w.dog.vx), r2(Math.max(0, w.dog.warn)), r2(w.dog.mark)] : null,
     // t < 0: the hen is still running in (seconds left); t > 0: the egg is down.
     eggs: w.eggs.map(e => [e.id, r2(e.x), r2(e.z), r2(e.t)]),
+    zones: w.zones.map(e => [e.id, e.type === 'swerte' ? 1 : 2, r2(e.x), r2(e.z), e.r, r3(e.age), e.life]),
   };
 }
 
@@ -461,8 +475,10 @@ export function decodeSnap(s) {
   return {
     t: s.t, ring: s.ring || ARENA_R,
     tops: s.tops.map(a => ({ x: a[0], z: a[1], spin: a[2], wobble: a[3], launched: !!a[4], alive: !!a[5],
-      out: !!a[6], charge: a[7], shield: !!a[8], invert: !!a[9], dash: !!a[10], wx: a[11] || 0, wz: a[12] || 0, boostCd: a[13] || 0 })),
-    dog: s.dog && { x: s.dog[0], z: s.dog[1], dir: s.dog[2], warn: s.dog[3] || 0 },
+      out: !!a[6], charge: a[7], shield: !!a[8], invert: !!a[9], dash: !!a[10], wx: a[11] || 0, wz: a[12] || 0, boostCd: a[13] || 0,
+      zone: a[14] === 2 ? 'ihi' : a[14] === 1 || a[14] === 3 ? 'swerte' : '', luckSpent: a[14] === 3 })),
+    dog: s.dog && { x: s.dog[0], z: s.dog[1], dir: s.dog[2], warn: s.dog[3] || 0, mark: s.dog[4] || 0 },
     eggs: (s.eggs || []).map(a => ({ id: a[0], x: a[1], z: a[2], t: a[3] })),
+    zones: (s.zones || []).map(a => ({ id: a[0], type: a[1] === 1 ? 'swerte' : 'ihi', x: a[2], z: a[3], r: a[4], age: a[5], life: a[6] })),
   };
 }

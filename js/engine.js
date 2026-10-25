@@ -4,6 +4,7 @@
 import { CHARACTERS, TOPS } from './data.js';
 import { QUICK_CHAT, CHAT_COOLDOWN, CHAT_ENABLED } from './chat.js';
 import { createWorld, launch, step, snapshot, forfeit, rivalOf, STEP, toLocal, MAX_SEATS } from './sim.js';
+import { ZONE_RULES } from './arena-zones.js';
 
 export const WIN_ROUNDS = 2; // best of 3
 export const BRAWL_ROUNDS = 3;
@@ -330,6 +331,22 @@ export class Engine {
     }
     let m = Math.hypot(tx, tz) || 1;
     tx /= m; tz /= m;
+    // Low-spin CPUs contest unspent luck; both active puddles and their warnings are avoided.
+    const luck = w.zones.find(zone => zone.type === 'swerte' && zone.age >= 0 && zone.age < zone.life - 1
+      && (zone.used[s] || 0) < ZONE_RULES.swerte.cap - 1e-8);
+    if (luck && me.spin < 0.65) {
+      const distance = Math.hypot(luck.x - me.x, luck.z - me.z) || 1;
+      tx = (luck.x - me.x) / distance; tz = (luck.z - me.z) / distance;
+    }
+    for (const zone of w.zones) {
+      if (zone.type !== 'ihi') continue;
+      const dx = me.x - zone.x, dz = me.z - zone.z, distance = Math.hypot(dx, dz);
+      if (distance < zone.r + 1) {
+        const direction = distance > 0.05 ? [dx / distance, dz / distance] : [Math.cos(s + w.t), Math.sin(s + w.t)];
+        const strength = (zone.r + 1 - distance) * 2;
+        tx += direction[0] * strength; tz += direction[1] * strength;
+      }
+    }
     // Steer round eggs (and where a hen is about to lay one) when they are close.
     for (const egg of w.eggs) {
       const ex = me.x - egg.x, ez = me.z - egg.z, d = Math.hypot(ex, ez) || 1;

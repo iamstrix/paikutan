@@ -17,7 +17,7 @@ await Promise.race([document.fonts.load('64px "Lilita One"').catch(() => {}), ne
 const scene = createScene($('#view'), { low: true });
 const SCENE_PHASES = ['charge', 'countdown', 'throw', 'fight', 'roundEnd'];
 // The pick screen is see-through, so the arena shows behind it (music stays at menu volume).
-const VISIBLE_PHASES = [...SCENE_PHASES, 'pick'];
+const VISIBLE_PHASES = [...SCENE_PHASES, 'pick', 'vs'];
 let ctrl = null, net = null, engine = null, state = null, lastPhase = '', lastMsg = 0, snap = null;
 let session = 0, retryTimer = null, wakeLock = null, lastSnapSeq = 0;
 const effects = createFxReceiver(e => {

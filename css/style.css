@@ -154,7 +154,20 @@ body.lobby-open #card1 { right: 372px; }
 .pick .btn.big { position: sticky; bottom: 0; align-self: center; margin-top: 8px; }
 
 .vs { flex-direction: row !important; gap: 16px; }
-.vs-side { display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 12px; border-radius: 14px; border-bottom: 5px solid var(--pc); }
+.vs-side { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 10px 16px 12px; border-radius: 14px; border-bottom: 5px solid var(--pc);
+  background: rgba(20, 14, 38, 0.55); backdrop-filter: blur(4px); }
+.vs-side small { color: #e4dcef; }
+.vs-models { position: relative; display: flex; flex-direction: column; align-items: center; }
+.vs-models .model-shot:last-child:not(:first-child) { width: 84px; height: 84px; margin-top: -34px; }
+@media (max-width: 480px) {
+  .vs { gap: 6px; }
+  .vs-side { padding: 8px 8px 10px; max-width: 42vw; }
+  .vs-side small { font-size: 0.72rem; }
+  .vs-models .model-shot { width: 104px; height: 104px; }
+  .vs-models .model-shot:last-child:not(:first-child) { width: 60px; height: 60px; margin-top: -24px; }
+  .vs-mid { font-size: 1.8rem; }
+}
+.brawl-list .model-shot { width: 34px; height: 34px; flex: none; filter: drop-shadow(0 3px 3px rgba(0, 0, 0, 0.45)); }
 .vs-mid { font-family: Bungee, Impact, sans-serif; font-size: 2.6rem; color: var(--yellow); }
 .vs-row { display: flex; gap: 14px; align-items: center; }
 
@@ -199,9 +212,23 @@ body.lobby-open #card1 { right: 372px; }
 .power.ready { animation: pulse 0.8s infinite; }
 .power.ready small { color: var(--yellow); font-size: 1rem; }
 @keyframes pulse { 50% { transform: scale(1.08); box-shadow: 0 0 30px var(--yellow); } }
-.joy { position: absolute; left: 12px; bottom: 16px; width: 170px; height: 170px; border-radius: 50%; background: rgba(27, 20, 48, 0.45);
+.joy-area { position: absolute; left: 0; top: 180px; bottom: 0; width: 58%; touch-action: none; user-select: none; }
+.joy-area[data-steering=fixed] { left: 12px; top: auto; bottom: 16px; width: 170px; height: 170px; }
+.joy-area[data-steering=tilt] { display: none; }
+.joy { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); pointer-events: none; width: 170px; height: 170px; border-radius: 50%; background: rgba(27, 20, 48, 0.45);
   border: 2px dashed rgba(255, 255, 255, 0.3); display: grid; place-items: center; touch-action: none; }
-.joy span { position: absolute; bottom: -2px; font-size: 0.7rem; color: var(--muted); text-align: center; width: 200px; }
+.joy-hint { position: absolute; left: 18px; bottom: 40px; max-width: 160px; font-size: 0.8rem; color: var(--ink); text-shadow: 0 2px 4px #000; pointer-events: none; }
+.joy-area.active .joy-hint, .joy-area[data-steering=fixed] .joy-hint { display: none; }
+.steer-settings { position: absolute; top: 120px; left: 12px; z-index: 15; display: grid; gap: 3px; font-size: 0.7rem; color: var(--muted); }
+.steer-settings select { font: inherit; font-size: 0.78rem; color: var(--ink); background: #241936; border: 1px solid #9988ae; border-radius: 8px; padding: 6px; }
+.zone-status { position: absolute; top: 110px; right: 12px; max-width: 180px; padding: 7px 10px; border-radius: 10px; background: #1b1430df; border: 1px solid #ffe292; color: #fff2af; font-size: 0.75rem; font-weight: 800; text-align: center; pointer-events: none; }
+.zone-status[data-zone=swerte] { border-color: #81e4ac; color: #c3ffd7; }
+.ctrl.desktop .zone-status { top: 120px; left: 50%; right: auto; transform: translateX(-50%); max-width: 300px; }
+@media (orientation: landscape) and (max-height: 500px) {
+  .joy-area { top: 100px; width: 55%; }
+  .steer-settings { top: 8px; left: 110px; }
+  .zone-status { top: 115px; left: 50%; right: auto; transform: translateX(-50%); }
+}
 .joy-knob { width: 64px; height: 64px; border-radius: 50%; background: rgba(255, 248, 231, 0.75); }
 .center-btn { position: absolute; left: 50%; bottom: 18px; transform: translateX(-50%); }
 
@@ -334,7 +361,11 @@ body.clean #hud, body.clean #corner { display: none; }
 .vs-row .model-shot { width: 110px; height: 110px; }
 
 /* Pick: see-through over the arena. A soft wash at the top and bottom and text shadows keep it readable. */
-.ctrl .panel.pick, body.phone-page.show-scene .ctrl .panel.pick {
+/* The ready and versus screens after it share the same see-through look. */
+.ctrl .panel.pick, body.phone-page.show-scene .ctrl .panel.pick,
+.ctrl .panel.pick-wait, body.phone-page.show-scene .ctrl .panel.pick-wait,
+.ctrl .panel.vs, body.phone-page.show-scene .ctrl .panel.vs,
+.ctrl .panel.brawl-vs, body.phone-page.show-scene .ctrl .panel.brawl-vs {
   background: linear-gradient(rgba(20, 14, 38, 0.6), rgba(20, 14, 38, 0.1) 28%, rgba(20, 14, 38, 0.1) 62%, rgba(20, 14, 38, 0.65));
   box-shadow: none; text-shadow: 0 1px 3px rgba(0, 0, 0, 0.9), 0 0 12px rgba(0, 0, 0, 0.5); }
 .panel.pick .car-info { background: rgba(20, 14, 38, 0.55); border-radius: 12px; padding: 8px 12px; backdrop-filter: blur(4px); }
