@@ -13,6 +13,9 @@ export const CHARACTERS = [
     blurb: 'Sells the trumpos, and knows how to throw them.' },
 ];
 
+// 3D model for each character, where its id differs (tromPOW's names).
+export const CHAR_MODEL = { tambay: 'totoy', tindera: 'marites' };
+
 // strong: the trumpo this one counters (a soft edge, shown to players for counterpicks).
 export const TOPS = [
   { id: 'kidlat', name: 'Kidlat', power: 'Lightning Strike', strong: 'diwata', str: 4, lon: 2, sta: 3, colors: ['#ffd23f', '#1d3557'],

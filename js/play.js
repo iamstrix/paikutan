@@ -16,6 +16,8 @@ const myId = solo ? 'me' : playerId();
 await Promise.race([document.fonts.load('64px "Lilita One"').catch(() => {}), new Promise(r => setTimeout(r, 1500))]);
 const scene = createScene($('#view'), { low: true });
 const SCENE_PHASES = ['charge', 'countdown', 'throw', 'fight', 'roundEnd'];
+// The pick screen is see-through, so the arena shows behind it (music stays at menu volume).
+const VISIBLE_PHASES = [...SCENE_PHASES, 'pick'];
 let ctrl = null, net = null, engine = null, state = null, lastPhase = '', lastMsg = 0, snap = null;
 let session = 0, retryTimer = null, wakeLock = null, lastSnapSeq = 0;
 const effects = createFxReceiver(e => {
@@ -116,8 +118,9 @@ function onMessage(ev, p) {
     }
     scene.setPlayers(p.players);
     scene.setView(p.players.findIndex(x => x && x.id === myId));
-    document.body.classList.toggle('show-scene', SCENE_PHASES.includes(p.phase));
+    document.body.classList.toggle('show-scene', VISIBLE_PHASES.includes(p.phase));
     scene.resize();
+    audio.setMatchState(p, { slot: p.players.findIndex(x => x?.id === myId) });
     ctrl.setState(p);
     if (!solo) effects.receive(p.fx);
   } else if (ev === 'snap') {
@@ -126,6 +129,7 @@ function onMessage(ev, p) {
     if (p.seq && p.seq <= lastSnapSeq) return;
     lastSnapSeq = p.seq || lastSnapSeq;
     snap = decodeSnap(p);
+    audio.setMatchSnap(snap);
     scene.applySnap(snap, solo);
     ctrl && ctrl.onSnap(snap);
     if (!solo) effects.receive(p.fx);

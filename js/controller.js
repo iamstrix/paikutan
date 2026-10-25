@@ -5,7 +5,8 @@ import { toWorld, BOOST_CD } from './sim.js';
 import { CircleTracker, SPIN_SECONDS, readSwipe, Motion } from './input.js';
 import { WIN_ROUNDS, BRAWL_ROUNDS } from './engine.js';
 import { audio } from './audio.js';
-import { QUICK_CHAT, CHAT_COOLDOWN } from './chat.js';
+import { modelShot, liveModel } from './preview.js';
+import { QUICK_CHAT, CHAT_COOLDOWN, CHAT_ENABLED } from './chat.js';
 
 const pct = v => Math.round(v * 100) + '%';
 const REASON = {
@@ -26,13 +27,18 @@ export function charFigure(charId, size = 124) {
   return `<div class="char-fig" style="--c:${c.color};width:${size * 0.62}px;height:${size}px;font-size:${size * 0.3}px"><div class="head">${c.emoji}</div><div class="body"></div></div>`;
 }
 
-const topItem = t => topIcon(t.id, 124);
+// The real 3D models where WebGL allows; the flat icons otherwise.
+const modelImg = (kind, id, size) => {
+  const url = modelShot(kind, id);
+  return url && `<img class="model-shot" src="${url}" width="${size}" height="${size}" alt="" draggable="false">`;
+};
+const topItem = t => modelImg('top', t.id, 150) || topIcon(t.id, 124);
 const topDetails = t => {
   const strong = TOPS.find(x => x.id === t.strong);
   return `<b class="car-name">${t.name}</b><small>${t.power}</small>
     ${statBars(t)}<p>${t.desc}</p>${strong ? `<p class="car-strong">Strong against <b>${strong.name}</b></p>` : ''}`;
 };
-const charItem = c => charFigure(c.id, 124);
+const charItem = c => modelImg('char', c.id, 150) || charFigure(c.id, 124);
 const charDetails = c => `<b class="car-name">${c.name}</b><small>${c.title}</small><p>${c.blurb}</p>`;
 
 export function charIcon(charId, size = 56) {
@@ -77,7 +83,7 @@ export function createController(root, { mode = 'phone', send, myId, sounds = mo
     viewDisposers.splice(0).forEach(dispose => dispose());
     cleanup = null;
     key = k;
-    root.innerHTML = html + `<nav class="quick-chat" aria-label="Quick chat" lang="fil">${QUICK_CHAT.map((text, i) => `<button type="button" data-chat="${i}" aria-label="${text}${phone ? '' : ` (${i + 1})`}">${text}${phone ? '' : `<kbd>${i + 1}</kbd>`}</button>`).join('')}</nav>`;
+    root.innerHTML = html + (!CHAT_ENABLED ? '' : `<nav class="quick-chat" aria-label="Quick chat" lang="fil">${QUICK_CHAT.map((text, i) => `<button type="button" data-chat="${i}" aria-label="${text}${phone ? '' : ` (${i + 1})`}">${text}${phone ? '' : `<kbd>${i + 1}</kbd>`}</button>`).join('')}</nav>`);
     root.dataset.view = k;
     if (init) cleanup = init() || null;
     return true;
@@ -85,7 +91,8 @@ export function createController(root, { mode = 'phone', send, myId, sounds = mo
 
   // Picker strip (trumpos or players): follows the finger pixel by pixel, then eases to the nearest item.
   // pos is a fractional index; the item nearest to it sits in the middle, biggest.
-  function carousel(el, list, startId, onChange, item, details) {
+  // kind ('char' | 'top') makes the middle item play its 3D model live.
+  function carousel(el, list, startId, onChange, item, details, kind) {
     const n = list.length, wrap = v => ((v % n) + n) % n;
     let pos = Math.max(0, list.findIndex(t => t.id === startId)), goal = pos, shown = -1, picked = list[pos].id;
     let anim = 0, drag = null;
@@ -101,6 +108,7 @@ export function createController(root, { mode = 'phone', send, myId, sounds = mo
     const spacing = () => Math.min(120, stage.clientWidth * 0.36) || 110;
     // Signed distance from the middle, the short way round the loop.
     const offset = k => wrap(k - pos + n / 2) - n / 2;
+    let liveCanvas = null, stopLive = () => {};
 
     function layout() {
       const sp = spacing();
@@ -117,6 +125,11 @@ export function createController(root, { mode = 'phone', send, myId, sounds = mo
       items.forEach((it, k) => it.classList.toggle('main', k === shown));
       el.querySelector('.car-dots').innerHTML = list.map((x, k) => `<i class="${k === shown ? 'on' : ''}"></i>`).join('');
       el.querySelector('.car-info').innerHTML = details(list[shown]);
+      if (!kind) return;
+      stopLive();
+      liveCanvas ||= Object.assign(document.createElement('canvas'), { className: 'model-live' });
+      items[shown].append(liveCanvas);
+      stopLive = liveModel(liveCanvas, kind, list[shown].id);
     }
     // Ease out from wherever the strip is (even halfway between two trumpos) to a whole index.
     function settle(target) {
@@ -167,7 +180,7 @@ export function createController(root, { mode = 'phone', send, myId, sounds = mo
     });
     stage.addEventListener('pointercancel', () => { drag = null; settle(Math.round(pos)); });
     layout();
-    viewDisposers.push(() => cancelAnimationFrame(anim));
+    viewDisposers.push(() => { cancelAnimationFrame(anim); stopLive(); });
     return { get id() { return list[shown].id; } };
   }
 
@@ -207,7 +220,7 @@ export function createController(root, { mode = 'phone', send, myId, sounds = mo
     if (p.picked) {
       show('pickWait', `
         <div class="panel center">
-          <div class="vs-row">${charIcon(p.char, 72)}${topIcon(p.top, 72)}</div>
+          <div class="vs-row">${modelImg('char', p.char, 110) || charIcon(p.char, 72)}${modelImg('top', p.top, 110) || topIcon(p.top, 72)}</div>
           <h2>Ready!</h2><p class="muted">Waiting for ${rivals()}…${brawl() ? ' <span data-timer></span>' : ''}</p>
           <button class="btn ghost" data-act="unready">Change pick</button>
         </div>`, () => {
@@ -225,8 +238,8 @@ export function createController(root, { mode = 'phone', send, myId, sounds = mo
         ${brawl() ? '<p class="muted small">Picks lock in <span data-timer></span></p>' : ''}
       </div>`, () => {
       const pick = k => id => { sel[k] = id; send('pick', { ...sel, ready: false }); };
-      carousel(root.querySelector('[data-car=char]'), CHARACTERS, sel.char, pick('char'), charItem, charDetails);
-      carousel(root.querySelector('[data-car=top]'), TOPS, sel.top, pick('top'), topItem, topDetails);
+      carousel(root.querySelector('[data-car=char]'), CHARACTERS, sel.char, pick('char'), charItem, charDetails, 'char');
+      carousel(root.querySelector('[data-car=top]'), TOPS, sel.top, pick('top'), topItem, topDetails, 'top');
       root.querySelector('[data-act=ready]').onclick = () => { if (sounds) audio.click(); send('pick', { ...sel, ready: true }); };
     });
   }
@@ -373,7 +386,7 @@ export function createController(root, { mode = 'phone', send, myId, sounds = mo
       const live = () => st.phase === 'throw' && !me().thrown;
       const doThrow = t => {
         if (!live()) return;
-        if (sounds) audio.dash();
+        if (sounds) audio.throw();
         send('throw', t);
         if (navigator.vibrate) navigator.vibrate(60);
       };
@@ -547,7 +560,7 @@ export function createController(root, { mode = 'phone', send, myId, sounds = mo
       </div>`, () => {
       const btn = root.querySelector('[data-act=confirm]');
       const label = id => { btn.textContent = id === cur ? `Keep ${byId(TOPS, cur).name}` : `Switch to ${byId(TOPS, id).name}`; };
-      const car = carousel(root.querySelector('[data-car]'), TOPS, cur, label, topItem, topDetails);
+      const car = carousel(root.querySelector('[data-car]'), TOPS, cur, label, topItem, topDetails, 'top');
       label(cur);
       btn.onclick = () => { if (sounds) audio.click(); btn.disabled = true; send('counter', { top: car.id }); };
     });
@@ -664,7 +677,7 @@ export function createController(root, { mode = 'phone', send, myId, sounds = mo
   }, 100);
 
   const chat = i => {
-    if (slot < 0 || performance.now() < chatUntil) return;
+    if (!CHAT_ENABLED || slot < 0 || performance.now() < chatUntil) return;
     chatUntil = performance.now() + CHAT_COOLDOWN * 1000;
     send('chat', { i });
   };

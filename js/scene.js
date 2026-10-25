@@ -2,7 +2,7 @@
 // Used by the desktop spectator and the phones (which follow host snapshots).
 import * as THREE from 'three';
 import { ARENA_R, TOP_R, LAUNCH_Z, EGG_WARN, EGG_R, MAX_SEATS, seatDir } from './sim.js';
-import { TOPS, CHARACTERS, PLAYER_COLORS, byId } from './data.js';
+import { TOPS, CHARACTERS, PLAYER_COLORS, CHAR_MODEL, byId } from './data.js';
 import { buildBarangay, WORLD_SCALE } from './world/barangay.js';
 import { createAtmosphere } from './world/atmosphere.js';
 import { buildTrompo } from './entities/trompo.js';
@@ -76,7 +76,6 @@ function makeTop(topId, slot, low) {
 }
 
 // Our characters wear tromPOW's closest outfits: Tambay is his Mang Totoy, Aling Nena his Tita Marites.
-const CHAR_MODEL = { tambay: 'totoy', tindera: 'marites' };
 
 // A player as one of tromPOW's big-head characters, scaled into our world like the barangay.
 function makePerson(charId, slot, brawl) {

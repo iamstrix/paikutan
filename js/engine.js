@@ -2,7 +2,7 @@
 // The host page runs one Engine; phones send it messages through handle().
 // Two modes: '1v1' (best of 3 with counterpicks) and 'brawl' (up to 8 trumpos, points over 3 rounds).
 import { CHARACTERS, TOPS } from './data.js';
-import { QUICK_CHAT, CHAT_COOLDOWN } from './chat.js';
+import { QUICK_CHAT, CHAT_COOLDOWN, CHAT_ENABLED } from './chat.js';
 import { createWorld, launch, step, snapshot, forfeit, rivalOf, STEP, toLocal, MAX_SEATS } from './sim.js';
 
 export const WIN_ROUNDS = 2; // best of 3
@@ -191,7 +191,7 @@ export class Engine {
     const pl = this.players[s], tp = this.world && pl.inRound && this.world.tops[s];
     switch (type) {
       case 'chat':
-        if (!Number.isInteger(p.i) || p.i < 0 || p.i >= QUICK_CHAT.length || this.elapsed - pl.chatAt < CHAT_COOLDOWN) return;
+        if (!CHAT_ENABLED || !Number.isInteger(p.i) || p.i < 0 || p.i >= QUICK_CHAT.length || this.elapsed - pl.chatAt < CHAT_COOLDOWN) return;
         pl.chatAt = this.elapsed;
         this.emitEffects([{ type: 'chat', slot: s, i: p.i }]);
         this.changed();

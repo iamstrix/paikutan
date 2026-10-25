@@ -1,0 +1,104 @@
+{
+  "sources": [
+    {
+      "id": "thunder",
+      "soundId": 567945,
+      "author": "TRP",
+      "title": "200817 Thunder, pretty close crack 4pm.flac",
+      "page": "https://freesound.org/people/TRP/sounds/567945/",
+      "power": "kidlat",
+      "duration": 1.6,
+      "preview": "https://cdn.freesound.org/previews/567/567945_97550-hq.mp3",
+      "start": 1.87,
+      "license": "CC0-1.0",
+      "checked": "2026-10-25"
+    },
+    {
+      "id": "gallop",
+      "soundId": 684446,
+      "author": "gbnelso",
+      "title": "HorseGallop1.wav",
+      "page": "https://freesound.org/people/gbnelso/sounds/684446/",
+      "power": "tikbalang",
+      "duration": 2,
+      "preview": "https://cdn.freesound.org/previews/684/684446_12716775-hq.mp3",
+      "start": 0,
+      "license": "CC0-1.0",
+      "checked": "2026-10-25"
+    },
+    {
+      "id": "crystal",
+      "soundId": 772279,
+      "author": "newlocknew",
+      "title": "MUSCChim_Atonal Crystal Chime Texture 1_EM",
+      "page": "https://freesound.org/people/newlocknew/sounds/772279/",
+      "power": "agimat",
+      "duration": 1.8,
+      "preview": "https://cdn.freesound.org/previews/772/772279_5828667-hq.mp3",
+      "start": 11.9,
+      "license": "CC0-1.0",
+      "checked": "2026-10-25"
+    },
+    {
+      "id": "bamboo",
+      "soundId": 412416,
+      "author": "Alex_hears_things",
+      "title": "WOODEN WINDCHIMES.wav",
+      "page": "https://freesound.org/people/Alex_hears_things/sounds/412416/",
+      "power": "diwata",
+      "duration": 1.8,
+      "preview": "https://cdn.freesound.org/previews/412/412416_2309965-hq.mp3",
+      "start": 28.9,
+      "license": "CC0-1.0",
+      "checked": "2026-10-25"
+    },
+    {
+      "id": "growl",
+      "soundId": 222523,
+      "author": "uagadugu",
+      "title": "Deep Monster Growl",
+      "page": "https://freesound.org/people/uagadugu/sounds/222523/",
+      "duration": 1.25,
+      "preview": "https://cdn.freesound.org/previews/222/222523_255863-hq.mp3",
+      "start": 0.5,
+      "license": "CC0-1.0",
+      "checked": "2026-10-25"
+    },
+    {
+      "id": "kulintang",
+      "soundId": 797987,
+      "author": "Peligro8",
+      "title": "T'boli Tribe South Cotabato",
+      "page": "https://freesound.org/people/Peligro8/sounds/797987/",
+      "duration": 1.1,
+      "previewQuality": "lq",
+      "preview": "https://cdn.freesound.org/previews/797/797987_17175744-lq.mp3",
+      "start": 43.5,
+      "license": "CC0-1.0",
+      "checked": "2026-10-25"
+    }
+  ],
+  "files": [
+    {
+      "id": "kidlat",
+      "bytes": 13418
+    },
+    {
+      "id": "tikbalang",
+      "bytes": 16135
+    },
+    {
+      "id": "agimat",
+      "bytes": 14881
+    },
+    {
+      "id": "diwata",
+      "bytes": 14672
+    },
+    {
+      "id": "bakunawa",
+      "bytes": 18434
+    }
+  ],
+  "totalBytes": 77540
+}

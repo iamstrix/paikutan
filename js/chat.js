@@ -1,4 +1,6 @@
 // Fixed, family-friendly Tagalog quick chat. Only the slot index crosses the network.
+// Switched off for now: no buttons, hotkeys, bubbles or voice clips. Set true to bring it back.
+export const CHAT_ENABLED = false;
 export const QUICK_CHAT = ['Tara G', 'Aray mo', 'Lala', 'Hehe'];
 export const CHAT_COOLDOWN = 2.6;
 export const CHAT_CLIPS = QUICK_CHAT.map((_, i) => new URL(`../assets/audio/chat/${i}.mp3`, import.meta.url).href);

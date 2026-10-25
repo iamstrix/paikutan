@@ -121,10 +121,18 @@ body.lobby-open #card1 { right: 372px; }
 #corner button { width: 42px; height: 42px; border-radius: 50%; border: 0; background: var(--panel-soft); color: var(--ink); font-size: 1.1rem; cursor: pointer; }
 
 #help { position: fixed; inset: 0; background: rgba(0, 0, 0, 0.6); display: grid; place-items: center; z-index: 20; padding: 16px; }
-#help .panel { max-width: 640px; max-height: 90vh; overflow: auto; background: var(--panel); border-radius: var(--radius); padding: 24px; }
+#help .panel { max-width: 780px; max-height: 90vh; overflow: auto; background: var(--panel); border-radius: var(--radius); padding: 24px; }
 
 /* ---------- controller (shared) ---------- */
 .ctrl { position: fixed; inset: 0; display: flex; align-items: stretch; justify-content: center; z-index: 10; }
+/* How to play: a screenshot from the game beside each step; stacked on narrow screens. */
+.howto.howto-shots { list-style: none; padding: 0; max-width: none; counter-reset: step; }
+.howto.howto-shots > li { display: grid; grid-template-columns: 220px 1fr; gap: 14px; align-items: start; margin: 0 0 14px; counter-increment: step; }
+.howto-shots > li > div::before { content: counter(step) '. '; font-weight: 800; color: var(--yellow); }
+.howto-shot { width: 100%; height: auto; aspect-ratio: 16 / 10; object-fit: cover; border-radius: 10px; border: 1px solid rgba(255, 255, 255, 0.14); background: #000; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35); }
+@media (max-width: 560px) {
+  .howto.howto-shots > li { grid-template-columns: 1fr; gap: 8px; }
+}
 .ctrl .panel { width: 100%; max-width: 760px; overflow: auto; padding: 16px; background: var(--panel); display: flex; flex-direction: column; gap: 8px; }
 .ctrl .panel.center { align-items: center; justify-content: center; text-align: center; }
 .badge { display: inline-block; padding: 4px 14px; border-radius: 999px; font-weight: 800; }
@@ -311,6 +319,26 @@ body.clean #hud, body.clean #corner { display: none; }
   box-shadow: inset 0 -4px 0 rgba(0, 0, 0, 0.18); }
 .char-fig .body { width: 100%; flex: 1; margin-top: 4px; background: var(--c); border-radius: 8px 8px 4px 4px; box-shadow: inset 0 -8px 0 rgba(0, 0, 0, 0.2); }
 .car-item.main .char-fig { animation: car-bob 1.8s ease-in-out infinite; filter: drop-shadow(0 8px 10px rgba(0, 0, 0, 0.45)); }
+
+/* 3D model previews (preview.js): still pictures in the strip; the middle one plays live over its picture. */
+.car-stage:has(.model-shot) { height: 172px; }
+.model-shot { display: block; width: 150px; height: 150px; pointer-events: none; filter: drop-shadow(0 10px 10px rgba(0, 0, 0, 0.45)); }
+.model-live { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; filter: drop-shadow(0 10px 10px rgba(0, 0, 0, 0.45)); }
+.car-item.main:has(.model-live) .model-shot { visibility: hidden; }
+.vs-row .model-shot { width: 110px; height: 110px; }
+
+/* Pick: see-through over the arena. A soft wash at the top and bottom and text shadows keep it readable. */
+.ctrl .panel.pick, body.phone-page.show-scene .ctrl .panel.pick {
+  background: linear-gradient(rgba(20, 14, 38, 0.6), rgba(20, 14, 38, 0.1) 28%, rgba(20, 14, 38, 0.1) 62%, rgba(20, 14, 38, 0.65));
+  box-shadow: none; text-shadow: 0 1px 3px rgba(0, 0, 0, 0.9), 0 0 12px rgba(0, 0, 0, 0.5); }
+.panel.pick .car-info { background: rgba(20, 14, 38, 0.55); border-radius: 12px; padding: 8px 12px; backdrop-filter: blur(4px); }
+.panel.pick .car-info p { color: #e4dcef; }
+@media (max-height: 760px) {
+  .ctrl.phone .panel.pick { gap: 4px; }
+  .ctrl.phone .panel.pick h2 { margin: 0; font-size: 1.15rem; }
+  .ctrl.phone .panel.pick .car-stage:has(.model-shot) { height: 138px; }
+  .ctrl.phone .panel.pick .model-shot { width: 124px; height: 124px; }
+}
 
 /* ---------- host menu and brawl ---------- */
 .menu .btn small { display: block; font-family: Nunito, sans-serif; font-size: 0.8rem; font-weight: 700; opacity: 0.85; margin-top: 2px; letter-spacing: 0; text-transform: none; }

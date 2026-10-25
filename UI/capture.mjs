@@ -28,12 +28,14 @@ await new Promise(r => server.listen(0, '127.0.0.1', r));
 const base = `http://127.0.0.1:${server.address().port}`;
 
 const chrome = spawn(process.env.CHROME_PATH || 'C:/Program Files/Google/Chrome/Application/chrome.exe', [
-  '--headless=new', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--no-first-run', '--no-default-browser-check', '--mute-audio',
+  // Real GPU: software WebGL takes minutes per frame at 1080p. CAPTURE_SOFTWARE=1 falls back to SwiftShader.
+  '--headless=new', ...(process.env.CAPTURE_SOFTWARE ? ['--use-angle=swiftshader', '--enable-unsafe-swiftshader'] : ['--use-angle=d3d11', '--enable-gpu', '--ignore-gpu-blocklist']), '--no-first-run', '--no-default-browser-check', '--mute-audio',
   '--autoplay-policy=no-user-gesture-required', '--remote-debugging-port=0', `--user-data-dir=${resolve(root, 'node_modules/.trumpo-check/ui-profile-' + which)}`,
   '--disable-background-timer-throttling', '--disable-renderer-backgrounding', '--disable-backgrounding-occluded-windows', 'about:blank',
 ], { windowsHide: true, stdio: ['ignore', 'ignore', 'pipe'] });
 
 const sleep = ms => new Promise(r => setTimeout(r, ms));
+const started = Date.now();
 let socket;
 try {
   const endpoint = await new Promise((ok, fail) => {
@@ -77,7 +79,7 @@ try {
       const { data } = await send('Page.captureScreenshot', { format: 'png' }, sessionId);
       await writeFile(resolve(out, file + '.png'), Buffer.from(data, 'base64'));
       shots.push({ file: file + '.png', title, device: label, note });
-      console.log(`[${which}] ${file}  ${title}`);
+      console.log(`[${which}] ${((Date.now() - started) / 1000).toFixed(0)}s ${file}  ${title}`);
     };
     const go = async u => { await send('Page.navigate', { url: base + u }, sessionId); };
     const mouse = (type, x, y, buttons = 0) => send('Input.dispatchMouseEvent', { type, x, y, button: 'left', buttons, clickCount: 1, pointerType: 'mouse' }, sessionId);
@@ -90,6 +92,11 @@ try {
   const fill = (sel, v) => `(()=>{const e=document.querySelector(${JSON.stringify(sel)});e.value=${JSON.stringify(v)};e.dispatchEvent(new Event('input',{bubbles:true}));return true})()`;
   const ready = `typeof document.querySelector('#btn-host')?.onclick==='function'`;
   const phoneReady = `typeof document.querySelector('#join')?.onclick==='function'`;
+
+  // Some screens only last a moment; missing one logs a skip instead of ending the run.
+  const optional = async (name, fn) => {
+    try { await fn(); } catch (e) { console.log(`[${which}] skipped ${name}: ${e.message.split('\n')[0]}`); }
+  };
 
   // Draws real circles on the spin pad for its 3 seconds; screenshots once mid-gesture.
   async function windUp(tab, file, title) {
@@ -178,21 +185,22 @@ try {
   await host.shot('20-tv-charge', 'TV: players winding (Paikot)');
   await a.shot('21-phone-spin', 'Phone: spin pad, before touching');
   const [idA, idB] = await ids();
-  await spin(idB, 0.35, 0.4);
   await windUp(a, '22-phone-spin-drawing', 'Phone: spinning (drawing circles)');
-  await a.until(viewIs('spunWait'));
-  await a.shot('23-phone-spin-locked', 'Phone: spin locked in, waiting');
+  // B spins only after A's "locked in" screen is captured; once both spin, the round moves on at once.
+  await optional('23', async () => { await a.until(viewIs('spunWait'), 8000); await a.shot('23-phone-spin-locked', 'Phone: spin locked in, waiting'); });
+  await spin(idB, 0.35, 0.4);
   await host.until(phaseIs('countdown'));
-  await sleep(700);
-  await host.shot('24-tv-countdown', 'TV: countdown to Bitaw');
-  await a.shot('25-phone-throw-countdown', 'Phone: throw screen during countdown');
+  await optional('24-25', async () => {
+    await sleep(500);
+    await host.shot('24-tv-countdown', 'TV: countdown to Bitaw');
+    await a.shot('25-phone-throw-countdown', 'Phone: throw screen during countdown');
+  });
   await host.until(phaseIs('throw'));
-  await sleep(300);
-  await a.shot('26-phone-throw-now', 'Phone: BITAW! flick now');
-  await host.shot('27-tv-throw', 'TV: throw window open');
+  // The throw window is only 3 s: phone A's two shots go first, then the TV.
+  await optional('26', () => a.shot('26-phone-throw-now', 'Phone: BITAW! flick now'));
   await toss(idA, 0.75);
-  await a.until(viewIs('thrown'));
-  await a.shot('28-phone-thrown', 'Phone: thrown, watching it land');
+  await optional('28', async () => { await a.until(viewIs('thrown'), 2500); await a.shot('28-phone-thrown', 'Phone: thrown, watching it land'); });
+  await optional('27', () => host.shot('27-tv-throw', 'TV: throw window open (one player thrown)'));
   await toss(idB, 0.6);
   await host.until(phaseIs('fight'));
   await a.until(viewIs('fight'));
@@ -218,14 +226,18 @@ try {
   for (let round = 0; round < 4; round++) {
     await host.until(`['counter','matchEnd','charge'].includes(document.body.dataset.phase)`);
     let ph = await host.evaluate(`document.body.dataset.phase`);
+    console.log(`[${which}] between rounds: ${ph}`);
     if (ph === 'counter' && !counterShot) {
       counterShot = true;
-      await sleep(600);
-      await host.shot('35-tv-counter', 'TV: counter-pick between rounds');
-      const loser = await host.evaluate(`roomState.result.winner`) === 0 ? b : a;
-      const winner = loser === a ? b : a;
-      await loser.shot('36-phone-counter-pick', 'Phone: loser may switch trumpo');
-      await winner.shot('37-phone-counter-wait', 'Phone: winner locked, waiting');
+      await optional('35-37', async () => {
+        await sleep(600);
+        await host.shot('35-tv-counter', 'TV: counter-pick between rounds');
+        // Only the round loser gets the trumpo carousel.
+        const loser = await a.evaluate(`!!document.querySelector('#ctrl [data-car]')`) ? a : b;
+        const winner = loser === a ? b : a;
+        await loser.shot('36-phone-counter-pick', 'Phone: loser may switch trumpo');
+        await winner.shot('37-phone-counter-wait', 'Phone: winner locked, waiting');
+      });
     }
     if (ph === 'matchEnd') break;
     await host.until(`['charge','matchEnd'].includes(document.body.dataset.phase)`);
@@ -245,13 +257,11 @@ try {
   const [C, Lo] = champ === 1 ? [b, a] : [a, b];
   await C.shot('39-phone-match-won', 'Phone: KAMPEON (match won)');
   await Lo.shot('40-phone-match-lost', 'Phone: match lost');
-  await C.evaluate(click('[data-act=rematch]'));
-  await C.until(viewIs('rematchWait'));
-  await C.shot('41-phone-rematch-wait', 'Phone: rematch requested, waiting');
-  await a.evaluate(click('#leave'));
-  await b.evaluate(click('#leave'));
-  await sleep(500);
-  await a.shot('42-phone-left', 'Phone: after leaving the match');
+  await optional('41', async () => {
+    await C.evaluate(click('[data-act=rematch]'));
+    await C.until(viewIs('rematchWait'), 5000);
+    await C.shot('41-phone-rematch-wait', 'Phone: rematch requested, waiting');
+  });
 
   // ---------- Brawl room: host plays in their own room, + CPUs, + phones ----------
   await host.evaluate(click('#btn-exit'));
@@ -299,11 +309,9 @@ try {
   await spin(idC, 0.6, 0.6);
   await spin('host-player', 0.8, 0.8);
   await host.until(phaseIs('countdown'));
-  await sleep(500);
-  await host.shot('57-brawl-countdown', 'Brawl: countdown (host controller)');
+  await optional('57', async () => { await sleep(500); await host.shot('57-brawl-countdown', 'Brawl: countdown (host controller)'); });
   await host.until(phaseIs('throw'));
-  await sleep(300);
-  await host.shot('58-brawl-throw', 'Brawl: throw (drag mouse up / swipe)');
+  await optional('58', () => host.shot('58-brawl-throw', 'Brawl: throw (drag mouse up / swipe)'));
   await toss('host-player', 0.7);
   await toss(idC, 0.7, 0.3);
   await host.until(phaseIs('fight'));
@@ -311,11 +319,10 @@ try {
   await d.until(phoneReady);
   await d.evaluate(fill('#name', 'Late'));
   await d.evaluate(click('#join'));
-  await d.until(viewIs('sitOut'));
   await sleep(1200);
   await host.shot('59-brawl-fight', 'Brawl: fight (host plays, roster on the side)');
   await c.shot('60-phone-brawl-fight', 'Phone: brawl fight');
-  await d.shot('61-phone-sit-out', 'Phone: joined mid-round, sits out');
+  await optional('61', async () => { await d.until(viewIs('sitOut'), 8000); await d.shot('61-phone-sit-out', 'Phone: joined mid-round, sits out'); });
   await host.until(phaseIs('roundEnd'));
   await sleep(600);
   await host.shot('62-brawl-round-end', 'Brawl: round end (points, KOs)');
@@ -350,4 +357,5 @@ try {
   socket?.close();
   chrome.kill();
   server.close();
+  await import('./build-gallery.mjs');
 }

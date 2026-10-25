@@ -1,0 +1,335 @@
+{
+  "viewport": {
+    "width": 405,
+    "height": 720,
+    "deviceScaleFactor": 2,
+    "mobile": true
+  },
+  "shots": [
+    {
+      "file": "01-title.png",
+      "title": "Title / main menu",
+      "device": "Host screen (phone)",
+      "note": "CPU demo match plays behind the menu."
+    },
+    {
+      "file": "02-host-mode.png",
+      "title": "Host: pick a mode (1v1 / Brawl)",
+      "device": "Host screen (phone)",
+      "note": ""
+    },
+    {
+      "file": "03-join-code.png",
+      "title": "Join match: room code entry",
+      "device": "Host screen (phone)",
+      "note": ""
+    },
+    {
+      "file": "04-how-to-play.png",
+      "title": "How to play overlay",
+      "device": "Host screen (phone)",
+      "note": ""
+    },
+    {
+      "file": "05-solo-join.png",
+      "title": "Practice vs CPU on phone: name entry",
+      "device": "Phone",
+      "note": "play.html?solo=1 (where Practice sends touch devices)."
+    },
+    {
+      "file": "10-lobby-1v1-empty.png",
+      "title": "1v1 lobby: QR + room code, no players yet",
+      "device": "Host screen (phone)",
+      "note": ""
+    },
+    {
+      "file": "11-phone-join.png",
+      "title": "Phone join screen (room code filled from QR)",
+      "device": "Phone A (Juan)",
+      "note": ""
+    },
+    {
+      "file": "12-phone-lobby-wait.png",
+      "title": "Phone: joined, waiting for the rival",
+      "device": "Phone A (Juan)",
+      "note": "Includes the visual how-to steps."
+    },
+    {
+      "file": "13-lobby-1v1-one.png",
+      "title": "1v1 lobby: one player joined",
+      "device": "Host screen (phone)",
+      "note": ""
+    },
+    {
+      "file": "14-tv-pick.png",
+      "title": "TV: both players choosing",
+      "device": "Host screen (phone)",
+      "note": ""
+    },
+    {
+      "file": "15-phone-pick.png",
+      "title": "Phone: pick character + trumpo",
+      "device": "Phone A (Juan)",
+      "note": ""
+    },
+    {
+      "file": "16-phone-pick-ready.png",
+      "title": "Phone: picked, waiting for rival",
+      "device": "Phone A (Juan)",
+      "note": ""
+    },
+    {
+      "file": "17-tv-pick-one-ready.png",
+      "title": "TV: one player ready",
+      "device": "Host screen (phone)",
+      "note": ""
+    },
+    {
+      "file": "18-tv-vs.png",
+      "title": "TV: versus intro",
+      "device": "Host screen (phone)",
+      "note": ""
+    },
+    {
+      "file": "19-phone-vs.png",
+      "title": "Phone: versus intro",
+      "device": "Phone A (Juan)",
+      "note": ""
+    },
+    {
+      "file": "20-tv-charge.png",
+      "title": "TV: players winding (Paikot)",
+      "device": "Host screen (phone)",
+      "note": ""
+    },
+    {
+      "file": "21-phone-spin.png",
+      "title": "Phone: spin pad, before touching",
+      "device": "Phone A (Juan)",
+      "note": ""
+    },
+    {
+      "file": "22-phone-spin-drawing.png",
+      "title": "Phone: spinning (drawing circles)",
+      "device": "Phone A (Juan)",
+      "note": "Mid-gesture: drawing circles on the ring."
+    },
+    {
+      "file": "23-phone-spin-locked.png",
+      "title": "Phone: spin locked in, waiting",
+      "device": "Phone A (Juan)",
+      "note": ""
+    },
+    {
+      "file": "24-tv-countdown.png",
+      "title": "TV: countdown to Bitaw",
+      "device": "Host screen (phone)",
+      "note": ""
+    },
+    {
+      "file": "25-phone-throw-countdown.png",
+      "title": "Phone: throw screen during countdown",
+      "device": "Phone A (Juan)",
+      "note": ""
+    },
+    {
+      "file": "26-phone-throw-now.png",
+      "title": "Phone: BITAW! flick now",
+      "device": "Phone A (Juan)",
+      "note": ""
+    },
+    {
+      "file": "28-phone-thrown.png",
+      "title": "Phone: thrown, watching it land",
+      "device": "Phone A (Juan)",
+      "note": ""
+    },
+    {
+      "file": "27-tv-throw.png",
+      "title": "TV: throw window open (one player thrown)",
+      "device": "Host screen (phone)",
+      "note": ""
+    },
+    {
+      "file": "29-tv-fight.png",
+      "title": "TV: fight HUD (with a quick-chat bubble)",
+      "device": "Host screen (phone)",
+      "note": ""
+    },
+    {
+      "file": "30-phone-fight.png",
+      "title": "Phone: fight controls + \"You\" tag",
+      "device": "Phone A (Juan)",
+      "note": ""
+    },
+    {
+      "file": "31-phone-fight-b.png",
+      "title": "Phone (other player): fight",
+      "device": "Phone B (Maria)",
+      "note": ""
+    },
+    {
+      "file": "32-tv-round-end.png",
+      "title": "TV: round end banner",
+      "device": "Host screen (phone)",
+      "note": ""
+    },
+    {
+      "file": "33-phone-round-won.png",
+      "title": "Phone: round won",
+      "device": "Phone B (Maria)",
+      "note": ""
+    },
+    {
+      "file": "34-phone-round-lost.png",
+      "title": "Phone: round lost",
+      "device": "Phone A (Juan)",
+      "note": ""
+    },
+    {
+      "file": "35-tv-counter.png",
+      "title": "TV: counter-pick between rounds",
+      "device": "Host screen (phone)",
+      "note": ""
+    },
+    {
+      "file": "36-phone-counter-pick.png",
+      "title": "Phone: loser may switch trumpo",
+      "device": "Phone A (Juan)",
+      "note": ""
+    },
+    {
+      "file": "37-phone-counter-wait.png",
+      "title": "Phone: winner locked, waiting",
+      "device": "Phone B (Maria)",
+      "note": ""
+    },
+    {
+      "file": "38-tv-match-end.png",
+      "title": "TV: match end + Rematch / Back",
+      "device": "Host screen (phone)",
+      "note": ""
+    },
+    {
+      "file": "39-phone-match-won.png",
+      "title": "Phone: KAMPEON (match won)",
+      "device": "Phone A (Juan)",
+      "note": ""
+    },
+    {
+      "file": "40-phone-match-lost.png",
+      "title": "Phone: match lost",
+      "device": "Phone B (Maria)",
+      "note": ""
+    },
+    {
+      "file": "41-phone-rematch-wait.png",
+      "title": "Phone: rematch requested, waiting",
+      "device": "Phone A (Juan)",
+      "note": ""
+    },
+    {
+      "file": "50-lobby-brawl.png",
+      "title": "Brawl lobby: CPUs added (removable)",
+      "device": "Host screen (phone)",
+      "note": ""
+    },
+    {
+      "file": "51-lobby-host-playing.png",
+      "title": "Brawl lobby: host takes a seat (plays on this screen)",
+      "device": "Host screen (phone)",
+      "note": ""
+    },
+    {
+      "file": "52-host-room-overlay.png",
+      "title": "Host on phone: Room overlay (QR / code)",
+      "device": "Host screen (phone)",
+      "note": ""
+    },
+    {
+      "file": "53-lobby-brawl-full.png",
+      "title": "Brawl lobby: host + phone + CPUs",
+      "device": "Host screen (phone)",
+      "note": ""
+    },
+    {
+      "file": "54-brawl-pick.png",
+      "title": "Brawl: pick (host controller on the big screen)",
+      "device": "Host screen (phone)",
+      "note": ""
+    },
+    {
+      "file": "55-phone-brawl-pick.png",
+      "title": "Phone: brawl pick (timed)",
+      "device": "Phone C (Ana)",
+      "note": ""
+    },
+    {
+      "file": "56-brawl-spin.png",
+      "title": "Brawl: host spin pad",
+      "device": "Host screen (phone)",
+      "note": ""
+    },
+    {
+      "file": "57-brawl-countdown.png",
+      "title": "Brawl: countdown (host controller)",
+      "device": "Host screen (phone)",
+      "note": ""
+    },
+    {
+      "file": "58-brawl-throw.png",
+      "title": "Brawl: throw (drag mouse up / swipe)",
+      "device": "Host screen (phone)",
+      "note": ""
+    },
+    {
+      "file": "59-brawl-fight.png",
+      "title": "Brawl: fight (host plays, roster on the side)",
+      "device": "Host screen (phone)",
+      "note": ""
+    },
+    {
+      "file": "60-phone-brawl-fight.png",
+      "title": "Phone: brawl fight",
+      "device": "Phone C (Ana)",
+      "note": ""
+    },
+    {
+      "file": "61-phone-sit-out.png",
+      "title": "Phone: joined mid-round, sits out",
+      "device": "Phone D (late joiner)",
+      "note": ""
+    },
+    {
+      "file": "62-brawl-round-end.png",
+      "title": "Brawl: round end (points, KOs)",
+      "device": "Host screen (phone)",
+      "note": ""
+    },
+    {
+      "file": "63-phone-brawl-round-end.png",
+      "title": "Phone: brawl round end",
+      "device": "Phone C (Ana)",
+      "note": ""
+    },
+    {
+      "file": "64-brawl-pick-between.png",
+      "title": "Brawl: pick between rounds (timer)",
+      "device": "Host screen (phone)",
+      "note": ""
+    },
+    {
+      "file": "65-brawl-match-end.png",
+      "title": "Brawl: final standings",
+      "device": "Host screen (phone)",
+      "note": ""
+    },
+    {
+      "file": "66-phone-brawl-match-end.png",
+      "title": "Phone: brawl final place",
+      "device": "Phone C (Ana)",
+      "note": ""
+    }
+  ],
+  "errors": []
+}

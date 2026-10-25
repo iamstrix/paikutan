@@ -1,0 +1,965 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Paikutan UI Screens</title>
+<style>
+:root { --bg: #f6f3ec; --panel: #fff; --ink: #1d1b16; --muted: #6b665b; --line: #e3ddd0; --pc: #3a86ff; --mobile: #e63946; --flag: #f4a300; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --bg: #15140f; --panel: #1f1d17; --ink: #f3efe4; --muted: #a49d8c; --line: #343026; } }
+:root[data-theme="dark"] { --bg: #15140f; --panel: #1f1d17; --ink: #f3efe4; --muted: #a49d8c; --line: #343026; }
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--ink); font: 15px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif; }
+.top { position: sticky; top: 0; z-index: 5; background: color-mix(in srgb, var(--bg) 92%, transparent); backdrop-filter: blur(6px); border-bottom: 1px solid var(--line); }
+.top .in, main { max-width: 1500px; margin: 0 auto; padding: 12px 16px; }
+.top .in { display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: center; }
+h1 { font-size: 1.25rem; margin: 0; }
+.filters { display: flex; gap: 6px; margin-left: auto; flex-wrap: wrap; }
+.filters button { border: 1px solid var(--line); background: var(--panel); color: var(--ink); padding: 6px 12px; border-radius: 999px; cursor: pointer; font: inherit; }
+.filters button[aria-pressed="true"] { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+.meta { color: var(--muted); margin: 4px 0 0; padding-left: 18px; font-size: 0.9rem; }
+.warn { color: var(--mobile); }
+section h2 { margin: 28px 0 2px; font-size: 1.15rem; }
+.blurb { margin: 0 0 12px; color: var(--muted); }
+.panel { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 12px; margin: 0 0 14px; }
+.panel.flagged { border-color: var(--flag); box-shadow: 0 0 0 2px color-mix(in srgb, var(--flag) 40%, transparent); }
+.panel header { display: flex; gap: 12px; align-items: flex-start; margin-bottom: 10px; }
+.num { font-weight: 800; font-variant-numeric: tabular-nums; background: var(--ink); color: var(--bg); border-radius: 8px; padding: 2px 8px; }
+.panel h3 { margin: 0; font-size: 1rem; }
+.panel header p { margin: 2px 0 0; color: var(--muted); font-size: 0.88rem; }
+.flag { margin-left: auto; white-space: nowrap; font-size: 0.85rem; color: var(--muted); cursor: pointer; }
+.pair { display: grid; grid-template-columns: minmax(0, 16fr) minmax(0, 5.4fr); gap: 12px; align-items: start; }
+body.only-pc .pair { grid-template-columns: minmax(0, 1fr); } body.only-pc .shot.mobile { display: none; }
+body.only-mobile .pair { grid-template-columns: minmax(0, 320px); } body.only-mobile .shot.pc { display: none; }
+body.only-flagged .panel:not(.flagged) { display: none; }
+.shot { margin: 0; }
+.shot img { display: block; width: 100%; height: auto; border-radius: 8px; border: 1px solid var(--line); background: #000; }
+.shot figcaption { margin-top: 4px; font-size: 0.82rem; color: var(--muted); }
+.badge { display: inline-block; padding: 0 6px; border-radius: 4px; color: #fff; font-weight: 700; font-size: 0.75rem; }
+.badge.pc { background: var(--pc); } .badge.mobile { background: var(--mobile); }
+.missing div { border: 1px dashed var(--line); border-radius: 8px; color: var(--muted); padding: 24px 8px; text-align: center; font-size: 0.85rem; }
+@media (max-width: 700px) { .pair { grid-template-columns: minmax(0, 1fr); } .shot.mobile { max-width: 280px; } .flag { margin-left: 0; } .panel header { flex-wrap: wrap; } }
+#lightbox { position: fixed; inset: 0; background: rgba(0, 0, 0, 0.88); display: grid; place-items: center; z-index: 20; padding: 16px; cursor: zoom-out; }
+#lightbox[hidden] { display: none; }
+#lightbox img { max-width: 100%; max-height: calc(100vh - 32px); border-radius: 6px; }
+</style>
+</head>
+<body>
+<div class="top"><div class="in">
+  <h1>Paikutan UI screens</h1>
+  <div class="filters" role="group" aria-label="Show">
+    <button data-show="both" aria-pressed="true">PC + Mobile</button>
+    <button data-show="pc" aria-pressed="false">PC 16:9</button>
+    <button data-show="mobile" aria-pressed="false">Mobile 9:16</button>
+    <button data-show="flagged" aria-pressed="false">Needs work only</button>
+  </div>
+</div></div>
+<main>
+  <ul class="meta"><li><b>PC 16:9</b>: 53 shots, 1920×1080</li><li><b>Mobile 9:16</b>: 54 shots, 405×720 @2x</li><li>Captured 2026-10-25 11:44 with UI/capture.mjs. Click a screenshot to view it full size.</li></ul>
+  
+  <section>
+    <h2>Menus</h2>
+    <p class="blurb">Title screen, mode select, join, help, and Practice on phone.</p>
+    
+    <article class="panel" id="p01">
+      <header>
+        <span class="num">01</span>
+        <div><h3>Title / main menu</h3><p>CPU demo match plays behind the menu.</p></div>
+        <label class="flag"><input type="checkbox" data-flag="01"> Needs work</label>
+      </header>
+      <div class="pair">
+      <figure class="shot pc">
+        <a href="pc/01-title.png" data-full><img src="pc/01-title.png" alt="Title / main menu (PC 16:9)" loading="lazy"></a>
+        <figcaption><span class="badge pc">PC 16:9</span> Host screen (PC/TV)</figcaption>
+      </figure>
+      <figure class="shot mobile">
+        <a href="mobile/01-title.png" data-full><img src="mobile/01-title.png" alt="Title / main menu (mobile 9:16)" loading="lazy"></a>
+        <figcaption><span class="badge mobile">Mobile 9:16</span> Host screen (phone)</figcaption>
+      </figure></div>
+    </article>
+    <article class="panel" id="p02">
+      <header>
+        <span class="num">02</span>
+        <div><h3>Host: pick a mode (1v1 / Brawl)</h3></div>
+        <label class="flag"><input type="checkbox" data-flag="02"> Needs work</label>
+      </header>
+      <div class="pair">
+      <figure class="shot pc">
+        <a href="pc/02-host-mode.png" data-full><img src="pc/02-host-mode.png" alt="Host: pick a mode (1v1 / Brawl) (PC 16:9)" loading="lazy"></a>
+        <figcaption><span class="badge pc">PC 16:9</span> Host screen (PC/TV)</figcaption>
+      </figure>
+      <figure class="shot mobile">
+        <a href="mobile/02-host-mode.png" data-full><img src="mobile/02-host-mode.png" alt="Host: pick a mode (1v1 / Brawl) (mobile 9:16)" loading="lazy"></a>
+        <figcaption><span class="badge mobile">Mobile 9:16</span> Host screen (phone)</figcaption>
+      </figure></div>
+    </article>
+    <article class="panel" id="p03">
+      <header>
+        <span class="num">03</span>
+        <div><h3>Join match: room code entry</h3></div>
+        <label class="flag"><input type="checkbox" data-flag="03"> Needs work</label>
+      </header>
+      <div class="pair">
+      <figure class="shot pc">
+        <a href="pc/03-join-code.png" data-full><img src="pc/03-join-code.png" alt="Join match: room code entry (PC 16:9)" loading="lazy"></a>
+        <figcaption><span class="badge pc">PC 16:9</span> Host screen (PC/TV)</figcaption>
+      </figure>
+      <figure class="shot mobile">
+        <a href="mobile/03-join-code.png" data-full><img src="mobile/03-join-code.png" alt="Join match: room code entry (mobile 9:16)" loading="lazy"></a>
+        <figcaption><span class="badge mobile">Mobile 9:16</span> Host screen (phone)</figcaption>
+      </figure></div>
+    </article>
+    <article class="panel" id="p04">
+      <header>
+        <span class="num">04</span>
+        <div><h3>How to play overlay</h3></div>
+        <label class="flag"><input type="checkbox" data-flag="04"> Needs work</label>
+      </header>
+      <div class="pair">
+      <figure class="shot pc">
+        <a href="pc/04-how-to-play.png" data-full><img src="pc/04-how-to-play.png" alt="How to play overlay (PC 16:9)" loading="lazy"></a>
+        <figcaption><span class="badge pc">PC 16:9</span> Host screen (PC/TV)</figcaption>
+      </figure>
+      <figure class="shot mobile">
+        <a href="mobile/04-how-to-play.png" data-full><img src="mobile/04-how-to-play.png" alt="How to play overlay (mobile 9:16)" loading="lazy"></a>
+        <figcaption><span class="badge mobile">Mobile 9:16</span> Host screen (phone)</figcaption>
+      </figure></div>
+    </article>
+    <article class="panel" id="p05">
+      <header>
+        <span class="num">05</span>
+        <div><h3>Practice vs CPU on phone: name entry</h3><p>play.html?solo=1 (where Practice sends touch devices).</p></div>
+        <label class="flag"><input type="checkbox" data-flag="05"> Needs work</label>
+      </header>
+      <div class="pair">
+      <figure class="shot pc">
+        <a href="pc/05-solo-join.png" data-full><img src="pc/05-solo-join.png" alt="Practice vs CPU on phone: name entry (PC 16:9)" loading="lazy"></a>
+        <figcaption><span class="badge pc">PC 16:9</span> Phone</figcaption>
+      </figure>
+      <figure class="shot mobile">
+        <a href="mobile/05-solo-join.png" data-full><img src="mobile/05-solo-join.png" alt="Practice vs CPU on phone: name entry (mobile 9:16)" loading="lazy"></a>
+        <figcaption><span class="badge mobile">Mobile 9:16</span> Phone</figcaption>
+      </figure></div>
+    </article>
+  </section>
+  <section>
+    <h2>1v1 match</h2>
+    <p class="blurb">Online 1v1: the host screen (TV) plus two phones, from lobby to rematch.</p>
+    
+    <article class="panel" id="p10">
+      <header>
+        <span class="num">10</span>
+        <div><h3>1v1 lobby: QR + room code, no players yet</h3></div>
+        <label class="flag"><input type="checkbox" data-flag="10"> Needs work</label>
+      </header>
+      <div class="pair">
+      <figure class="shot pc">
+        <a href="pc/10-lobby-1v1-empty.png" data-full><img src="pc/10-lobby-1v1-empty.png" alt="1v1 lobby: QR + room code, no players yet (PC 16:9)" loading="lazy"></a>
+        <figcaption><span class="badge pc">PC 16:9</span> Host screen (PC/TV)</figcaption>
+      </figure>
+      <figure class="shot mobile">
+        <a href="mobile/10-lobby-1v1-empty.png" data-full><img src="mobile/10-lobby-1v1-empty.png" alt="1v1 lobby: QR + room code, no players yet (mobile 9:16)" loading="lazy"></a>
+        <figcaption><span class="badge mobile">Mobile 9:16</span> Host screen (phone)</figcaption>
+      </figure></div>
+    </article>
+    <article class="panel" id="p11">
+      <header>
+        <span class="num">11</span>
+        <div><h3>Phone join screen (room code filled from QR)</h3></div>
+        <label class="flag"><input type="checkbox" data-flag="11"> Needs work</label>
+      </header>
+      <div class="pair">
+      <figure class="shot pc">
+        <a href="pc/11-phone-join.png" data-full><img src="pc/11-phone-join.png" alt="Phone join screen (room code filled from QR) (PC 16:9)" loading="lazy"></a>
+        <figcaption><span class="badge pc">PC 16:9</span> Phone A (Juan)</figcaption>
+      </figure>
+      <figure class="shot mobile">
+        <a href="mobile/11-phone-join.png" data-full><img src="mobile/11-phone-join.png" alt="Phone join screen (room code filled from QR) (mobile 9:16)" loading="lazy"></a>
+        <figcaption><span class="badge mobile">Mobile 9:16</span> Phone A (Juan)</figcaption>
+      </figure></div>
+    </article>
+    <article class="panel" id="p12">
+      <header>
+        <span class="num">12</span>
+        <div><h3>Phone: joined, waiting for the rival</h3><p>Includes the visual how-to steps.</p></div>
+        <label class="flag"><input type="checkbox" data-flag="12"> Needs work</label>
+      </header>
+      <div class="pair">
+      <figure class="shot pc">
+        <a href="pc/12-phone-lobby-wait.png" data-full><img src="pc/12-phone-lobby-wait.png" alt="Phone: joined, waiting for the rival (PC 16:9)" loading="lazy"></a>
+        <figcaption><span class="badge pc">PC 16:9</span> Phone A (Juan)</figcaption>
+      </figure>
+      <figure class="shot mobile">
+        <a href="mobile/12-phone-lobby-wait.png" data-full><img src="mobile/12-phone-lobby-wait.png" alt="Phone: joined, waiting for the rival (mobile 9:16)" loading="lazy"></a>
+        <figcaption><span class="badge mobile">Mobile 9:16</span> Phone A (Juan)</figcaption>
+      </figure></div>
+    </article>
+    <article class="panel" id="p13">
+      <header>
+        <span class="num">13</span>
+        <div><h3>1v1 lobby: one player joined</h3></div>
+        <label class="flag"><input type="checkbox" data-flag="13"> Needs work</label>
+      </header>
+      <div class="pair">
+      <figure class="shot pc">
+        <a href="pc/13-lobby-1v1-one.png" data-full><img src="pc/13-lobby-1v1-one.png" alt="1v1 lobby: one player joined (PC 16:9)" loading="lazy"></a>
+        <figcaption><span class="badge pc">PC 16:9</span> Host screen (PC/TV)</figcaption>
+      </figure>
+      <figure class="shot mobile">
+        <a href="mobile/13-lobby-1v1-one.png" data-full><img src="mobile/13-lobby-1v1-one.png" alt="1v1 lobby: one player joined (mobile 9:16)" loading="lazy"></a>
+        <figcaption><span class="badge mobile">Mobile 9:16</span> Host screen (phone)</figcaption>
+      </figure></div>
+    </article>
+    <article class="panel" id="p14">
+      <header>
+        <span class="num">14</span>
+        <div><h3>TV: both players choosing</h3></div>
+        <label class="flag"><input type="checkbox" data-flag="14"> Needs work</label>
+      </header>
+      <div class="pair">
+      <figure class="shot pc">
+        <a href="pc/14-tv-pick.png" data-full><img src="pc/14-tv-pick.png" alt="TV: both players choosing (PC 16:9)" loading="lazy"></a>
+        <figcaption><span class="badge pc">PC 16:9</span> Host screen (PC/TV)</figcaption>
+      </figure>
+      <figure class="shot mobile">
+        <a href="mobile/14-tv-pick.png" data-full><img src="mobile/14-tv-pick.png" alt="TV: both players choosing (mobile 9:16)" loading="lazy"></a>
+        <figcaption><span class="badge mobile">Mobile 9:16</span> Host screen (phone)</figcaption>
+      </figure></div>
+    </article>
+    <article class="panel" id="p15">
+      <header>
+        <span class="num">15</span>
+        <div><h3>Phone: pick character + trumpo</h3></div>
+        <label class="flag"><input type="checkbox" data-flag="15"> Needs work</label>
+      </header>
+      <div class="pair">
+      <figure class="shot pc">
+        <a href="pc/15-phone-pick.png" data-full><img src="pc/15-phone-pick.png" alt="Phone: pick character + trumpo (PC 16:9)" loading="lazy"></a>
+        <figcaption><span class="badge pc">PC 16:9</span> Phone A (Juan)</figcaption>
+      </figure>
+      <figure class="shot mobile">
+        <a href="mobile/15-phone-pick.png" data-full><img src="mobile/15-phone-pick.png" alt="Phone: pick character + trumpo (mobile 9:16)" loading="lazy"></a>
+        <figcaption><span class="badge mobile">Mobile 9:16</span> Phone A (Juan)</figcaption>
+      </figure></div>
+    </article>
+    <article class="panel" id="p16">
+      <header>
+        <span class="num">16</span>
+        <div><h3>Phone: picked, waiting for rival</h3></div>
+        <label class="flag"><input type="checkbox" data-flag="16"> Needs work</label>
+      </header>
+      <div class="pair">
+      <figure class="shot pc">
+        <a href="pc/16-phone-pick-ready.png" data-full><img src="pc/16-phone-pick-ready.png" alt="Phone: picked, waiting for rival (PC 16:9)" loading="lazy"></a>
+        <figcaption><span class="badge pc">PC 16:9</span> Phone A (Juan)</figcaption>
+      </figure>
+      <figure class="shot mobile">
+        <a href="mobile/16-phone-pick-ready.png" data-full><img src="mobile/16-phone-pick-ready.png" alt="Phone: picked, waiting for rival (mobile 9:16)" loading="lazy"></a>
+        <figcaption><span class="badge mobile">Mobile 9:16</span> Phone A (Juan)</figcaption>
+      </figure></div>
+    </article>
+    <article class="panel" id="p17">
+      <header>
+        <span class="num">17</span>
+        <div><h3>TV: one player ready</h3></div>
+        <label class="flag"><input type="checkbox" data-flag="17"> Needs work</label>
+      </header>
+      <div class="pair">
+      <figure class="shot pc">
+        <a href="pc/17-tv-pick-one-ready.png" data-full><img src="pc/17-tv-pick-one-ready.png" alt="TV: one player ready (PC 16:9)" loading="lazy"></a>
+        <figcaption><span class="badge pc">PC 16:9</span> Host screen (PC/TV)</figcaption>
+      </figure>
+      <figure class="shot mobile">
+        <a href="mobile/17-tv-pick-one-ready.png" data-full><img src="mobile/17-tv-pick-one-ready.png" alt="TV: one player ready (mobile 9:16)" loading="lazy"></a>
+        <figcaption><span class="badge mobile">Mobile 9:16</span> Host screen (phone)</figcaption>
+      </figure></div>
+    </article>
+    <article class="panel" id="p18">
+      <header>
+        <span class="num">18</span>
+        <div><h3>TV: versus intro</h3></div>
+        <label class="flag"><input type="checkbox" data-flag="18"> Needs work</label>
+      </header>
+      <div class="pair">
+      <figure class="shot pc">
+        <a href="pc/18-tv-vs.png" data-full><img src="pc/18-tv-vs.png" alt="TV: versus intro (PC 16:9)" loading="lazy"></a>
+        <figcaption><span class="badge pc">PC 16:9</span> Host screen (PC/TV)</figcaption>
+      </figure>
+      <figure class="shot mobile">
+        <a href="mobile/18-tv-vs.png" data-full><img src="mobile/18-tv-vs.png" alt="TV: versus intro (mobile 9:16)" loading="lazy"></a>
+        <figcaption><span class="badge mobile">Mobile 9:16</span> Host screen (phone)</figcaption>
+      </figure></div>
+    </article>
+    <article class="panel" id="p19">
+      <header>
+        <span class="num">19</span>
+        <div><h3>Phone: versus intro</h3></div>
+        <label class="flag"><input type="checkbox" data-flag="19"> Needs work</label>
+      </header>
+      <div class="pair">
+      <figure class="shot pc">
+        <a href="pc/19-phone-vs.png" data-full><img src="pc/19-phone-vs.png" alt="Phone: versus intro (PC 16:9)" loading="lazy"></a>
+        <figcaption><span class="badge pc">PC 16:9</span> Phone A (Juan)</figcaption>
+      </figure>
+      <figure class="shot mobile">
+        <a href="mobile/19-phone-vs.png" data-full><img src="mobile/19-phone-vs.png" alt="Phone: versus intro (mobile 9:16)" loading="lazy"></a>
+        <figcaption><span class="badge mobile">Mobile 9:16</span> Phone A (Juan)</figcaption>
+      </figure></div>
+    </article>
+    <article class="panel" id="p20">
+      <header>
+        <span class="num">20</span>
+        <div><h3>TV: players winding (Paikot)</h3></div>
+        <label class="flag"><input type="checkbox" data-flag="20"> Needs work</label>
+      </header>
+      <div class="pair">
+      <figure class="shot pc">
+        <a href="pc/20-tv-charge.png" data-full><img src="pc/20-tv-charge.png" alt="TV: players winding (Paikot) (PC 16:9)" loading="lazy"></a>
+        <figcaption><span class="badge pc">PC 16:9</span> Host screen (PC/TV)</figcaption>
+      </figure>
+      <figure class="shot mobile">
+        <a href="mobile/20-tv-charge.png" data-full><img src="mobile/20-tv-charge.png" alt="TV: players winding (Paikot) (mobile 9:16)" loading="lazy"></a>
+        <figcaption><span class="badge mobile">Mobile 9:16</span> Host screen (phone)</figcaption>
+      </figure></div>
+    </article>
+    <article class="panel" id="p21">
+      <header>
+        <span class="num">21</span>
+        <div><h3>Phone: spin pad, before touching</h3></div>
+        <label class="flag"><input type="checkbox" data-flag="21"> Needs work</label>
+      </header>
+      <div class="pair">
+      <figure class="shot pc">
+        <a href="pc/21-phone-spin.png" data-full><img src="pc/21-phone-spin.png" alt="Phone: spin pad, before touching (PC 16:9)" loading="lazy"></a>
+        <figcaption><span class="badge pc">PC 16:9</span> Phone A (Juan)</figcaption>
+      </figure>
+      <figure class="shot mobile">
+        <a href="mobile/21-phone-spin.png" data-full><img src="mobile/21-phone-spin.png" alt="Phone: spin pad, before touching (mobile 9:16)" loading="lazy"></a>
+        <figcaption><span class="badge mobile">Mobile 9:16</span> Phone A (Juan)</figcaption>
+      </figure></div>
+    </article>
+    <article class="panel" id="p22">
+      <header>
+        <span class="num">22</span>
+        <div><h3>Phone: spinning (drawing circles)</h3><p>Mid-gesture: drawing circles on the ring.</p></div>
+        <label class="flag"><input type="checkbox" data-flag="22"> Needs work</label>
+      </header>
+      <div class="pair">
+      <figure class="shot pc">
+        <a href="pc/22-phone-spin-drawing.png" data-full><img src="pc/22-phone-spin-drawing.png" alt="Phone: spinning (drawing circles) (PC 16:9)" loading="lazy"></a>
+        <figcaption><span class="badge pc">PC 16:9</span> Phone A (Juan)</figcaption>
+      </figure>
+      <figure class="shot mobile">
+        <a href="mobile/22-phone-spin-drawing.png" data-full><img src="mobile/22-phone-spin-drawing.png" alt="Phone: spinning (drawing circles) (mobile 9:16)" loading="lazy"></a>
+        <figcaption><span class="badge mobile">Mobile 9:16</span> Phone A (Juan)</figcaption>
+      </figure></div>
+    </article>
+    <article class="panel" id="p23">
+      <header>
+        <span class="num">23</span>
+        <div><h3>Phone: spin locked in, waiting</h3></div>
+        <label class="flag"><input type="checkbox" data-flag="23"> Needs work</label>
+      </header>
+      <div class="pair">
+      <figure class="shot pc">
+        <a href="pc/23-phone-spin-locked.png" data-full><img src="pc/23-phone-spin-locked.png" alt="Phone: spin locked in, waiting (PC 16:9)" loading="lazy"></a>
+        <figcaption><span class="badge pc">PC 16:9</span> Phone A (Juan)</figcaption>
+      </figure>
+      <figure class="shot mobile">
+        <a href="mobile/23-phone-spin-locked.png" data-full><img src="mobile/23-phone-spin-locked.png" alt="Phone: spin locked in, waiting (mobile 9:16)" loading="lazy"></a>
+        <figcaption><span class="badge mobile">Mobile 9:16</span> Phone A (Juan)</figcaption>
+      </figure></div>
+    </article>
+    <article class="panel" id="p24">
+      <header>
+        <span class="num">24</span>
+        <div><h3>TV: countdown to Bitaw</h3></div>
+        <label class="flag"><input type="checkbox" data-flag="24"> Needs work</label>
+      </header>
+      <div class="pair">
+      <figure class="shot pc">
+        <a href="pc/24-tv-countdown.png" data-full><img src="pc/24-tv-countdown.png" alt="TV: countdown to Bitaw (PC 16:9)" loading="lazy"></a>
+        <figcaption><span class="badge pc">PC 16:9</span> Host screen (PC/TV)</figcaption>
+      </figure>
+      <figure class="shot mobile">
+        <a href="mobile/24-tv-countdown.png" data-full><img src="mobile/24-tv-countdown.png" alt="TV: countdown to Bitaw (mobile 9:16)" loading="lazy"></a>
+        <figcaption><span class="badge mobile">Mobile 9:16</span> Host screen (phone)</figcaption>
+      </figure></div>
+    </article>
+    <article class="panel" id="p25">
+      <header>
+        <span class="num">25</span>
+        <div><h3>Phone: throw screen during countdown</h3></div>
+        <label class="flag"><input type="checkbox" data-flag="25"> Needs work</label>
+      </header>
+      <div class="pair">
+      <figure class="shot pc">
+        <a href="pc/25-phone-throw-countdown.png" data-full><img src="pc/25-phone-throw-countdown.png" alt="Phone: throw screen during countdown (PC 16:9)" loading="lazy"></a>
+        <figcaption><span class="badge pc">PC 16:9</span> Phone A (Juan)</figcaption>
+      </figure>
+      <figure class="shot mobile">
+        <a href="mobile/25-phone-throw-countdown.png" data-full><img src="mobile/25-phone-throw-countdown.png" alt="Phone: throw screen during countdown (mobile 9:16)" loading="lazy"></a>
+        <figcaption><span class="badge mobile">Mobile 9:16</span> Phone A (Juan)</figcaption>
+      </figure></div>
+    </article>
+    <article class="panel" id="p26">
+      <header>
+        <span class="num">26</span>
+        <div><h3>Phone: BITAW! flick now</h3></div>
+        <label class="flag"><input type="checkbox" data-flag="26"> Needs work</label>
+      </header>
+      <div class="pair">
+      <figure class="shot pc">
+        <a href="pc/26-phone-throw-now.png" data-full><img src="pc/26-phone-throw-now.png" alt="Phone: BITAW! flick now (PC 16:9)" loading="lazy"></a>
+        <figcaption><span class="badge pc">PC 16:9</span> Phone A (Juan)</figcaption>
+      </figure>
+      <figure class="shot mobile">
+        <a href="mobile/26-phone-throw-now.png" data-full><img src="mobile/26-phone-throw-now.png" alt="Phone: BITAW! flick now (mobile 9:16)" loading="lazy"></a>
+        <figcaption><span class="badge mobile">Mobile 9:16</span> Phone A (Juan)</figcaption>
+      </figure></div>
+    </article>
+    <article class="panel" id="p27">
+      <header>
+        <span class="num">27</span>
+        <div><h3>TV: throw window open (one player thrown)</h3></div>
+        <label class="flag"><input type="checkbox" data-flag="27"> Needs work</label>
+      </header>
+      <div class="pair">
+      <figure class="shot pc">
+        <a href="pc/27-tv-throw.png" data-full><img src="pc/27-tv-throw.png" alt="TV: throw window open (one player thrown) (PC 16:9)" loading="lazy"></a>
+        <figcaption><span class="badge pc">PC 16:9</span> Host screen (PC/TV)</figcaption>
+      </figure>
+      <figure class="shot mobile">
+        <a href="mobile/27-tv-throw.png" data-full><img src="mobile/27-tv-throw.png" alt="TV: throw window open (one player thrown) (mobile 9:16)" loading="lazy"></a>
+        <figcaption><span class="badge mobile">Mobile 9:16</span> Host screen (phone)</figcaption>
+      </figure></div>
+    </article>
+    <article class="panel" id="p28">
+      <header>
+        <span class="num">28</span>
+        <div><h3>Phone: thrown, watching it land</h3></div>
+        <label class="flag"><input type="checkbox" data-flag="28"> Needs work</label>
+      </header>
+      <div class="pair">
+      <figure class="shot pc">
+        <a href="pc/28-phone-thrown.png" data-full><img src="pc/28-phone-thrown.png" alt="Phone: thrown, watching it land (PC 16:9)" loading="lazy"></a>
+        <figcaption><span class="badge pc">PC 16:9</span> Phone A (Juan)</figcaption>
+      </figure>
+      <figure class="shot mobile">
+        <a href="mobile/28-phone-thrown.png" data-full><img src="mobile/28-phone-thrown.png" alt="Phone: thrown, watching it land (mobile 9:16)" loading="lazy"></a>
+        <figcaption><span class="badge mobile">Mobile 9:16</span> Phone A (Juan)</figcaption>
+      </figure></div>
+    </article>
+    <article class="panel" id="p29">
+      <header>
+        <span class="num">29</span>
+        <div><h3>TV: fight HUD (with a quick-chat bubble)</h3></div>
+        <label class="flag"><input type="checkbox" data-flag="29"> Needs work</label>
+      </header>
+      <div class="pair">
+      <figure class="shot pc">
+        <a href="pc/29-tv-fight.png" data-full><img src="pc/29-tv-fight.png" alt="TV: fight HUD (with a quick-chat bubble) (PC 16:9)" loading="lazy"></a>
+        <figcaption><span class="badge pc">PC 16:9</span> Host screen (PC/TV)</figcaption>
+      </figure>
+      <figure class="shot mobile">
+        <a href="mobile/29-tv-fight.png" data-full><img src="mobile/29-tv-fight.png" alt="TV: fight HUD (with a quick-chat bubble) (mobile 9:16)" loading="lazy"></a>
+        <figcaption><span class="badge mobile">Mobile 9:16</span> Host screen (phone)</figcaption>
+      </figure></div>
+    </article>
+    <article class="panel" id="p30">
+      <header>
+        <span class="num">30</span>
+        <div><h3>Phone: fight controls + &quot;You&quot; tag</h3></div>
+        <label class="flag"><input type="checkbox" data-flag="30"> Needs work</label>
+      </header>
+      <div class="pair">
+      <figure class="shot pc">
+        <a href="pc/30-phone-fight.png" data-full><img src="pc/30-phone-fight.png" alt="Phone: fight controls + &quot;You&quot; tag (PC 16:9)" loading="lazy"></a>
+        <figcaption><span class="badge pc">PC 16:9</span> Phone A (Juan)</figcaption>
+      </figure>
+      <figure class="shot mobile">
+        <a href="mobile/30-phone-fight.png" data-full><img src="mobile/30-phone-fight.png" alt="Phone: fight controls + &quot;You&quot; tag (mobile 9:16)" loading="lazy"></a>
+        <figcaption><span class="badge mobile">Mobile 9:16</span> Phone A (Juan)</figcaption>
+      </figure></div>
+    </article>
+    <article class="panel" id="p31">
+      <header>
+        <span class="num">31</span>
+        <div><h3>Phone (other player): fight</h3></div>
+        <label class="flag"><input type="checkbox" data-flag="31"> Needs work</label>
+      </header>
+      <div class="pair">
+      <figure class="shot pc">
+        <a href="pc/31-phone-fight-b.png" data-full><img src="pc/31-phone-fight-b.png" alt="Phone (other player): fight (PC 16:9)" loading="lazy"></a>
+        <figcaption><span class="badge pc">PC 16:9</span> Phone B (Maria)</figcaption>
+      </figure>
+      <figure class="shot mobile">
+        <a href="mobile/31-phone-fight-b.png" data-full><img src="mobile/31-phone-fight-b.png" alt="Phone (other player): fight (mobile 9:16)" loading="lazy"></a>
+        <figcaption><span class="badge mobile">Mobile 9:16</span> Phone B (Maria)</figcaption>
+      </figure></div>
+    </article>
+    <article class="panel" id="p32">
+      <header>
+        <span class="num">32</span>
+        <div><h3>TV: round end banner</h3></div>
+        <label class="flag"><input type="checkbox" data-flag="32"> Needs work</label>
+      </header>
+      <div class="pair">
+      <figure class="shot pc">
+        <a href="pc/32-tv-round-end.png" data-full><img src="pc/32-tv-round-end.png" alt="TV: round end banner (PC 16:9)" loading="lazy"></a>
+        <figcaption><span class="badge pc">PC 16:9</span> Host screen (PC/TV)</figcaption>
+      </figure>
+      <figure class="shot mobile">
+        <a href="mobile/32-tv-round-end.png" data-full><img src="mobile/32-tv-round-end.png" alt="TV: round end banner (mobile 9:16)" loading="lazy"></a>
+        <figcaption><span class="badge mobile">Mobile 9:16</span> Host screen (phone)</figcaption>
+      </figure></div>
+    </article>
+    <article class="panel" id="p33">
+      <header>
+        <span class="num">33</span>
+        <div><h3>Phone: round won</h3></div>
+        <label class="flag"><input type="checkbox" data-flag="33"> Needs work</label>
+      </header>
+      <div class="pair">
+      <figure class="shot pc">
+        <a href="pc/33-phone-round-won.png" data-full><img src="pc/33-phone-round-won.png" alt="Phone: round won (PC 16:9)" loading="lazy"></a>
+        <figcaption><span class="badge pc">PC 16:9</span> Phone B (Maria)</figcaption>
+      </figure>
+      <figure class="shot mobile">
+        <a href="mobile/33-phone-round-won.png" data-full><img src="mobile/33-phone-round-won.png" alt="Phone: round won (mobile 9:16)" loading="lazy"></a>
+        <figcaption><span class="badge mobile">Mobile 9:16</span> Phone B (Maria)</figcaption>
+      </figure></div>
+    </article>
+    <article class="panel" id="p34">
+      <header>
+        <span class="num">34</span>
+        <div><h3>Phone: round lost</h3></div>
+        <label class="flag"><input type="checkbox" data-flag="34"> Needs work</label>
+      </header>
+      <div class="pair">
+      <figure class="shot pc">
+        <a href="pc/34-phone-round-lost.png" data-full><img src="pc/34-phone-round-lost.png" alt="Phone: round lost (PC 16:9)" loading="lazy"></a>
+        <figcaption><span class="badge pc">PC 16:9</span> Phone A (Juan)</figcaption>
+      </figure>
+      <figure class="shot mobile">
+        <a href="mobile/34-phone-round-lost.png" data-full><img src="mobile/34-phone-round-lost.png" alt="Phone: round lost (mobile 9:16)" loading="lazy"></a>
+        <figcaption><span class="badge mobile">Mobile 9:16</span> Phone A (Juan)</figcaption>
+      </figure></div>
+    </article>
+    <article class="panel" id="p35">
+      <header>
+        <span class="num">35</span>
+        <div><h3>TV: counter-pick between rounds</h3></div>
+        <label class="flag"><input type="checkbox" data-flag="35"> Needs work</label>
+      </header>
+      <div class="pair">
+      <figure class="shot pc">
+        <a href="pc/35-tv-counter.png" data-full><img src="pc/35-tv-counter.png" alt="TV: counter-pick between rounds (PC 16:9)" loading="lazy"></a>
+        <figcaption><span class="badge pc">PC 16:9</span> Host screen (PC/TV)</figcaption>
+      </figure>
+      <figure class="shot mobile">
+        <a href="mobile/35-tv-counter.png" data-full><img src="mobile/35-tv-counter.png" alt="TV: counter-pick between rounds (mobile 9:16)" loading="lazy"></a>
+        <figcaption><span class="badge mobile">Mobile 9:16</span> Host screen (phone)</figcaption>
+      </figure></div>
+    </article>
+    <article class="panel" id="p36">
+      <header>
+        <span class="num">36</span>
+        <div><h3>Phone: loser may switch trumpo</h3></div>
+        <label class="flag"><input type="checkbox" data-flag="36"> Needs work</label>
+      </header>
+      <div class="pair">
+      <figure class="shot pc">
+        <a href="pc/36-phone-counter-pick.png" data-full><img src="pc/36-phone-counter-pick.png" alt="Phone: loser may switch trumpo (PC 16:9)" loading="lazy"></a>
+        <figcaption><span class="badge pc">PC 16:9</span> Phone B (Maria)</figcaption>
+      </figure>
+      <figure class="shot mobile">
+        <a href="mobile/36-phone-counter-pick.png" data-full><img src="mobile/36-phone-counter-pick.png" alt="Phone: loser may switch trumpo (mobile 9:16)" loading="lazy"></a>
+        <figcaption><span class="badge mobile">Mobile 9:16</span> Phone A (Juan)</figcaption>
+      </figure></div>
+    </article>
+    <article class="panel" id="p37">
+      <header>
+        <span class="num">37</span>
+        <div><h3>Phone: winner locked, waiting</h3></div>
+        <label class="flag"><input type="checkbox" data-flag="37"> Needs work</label>
+      </header>
+      <div class="pair">
+      <figure class="shot pc">
+        <a href="pc/37-phone-counter-wait.png" data-full><img src="pc/37-phone-counter-wait.png" alt="Phone: winner locked, waiting (PC 16:9)" loading="lazy"></a>
+        <figcaption><span class="badge pc">PC 16:9</span> Phone A (Juan)</figcaption>
+      </figure>
+      <figure class="shot mobile">
+        <a href="mobile/37-phone-counter-wait.png" data-full><img src="mobile/37-phone-counter-wait.png" alt="Phone: winner locked, waiting (mobile 9:16)" loading="lazy"></a>
+        <figcaption><span class="badge mobile">Mobile 9:16</span> Phone B (Maria)</figcaption>
+      </figure></div>
+    </article>
+    <article class="panel" id="p38">
+      <header>
+        <span class="num">38</span>
+        <div><h3>TV: match end + Rematch / Back</h3></div>
+        <label class="flag"><input type="checkbox" data-flag="38"> Needs work</label>
+      </header>
+      <div class="pair">
+      <figure class="shot pc">
+        <a href="pc/38-tv-match-end.png" data-full><img src="pc/38-tv-match-end.png" alt="TV: match end + Rematch / Back (PC 16:9)" loading="lazy"></a>
+        <figcaption><span class="badge pc">PC 16:9</span> Host screen (PC/TV)</figcaption>
+      </figure>
+      <figure class="shot mobile">
+        <a href="mobile/38-tv-match-end.png" data-full><img src="mobile/38-tv-match-end.png" alt="TV: match end + Rematch / Back (mobile 9:16)" loading="lazy"></a>
+        <figcaption><span class="badge mobile">Mobile 9:16</span> Host screen (phone)</figcaption>
+      </figure></div>
+    </article>
+    <article class="panel" id="p39">
+      <header>
+        <span class="num">39</span>
+        <div><h3>Phone: KAMPEON (match won)</h3></div>
+        <label class="flag"><input type="checkbox" data-flag="39"> Needs work</label>
+      </header>
+      <div class="pair">
+      <figure class="shot pc">
+        <a href="pc/39-phone-match-won.png" data-full><img src="pc/39-phone-match-won.png" alt="Phone: KAMPEON (match won) (PC 16:9)" loading="lazy"></a>
+        <figcaption><span class="badge pc">PC 16:9</span> Phone A (Juan)</figcaption>
+      </figure>
+      <figure class="shot mobile">
+        <a href="mobile/39-phone-match-won.png" data-full><img src="mobile/39-phone-match-won.png" alt="Phone: KAMPEON (match won) (mobile 9:16)" loading="lazy"></a>
+        <figcaption><span class="badge mobile">Mobile 9:16</span> Phone A (Juan)</figcaption>
+      </figure></div>
+    </article>
+    <article class="panel" id="p40">
+      <header>
+        <span class="num">40</span>
+        <div><h3>Phone: match lost</h3></div>
+        <label class="flag"><input type="checkbox" data-flag="40"> Needs work</label>
+      </header>
+      <div class="pair">
+      <figure class="shot pc">
+        <a href="pc/40-phone-match-lost.png" data-full><img src="pc/40-phone-match-lost.png" alt="Phone: match lost (PC 16:9)" loading="lazy"></a>
+        <figcaption><span class="badge pc">PC 16:9</span> Phone B (Maria)</figcaption>
+      </figure>
+      <figure class="shot mobile">
+        <a href="mobile/40-phone-match-lost.png" data-full><img src="mobile/40-phone-match-lost.png" alt="Phone: match lost (mobile 9:16)" loading="lazy"></a>
+        <figcaption><span class="badge mobile">Mobile 9:16</span> Phone B (Maria)</figcaption>
+      </figure></div>
+    </article>
+    <article class="panel" id="p41">
+      <header>
+        <span class="num">41</span>
+        <div><h3>Phone: rematch requested, waiting</h3></div>
+        <label class="flag"><input type="checkbox" data-flag="41"> Needs work</label>
+      </header>
+      <div class="pair">
+      <figure class="shot pc">
+        <a href="pc/41-phone-rematch-wait.png" data-full><img src="pc/41-phone-rematch-wait.png" alt="Phone: rematch requested, waiting (PC 16:9)" loading="lazy"></a>
+        <figcaption><span class="badge pc">PC 16:9</span> Phone A (Juan)</figcaption>
+      </figure>
+      <figure class="shot mobile">
+        <a href="mobile/41-phone-rematch-wait.png" data-full><img src="mobile/41-phone-rematch-wait.png" alt="Phone: rematch requested, waiting (mobile 9:16)" loading="lazy"></a>
+        <figcaption><span class="badge mobile">Mobile 9:16</span> Phone A (Juan)</figcaption>
+      </figure></div>
+    </article>
+  </section>
+  <section>
+    <h2>Brawl</h2>
+    <p class="blurb">Brawl with the host playing in their own room, CPUs, a phone, and a late joiner.</p>
+    
+    <article class="panel" id="p50">
+      <header>
+        <span class="num">50</span>
+        <div><h3>Brawl lobby: CPUs added (removable)</h3></div>
+        <label class="flag"><input type="checkbox" data-flag="50"> Needs work</label>
+      </header>
+      <div class="pair">
+      <figure class="shot pc">
+        <a href="pc/50-lobby-brawl.png" data-full><img src="pc/50-lobby-brawl.png" alt="Brawl lobby: CPUs added (removable) (PC 16:9)" loading="lazy"></a>
+        <figcaption><span class="badge pc">PC 16:9</span> Host screen (PC/TV)</figcaption>
+      </figure>
+      <figure class="shot mobile">
+        <a href="mobile/50-lobby-brawl.png" data-full><img src="mobile/50-lobby-brawl.png" alt="Brawl lobby: CPUs added (removable) (mobile 9:16)" loading="lazy"></a>
+        <figcaption><span class="badge mobile">Mobile 9:16</span> Host screen (phone)</figcaption>
+      </figure></div>
+    </article>
+    <article class="panel" id="p51">
+      <header>
+        <span class="num">51</span>
+        <div><h3>Brawl lobby: host takes a seat (plays on this screen)</h3></div>
+        <label class="flag"><input type="checkbox" data-flag="51"> Needs work</label>
+      </header>
+      <div class="pair">
+      <figure class="shot pc">
+        <a href="pc/51-lobby-host-playing.png" data-full><img src="pc/51-lobby-host-playing.png" alt="Brawl lobby: host takes a seat (plays on this screen) (PC 16:9)" loading="lazy"></a>
+        <figcaption><span class="badge pc">PC 16:9</span> Host screen (PC/TV)</figcaption>
+      </figure>
+      <figure class="shot mobile">
+        <a href="mobile/51-lobby-host-playing.png" data-full><img src="mobile/51-lobby-host-playing.png" alt="Brawl lobby: host takes a seat (plays on this screen) (mobile 9:16)" loading="lazy"></a>
+        <figcaption><span class="badge mobile">Mobile 9:16</span> Host screen (phone)</figcaption>
+      </figure></div>
+    </article>
+    <article class="panel" id="p52">
+      <header>
+        <span class="num">52</span>
+        <div><h3>Host on phone: Room overlay (QR / code)</h3></div>
+        <label class="flag"><input type="checkbox" data-flag="52"> Needs work</label>
+      </header>
+      <div class="pair">
+      <figure class="shot pc missing"><div>No PC capture</div></figure>
+      <figure class="shot mobile">
+        <a href="mobile/52-host-room-overlay.png" data-full><img src="mobile/52-host-room-overlay.png" alt="Host on phone: Room overlay (QR / code) (mobile 9:16)" loading="lazy"></a>
+        <figcaption><span class="badge mobile">Mobile 9:16</span> Host screen (phone)</figcaption>
+      </figure></div>
+    </article>
+    <article class="panel" id="p53">
+      <header>
+        <span class="num">53</span>
+        <div><h3>Brawl lobby: host + phone + CPUs</h3></div>
+        <label class="flag"><input type="checkbox" data-flag="53"> Needs work</label>
+      </header>
+      <div class="pair">
+      <figure class="shot pc">
+        <a href="pc/53-lobby-brawl-full.png" data-full><img src="pc/53-lobby-brawl-full.png" alt="Brawl lobby: host + phone + CPUs (PC 16:9)" loading="lazy"></a>
+        <figcaption><span class="badge pc">PC 16:9</span> Host screen (PC/TV)</figcaption>
+      </figure>
+      <figure class="shot mobile">
+        <a href="mobile/53-lobby-brawl-full.png" data-full><img src="mobile/53-lobby-brawl-full.png" alt="Brawl lobby: host + phone + CPUs (mobile 9:16)" loading="lazy"></a>
+        <figcaption><span class="badge mobile">Mobile 9:16</span> Host screen (phone)</figcaption>
+      </figure></div>
+    </article>
+    <article class="panel" id="p54">
+      <header>
+        <span class="num">54</span>
+        <div><h3>Brawl: pick (host controller on the big screen)</h3></div>
+        <label class="flag"><input type="checkbox" data-flag="54"> Needs work</label>
+      </header>
+      <div class="pair">
+      <figure class="shot pc">
+        <a href="pc/54-brawl-pick.png" data-full><img src="pc/54-brawl-pick.png" alt="Brawl: pick (host controller on the big screen) (PC 16:9)" loading="lazy"></a>
+        <figcaption><span class="badge pc">PC 16:9</span> Host screen (PC/TV)</figcaption>
+      </figure>
+      <figure class="shot mobile">
+        <a href="mobile/54-brawl-pick.png" data-full><img src="mobile/54-brawl-pick.png" alt="Brawl: pick (host controller on the big screen) (mobile 9:16)" loading="lazy"></a>
+        <figcaption><span class="badge mobile">Mobile 9:16</span> Host screen (phone)</figcaption>
+      </figure></div>
+    </article>
+    <article class="panel" id="p55">
+      <header>
+        <span class="num">55</span>
+        <div><h3>Phone: brawl pick (timed)</h3></div>
+        <label class="flag"><input type="checkbox" data-flag="55"> Needs work</label>
+      </header>
+      <div class="pair">
+      <figure class="shot pc">
+        <a href="pc/55-phone-brawl-pick.png" data-full><img src="pc/55-phone-brawl-pick.png" alt="Phone: brawl pick (timed) (PC 16:9)" loading="lazy"></a>
+        <figcaption><span class="badge pc">PC 16:9</span> Phone C (Ana)</figcaption>
+      </figure>
+      <figure class="shot mobile">
+        <a href="mobile/55-phone-brawl-pick.png" data-full><img src="mobile/55-phone-brawl-pick.png" alt="Phone: brawl pick (timed) (mobile 9:16)" loading="lazy"></a>
+        <figcaption><span class="badge mobile">Mobile 9:16</span> Phone C (Ana)</figcaption>
+      </figure></div>
+    </article>
+    <article class="panel" id="p56">
+      <header>
+        <span class="num">56</span>
+        <div><h3>Brawl: host spin pad</h3></div>
+        <label class="flag"><input type="checkbox" data-flag="56"> Needs work</label>
+      </header>
+      <div class="pair">
+      <figure class="shot pc">
+        <a href="pc/56-brawl-spin.png" data-full><img src="pc/56-brawl-spin.png" alt="Brawl: host spin pad (PC 16:9)" loading="lazy"></a>
+        <figcaption><span class="badge pc">PC 16:9</span> Host screen (PC/TV)</figcaption>
+      </figure>
+      <figure class="shot mobile">
+        <a href="mobile/56-brawl-spin.png" data-full><img src="mobile/56-brawl-spin.png" alt="Brawl: host spin pad (mobile 9:16)" loading="lazy"></a>
+        <figcaption><span class="badge mobile">Mobile 9:16</span> Host screen (phone)</figcaption>
+      </figure></div>
+    </article>
+    <article class="panel" id="p57">
+      <header>
+        <span class="num">57</span>
+        <div><h3>Brawl: countdown (host controller)</h3></div>
+        <label class="flag"><input type="checkbox" data-flag="57"> Needs work</label>
+      </header>
+      <div class="pair">
+      <figure class="shot pc">
+        <a href="pc/57-brawl-countdown.png" data-full><img src="pc/57-brawl-countdown.png" alt="Brawl: countdown (host controller) (PC 16:9)" loading="lazy"></a>
+        <figcaption><span class="badge pc">PC 16:9</span> Host screen (PC/TV)</figcaption>
+      </figure>
+      <figure class="shot mobile">
+        <a href="mobile/57-brawl-countdown.png" data-full><img src="mobile/57-brawl-countdown.png" alt="Brawl: countdown (host controller) (mobile 9:16)" loading="lazy"></a>
+        <figcaption><span class="badge mobile">Mobile 9:16</span> Host screen (phone)</figcaption>
+      </figure></div>
+    </article>
+    <article class="panel" id="p58">
+      <header>
+        <span class="num">58</span>
+        <div><h3>Brawl: throw (drag mouse up / swipe)</h3></div>
+        <label class="flag"><input type="checkbox" data-flag="58"> Needs work</label>
+      </header>
+      <div class="pair">
+      <figure class="shot pc">
+        <a href="pc/58-brawl-throw.png" data-full><img src="pc/58-brawl-throw.png" alt="Brawl: throw (drag mouse up / swipe) (PC 16:9)" loading="lazy"></a>
+        <figcaption><span class="badge pc">PC 16:9</span> Host screen (PC/TV)</figcaption>
+      </figure>
+      <figure class="shot mobile">
+        <a href="mobile/58-brawl-throw.png" data-full><img src="mobile/58-brawl-throw.png" alt="Brawl: throw (drag mouse up / swipe) (mobile 9:16)" loading="lazy"></a>
+        <figcaption><span class="badge mobile">Mobile 9:16</span> Host screen (phone)</figcaption>
+      </figure></div>
+    </article>
+    <article class="panel" id="p59">
+      <header>
+        <span class="num">59</span>
+        <div><h3>Brawl: fight (host plays, roster on the side)</h3></div>
+        <label class="flag"><input type="checkbox" data-flag="59"> Needs work</label>
+      </header>
+      <div class="pair">
+      <figure class="shot pc">
+        <a href="pc/59-brawl-fight.png" data-full><img src="pc/59-brawl-fight.png" alt="Brawl: fight (host plays, roster on the side) (PC 16:9)" loading="lazy"></a>
+        <figcaption><span class="badge pc">PC 16:9</span> Host screen (PC/TV)</figcaption>
+      </figure>
+      <figure class="shot mobile">
+        <a href="mobile/59-brawl-fight.png" data-full><img src="mobile/59-brawl-fight.png" alt="Brawl: fight (host plays, roster on the side) (mobile 9:16)" loading="lazy"></a>
+        <figcaption><span class="badge mobile">Mobile 9:16</span> Host screen (phone)</figcaption>
+      </figure></div>
+    </article>
+    <article class="panel" id="p60">
+      <header>
+        <span class="num">60</span>
+        <div><h3>Phone: brawl fight</h3></div>
+        <label class="flag"><input type="checkbox" data-flag="60"> Needs work</label>
+      </header>
+      <div class="pair">
+      <figure class="shot pc">
+        <a href="pc/60-phone-brawl-fight.png" data-full><img src="pc/60-phone-brawl-fight.png" alt="Phone: brawl fight (PC 16:9)" loading="lazy"></a>
+        <figcaption><span class="badge pc">PC 16:9</span> Phone C (Ana)</figcaption>
+      </figure>
+      <figure class="shot mobile">
+        <a href="mobile/60-phone-brawl-fight.png" data-full><img src="mobile/60-phone-brawl-fight.png" alt="Phone: brawl fight (mobile 9:16)" loading="lazy"></a>
+        <figcaption><span class="badge mobile">Mobile 9:16</span> Phone C (Ana)</figcaption>
+      </figure></div>
+    </article>
+    <article class="panel" id="p61">
+      <header>
+        <span class="num">61</span>
+        <div><h3>Phone: joined mid-round, sits out</h3></div>
+        <label class="flag"><input type="checkbox" data-flag="61"> Needs work</label>
+      </header>
+      <div class="pair">
+      <figure class="shot pc">
+        <a href="pc/61-phone-sit-out.png" data-full><img src="pc/61-phone-sit-out.png" alt="Phone: joined mid-round, sits out (PC 16:9)" loading="lazy"></a>
+        <figcaption><span class="badge pc">PC 16:9</span> Phone D (late joiner)</figcaption>
+      </figure>
+      <figure class="shot mobile">
+        <a href="mobile/61-phone-sit-out.png" data-full><img src="mobile/61-phone-sit-out.png" alt="Phone: joined mid-round, sits out (mobile 9:16)" loading="lazy"></a>
+        <figcaption><span class="badge mobile">Mobile 9:16</span> Phone D (late joiner)</figcaption>
+      </figure></div>
+    </article>
+    <article class="panel" id="p62">
+      <header>
+        <span class="num">62</span>
+        <div><h3>Brawl: round end (points, KOs)</h3></div>
+        <label class="flag"><input type="checkbox" data-flag="62"> Needs work</label>
+      </header>
+      <div class="pair">
+      <figure class="shot pc">
+        <a href="pc/62-brawl-round-end.png" data-full><img src="pc/62-brawl-round-end.png" alt="Brawl: round end (points, KOs) (PC 16:9)" loading="lazy"></a>
+        <figcaption><span class="badge pc">PC 16:9</span> Host screen (PC/TV)</figcaption>
+      </figure>
+      <figure class="shot mobile">
+        <a href="mobile/62-brawl-round-end.png" data-full><img src="mobile/62-brawl-round-end.png" alt="Brawl: round end (points, KOs) (mobile 9:16)" loading="lazy"></a>
+        <figcaption><span class="badge mobile">Mobile 9:16</span> Host screen (phone)</figcaption>
+      </figure></div>
+    </article>
+    <article class="panel" id="p63">
+      <header>
+        <span class="num">63</span>
+        <div><h3>Phone: brawl round end</h3></div>
+        <label class="flag"><input type="checkbox" data-flag="63"> Needs work</label>
+      </header>
+      <div class="pair">
+      <figure class="shot pc">
+        <a href="pc/63-phone-brawl-round-end.png" data-full><img src="pc/63-phone-brawl-round-end.png" alt="Phone: brawl round end (PC 16:9)" loading="lazy"></a>
+        <figcaption><span class="badge pc">PC 16:9</span> Phone C (Ana)</figcaption>
+      </figure>
+      <figure class="shot mobile">
+        <a href="mobile/63-phone-brawl-round-end.png" data-full><img src="mobile/63-phone-brawl-round-end.png" alt="Phone: brawl round end (mobile 9:16)" loading="lazy"></a>
+        <figcaption><span class="badge mobile">Mobile 9:16</span> Phone C (Ana)</figcaption>
+      </figure></div>
+    </article>
+    <article class="panel" id="p64">
+      <header>
+        <span class="num">64</span>
+        <div><h3>Brawl: pick between rounds (timer)</h3></div>
+        <label class="flag"><input type="checkbox" data-flag="64"> Needs work</label>
+      </header>
+      <div class="pair">
+      <figure class="shot pc">
+        <a href="pc/64-brawl-pick-between.png" data-full><img src="pc/64-brawl-pick-between.png" alt="Brawl: pick between rounds (timer) (PC 16:9)" loading="lazy"></a>
+        <figcaption><span class="badge pc">PC 16:9</span> Host screen (PC/TV)</figcaption>
+      </figure>
+      <figure class="shot mobile">
+        <a href="mobile/64-brawl-pick-between.png" data-full><img src="mobile/64-brawl-pick-between.png" alt="Brawl: pick between rounds (timer) (mobile 9:16)" loading="lazy"></a>
+        <figcaption><span class="badge mobile">Mobile 9:16</span> Host screen (phone)</figcaption>
+      </figure></div>
+    </article>
+    <article class="panel" id="p65">
+      <header>
+        <span class="num">65</span>
+        <div><h3>Brawl: final standings</h3></div>
+        <label class="flag"><input type="checkbox" data-flag="65"> Needs work</label>
+      </header>
+      <div class="pair">
+      <figure class="shot pc">
+        <a href="pc/65-brawl-match-end.png" data-full><img src="pc/65-brawl-match-end.png" alt="Brawl: final standings (PC 16:9)" loading="lazy"></a>
+        <figcaption><span class="badge pc">PC 16:9</span> Host screen (PC/TV)</figcaption>
+      </figure>
+      <figure class="shot mobile">
+        <a href="mobile/65-brawl-match-end.png" data-full><img src="mobile/65-brawl-match-end.png" alt="Brawl: final standings (mobile 9:16)" loading="lazy"></a>
+        <figcaption><span class="badge mobile">Mobile 9:16</span> Host screen (phone)</figcaption>
+      </figure></div>
+    </article>
+    <article class="panel" id="p66">
+      <header>
+        <span class="num">66</span>
+        <div><h3>Phone: brawl final place</h3></div>
+        <label class="flag"><input type="checkbox" data-flag="66"> Needs work</label>
+      </header>
+      <div class="pair">
+      <figure class="shot pc">
+        <a href="pc/66-phone-brawl-match-end.png" data-full><img src="pc/66-phone-brawl-match-end.png" alt="Phone: brawl final place (PC 16:9)" loading="lazy"></a>
+        <figcaption><span class="badge pc">PC 16:9</span> Phone C (Ana)</figcaption>
+      </figure>
+      <figure class="shot mobile">
+        <a href="mobile/66-phone-brawl-match-end.png" data-full><img src="mobile/66-phone-brawl-match-end.png" alt="Phone: brawl final place (mobile 9:16)" loading="lazy"></a>
+        <figcaption><span class="badge mobile">Mobile 9:16</span> Phone C (Ana)</figcaption>
+      </figure></div>
+    </article>
+  </section>
+</main>
+<div id="lightbox" hidden><img alt=""></div>
+<script>
+const box = document.getElementById('lightbox'), boxImg = box.querySelector('img');
+document.addEventListener('click', e => {
+  const a = e.target.closest('[data-full]');
+  if (a) { e.preventDefault(); boxImg.src = a.href; boxImg.alt = a.querySelector('img').alt; box.hidden = false; }
+});
+box.onclick = () => { box.hidden = true; };
+addEventListener('keydown', e => { if (e.key === 'Escape') box.hidden = true; });
+document.querySelectorAll('[data-show]').forEach(b => b.onclick = () => {
+  document.querySelectorAll('[data-show]').forEach(x => x.setAttribute('aria-pressed', String(x === b)));
+  document.body.classList.toggle('only-pc', b.dataset.show === 'pc');
+  document.body.classList.toggle('only-mobile', b.dataset.show === 'mobile');
+  document.body.classList.toggle('only-flagged', b.dataset.show === 'flagged');
+});
+// "Needs work" ticks are remembered in this browser only.
+let flags = {};
+try { flags = JSON.parse(localStorage.getItem('paikutan-ui-flags') || '{}'); } catch {}
+document.querySelectorAll('[data-flag]').forEach(cb => {
+  const panel = cb.closest('.panel');
+  cb.checked = !!flags[cb.dataset.flag]; panel.classList.toggle('flagged', cb.checked);
+  cb.onchange = () => {
+    flags[cb.dataset.flag] = cb.checked; panel.classList.toggle('flagged', cb.checked);
+    try { localStorage.setItem('paikutan-ui-flags', JSON.stringify(flags)); } catch {}
+  };
+});
+</script>
+</body>
+</html>

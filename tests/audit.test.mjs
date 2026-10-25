@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { Engine } from '../js/engine.js';
-import { createFxReceiver, QUICK_CHAT } from '../js/chat.js';
+import { createFxReceiver, QUICK_CHAT, CHAT_ENABLED } from '../js/chat.js';
 import { arenaCameraDistance } from '../js/camera-fit.js';
 import { pacedTransport } from '../js/net.js';
 
@@ -53,7 +53,7 @@ test('a brawl continues when a player leaves and the reused seat waits for the n
   assert.equal(engine.players[1].inRound, false);
 });
 
-test('quick chat accepts only four fixed phrases and enforces cooldown per player', () => {
+test('quick chat accepts only four fixed phrases and enforces cooldown per player', { skip: !CHAT_ENABLED && 'quick chat is switched off' }, () => {
   const { engine, events } = match();
   for (const i of [-1, 4, 0.5, '0', undefined]) engine.handle('p0', 'chat', { i });
   assert.equal(events.filter(e => e.type === 'fx').length, 0);

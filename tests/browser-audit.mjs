@@ -4,6 +4,7 @@ import { readFile, writeFile, mkdir } from 'node:fs/promises';
 import { resolve, extname, sep } from 'node:path';
 import { spawn } from 'node:child_process';
 import assert from 'node:assert/strict';
+import { CHAT_ENABLED } from '../js/chat.js';
 
 const root = process.cwd();
 const output = resolve(root, 'node_modules/.trumpo-check/audit');
@@ -21,7 +22,7 @@ await Promise.all([
     await writeFile(vendor, await response.text());
   }
 }));
-const fixture = `<!doctype html><html><head><meta name="viewport" content="width=device-width,initial-scale=1"><link rel="stylesheet" href="/css/style.css"><script type="importmap">{"imports":{"three":"/node_modules/.trumpo-check/vendor/three.module.js"}}</script></head><body class="phone-page show-scene"><div id="ctrl"></div><script type="module">
+const fixture = `<!doctype html><html><head><meta name="viewport" content="width=device-width,initial-scale=1"><link rel="stylesheet" href="/css/style.css"><script type="importmap">{"imports":{"three":"/node_modules/.trumpo-check/vendor/three.module.js","three/addons/":"/node_modules/.trumpo-check/vendor/"}}</script></head><body class="phone-page show-scene"><div id="ctrl"></div><script type="module">
 import {createController} from '/js/controller.js';
 import {Engine} from '/js/engine.js';
 import {Particles} from '/js/fx/particles.js';
@@ -145,9 +146,11 @@ try {
   await host.evaluate(`roomState.players.filter(Boolean).forEach(p=>observer.postMessage({ev:'throw',p:{id:p.id,power:.5,angle:0}}))`);
   await phone.until(`document.querySelector('#ctrl').dataset.view==='fight'`);
   console.log('CHECK: fight phase');
-  await phone.evaluate(`(async()=>{window.humFrames=0;const {audio}=await import('/js/audio.js');const hum=audio.hum;audio.hum=function(...args){if(args[1]>0)humFrames++;return hum.apply(this,args)};document.querySelector('[data-chat="0"]').click()})()`);
-  await host.until(`document.querySelector('.chat-bubble')?.textContent==='Tara G'`);
-  await phone.until(`document.querySelector('.chat-bubble')?.textContent==='Tara G'`);
+  await phone.evaluate(`(async()=>{window.humFrames=0;const {audio}=await import('/js/audio.js');const hum=audio.hum;audio.hum=function(...args){if(args[1]>0)humFrames++;return hum.apply(this,args)};document.querySelector('[data-chat="0"]')?.click()})()`);
+  if (CHAT_ENABLED) {
+    await host.until(`document.querySelector('.chat-bubble')?.textContent==='Tara G'`);
+    await phone.until(`document.querySelector('.chat-bubble')?.textContent==='Tara G'`);
+  } else assert.equal(await phone.evaluate(`document.querySelectorAll('.quick-chat').length`), 0, 'quick chat is hidden');
   await phone.until(`humFrames>2`);
   await phone.screenshot('mobile-match.png');
   assert.equal(await host.evaluate(`roomTraffic.filter(m=>m.ev==='fx').length`), 0);
@@ -159,7 +162,7 @@ try {
   await host.evaluate(`document.querySelector('#btn-exit').click()`);
   await phone.until(`document.querySelector('#join-msg').textContent.includes('host ended')`);
   assert.equal(await phone.evaluate(`document.querySelectorAll('#ctrl > *').length`), 0);
-  console.log('PASS: host participation; CPU removal; multiplayer controller hum; shared Tagalog chat; leave/rejoin; host exit');
+  console.log(`PASS: host participation; CPU removal; multiplayer controller hum; ${CHAT_ENABLED ? 'shared Tagalog chat' : 'quick chat hidden'}; leave/rejoin; host exit`);
 
   await host.evaluate(`document.querySelector('#btn-join').click();document.querySelector('#join-code').value='ABCD';document.querySelector('#menu-join').requestSubmit()`);
   await host.until(`location.pathname==='/play.html'&&new URLSearchParams(location.search).get('room')==='ABCD'`);

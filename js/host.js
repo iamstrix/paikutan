@@ -103,6 +103,7 @@ function onEngine(type, payload) {
   if (type === 'state') onState(payload);
   else if (type === 'snap') {
     snap = decodeSnap(payload);
+    audio.setMatchSnap(snap);
     scene.applySnap(snap, true);
     if (ctrl) ctrl.onSnap(snap);
     const now = performance.now();
@@ -123,6 +124,7 @@ function onState(s) {
   state = s;
   document.body.dataset.phase = s.phase;
   scene.setPlayers(s.players);
+  audio.setMatchState(s, { silent: mode === 'title', slot: ctrl ? s.players.findIndex(p => p?.id === (mode === 'practice' ? 'me' : HOST_ID)) : -1 });
   if (ctrl) ctrl.setState(s);
   if (net) net.send('state', s);
   if (s.phase !== lastPhase) {

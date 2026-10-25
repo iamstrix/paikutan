@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Paikutan · Sound Lab</title>
+<style>
+:root{color-scheme:dark;font-family:system-ui,sans-serif;background:#151021;color:#fff4dc}*{box-sizing:border-box}body{margin:0}main{max-width:1120px;margin:auto;padding:32px 20px 64px}header{border-bottom:1px solid #5c465d;padding-bottom:24px}h1{font-size:clamp(2rem,6vw,3.4rem);margin:8px 0;color:#ffd35b}h2{margin:32px 0 12px;font-size:1.3rem}p{line-height:1.5;color:#cbbbce;margin:8px 0}.eyebrow{letter-spacing:.16em;text-transform:uppercase;color:#e6a04b;font-size:.75rem}a{color:#ffd35b}button{font:inherit;font-weight:700;color:inherit;background:#30223c;border:1px solid #6a4e71;border-radius:10px;padding:10px 14px;cursor:pointer}button:hover{background:#49304d}button:focus-visible,input:focus-visible{outline:3px solid #ffd35b;outline-offset:3px}.primary{background:#ffd35b;color:#261c14;border-color:#ffd35b}.toolbar{display:flex;flex-wrap:wrap;align-items:center;gap:10px;margin:20px 0 10px}.settings{display:flex;flex-wrap:wrap;gap:22px;padding:18px 0}.settings label{display:flex;align-items:center;gap:10px;font-size:.9rem}input[type=range]{accent-color:#ffd35b;width:140px}.status{font-family:monospace;font-size:.8rem;min-height:1.3em}.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:10px}.card{background:#241a30;border:1px solid #49324f;border-radius:14px;padding:16px;display:flex;flex-direction:column}.card h3{margin:0 0 8px;font-size:1rem}.card p{font-size:.82rem;min-height:2.6em;flex:1}.card .actions{display:flex;gap:8px;align-items:center;margin-top:12px}.card .play{flex:1;text-align:left}.save{font-size:.75rem;color:#d0bed1;text-decoration:none}.badge{display:inline-block;border-radius:99px;background:#41313a;color:#ffd35b;font-size:.65rem;letter-spacing:.04em;padding:4px 7px;vertical-align:middle;margin-left:5px}.loops{display:grid;grid-template-columns:repeat(auto-fit,minmax(270px,1fr));gap:12px}.loop{background:#241a30;border:1px solid #49324f;padding:18px;border-radius:14px}.loop label{display:flex;justify-content:space-between;align-items:center;margin:14px 0}.foot{border-top:1px solid #5c465d;margin-top:36px;padding-top:20px;font-size:.85rem}.playing{border-color:#ffd35b;box-shadow:0 0 0 1px #ffd35b}button[aria-pressed=true]{background:#805f24}#unlock{min-width:160px}@media(max-width:520px){main{padding:20px 14px 48px}.grid{grid-template-columns:1fr 1fr;gap:8px}.card{padding:12px}.card .actions{flex-wrap:wrap}.card .play{font-size:.8rem;padding:9px}.card .save{font-size:.7rem}.settings{gap:12px}.settings label{flex-wrap:wrap}.card p{font-size:.75rem}}@media(prefers-reduced-motion:reduce){*{scroll-behavior:auto}}
+</style>
+</head>
+<body data-audio-preview="true">
+<main>
+<header><div class="eyebrow">Paikutan / audio workshop</div><h1>Wood. Bronze. Myth.</h1><p>Audition every game cue. Warm wooden impacts, bright bronze signals, and a distinct sound for each mythic power.</p>
+<div class="toolbar"><button class="primary" id="unlock">Enable audio</button><button id="tour">Play all cues</button><button id="brawl">Brawl mix</button><button id="stop">Stop all</button><button id="music" aria-pressed="false">Add music</button></div>
+<div class="settings"><label>SFX level <input id="volume" type="range" min="0" max="100" value="75"><output id="volume-label">75%</output></label><label>Clash strength <input id="strength" type="range" min="10" max="100" value="60"><output id="strength-label">60%</output></label><label><input id="fallback" type="checkbox"> Synthesized power fallbacks</label></div>
+<p class="status" id="status" role="status">Tap Enable audio to preload the power and voice clips.</p>
+</header>
+<h2>Live textures</h2><div class="loops">
+<div class="loop"><b>Spinning trumpo</b><p>Pitch follows spin. Wobble adds a loose, rattling pulse.</p><label>Spin <input id="spin" type="range" min="0" max="100" value="0"></label><label>Wobble <input id="wobble" type="range" min="0" max="100" value="20"></label></div>
+<div class="loop"><b>Winding the string</b><p>A faster finger circle makes the airy string sound climb.</p><label>Circle speed <input id="whir" type="range" min="0" max="100" value="0"></label></div></div>
+<div id="catalog"></div>
+<h2>Tagalog quick chat</h2><p>Bundled Filipino speech, with no English voice substitution.</p><div class="toolbar" id="chat"></div>
+<div class="foot"><p><span id="count"></span> · <a href="CREDITS.md">Source credits</a> · <a href="sound-audit.html">Original audit</a> · <a href="../index.html">Back to game</a></p><p>Power previews use the same samples and synthesis as the game. Save WAV exports the responsive synthesized cue; the five original power edits are available as MP3 downloads.</p></div>
+</main><script type="module" src="preview.js"></script>
+</body></html>
