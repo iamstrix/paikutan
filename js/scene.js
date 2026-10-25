@@ -8,6 +8,7 @@ import { createAtmosphere } from './world/atmosphere.js';
 import { buildTrompo } from './entities/trompo.js';
 import { Avatar } from './entities/avatar.js';
 import { Critters, chicken } from './entities/critters.js';
+import { Effects, CLASH_WORDS, POWER_WORDS } from './fx/effects.js';
 
 const CLOCK = 15 * 60 + 30; // merienda time: warm light, lamps still off
 
@@ -160,81 +161,12 @@ export function createScene(canvas, { low = false } = {}) {
   const dog = makeDog();
   scene.add(dog);
 
-  // Spark/dust particles.
-  const MAXP = 500;
-  const pPos = new Float32Array(MAXP * 3), pCol = new Float32Array(MAXP * 3);
-  const pVel = new Float32Array(MAXP * 3), pLife = new Float32Array(MAXP);
-  const pGeo = new THREE.BufferGeometry();
-  pGeo.setAttribute('position', new THREE.BufferAttribute(pPos, 3));
-  pGeo.setAttribute('color', new THREE.BufferAttribute(pCol, 3));
-  const points = new THREE.Points(pGeo, new THREE.PointsMaterial({ size: 0.14, vertexColors: true, transparent: true, depthWrite: false }));
-  points.frustumCulled = false;
-  scene.add(points);
-  let pNext = 0;
-  const tmpC = new THREE.Color();
-  function burst(x, y, z, n, color, speed = 4, up = 2) {
-    tmpC.set(color);
-    for (let k = 0; k < n; k++) {
-      const i = pNext; pNext = (pNext + 1) % MAXP;
-      pPos[i * 3] = x; pPos[i * 3 + 1] = y; pPos[i * 3 + 2] = z;
-      const a = rand(0, Math.PI * 2), s = rand(0.3, 1) * speed;
-      pVel[i * 3] = Math.cos(a) * s; pVel[i * 3 + 1] = rand(0.3, 1) * up; pVel[i * 3 + 2] = Math.sin(a) * s;
-      pCol[i * 3] = tmpC.r; pCol[i * 3 + 1] = tmpC.g; pCol[i * 3 + 2] = tmpC.b;
-      pLife[i] = rand(0.4, 0.9);
-    }
-  }
-  function updateParticles(dt) {
-    for (let i = 0; i < MAXP; i++) {
-      if (pLife[i] <= 0) { pPos[i * 3 + 1] = -50; continue; }
-      pLife[i] -= dt;
-      pVel[i * 3 + 1] -= 6 * dt;
-      for (let k = 0; k < 3; k++) pPos[i * 3 + k] += pVel[i * 3 + k] * dt;
-      if (pPos[i * 3 + 1] < 0.02) { pPos[i * 3 + 1] = 0.02; pVel[i * 3 + 1] *= -0.3; }
-    }
-    pGeo.attributes.position.needsUpdate = true;
-    pGeo.attributes.color.needsUpdate = true;
-  }
-
-  // Lightning bolt line.
-  const boltMat = new THREE.LineBasicMaterial({ color: '#fffbe0', transparent: true });
-  const bolt = new THREE.Line(new THREE.BufferGeometry(), boltMat);
-  bolt.visible = false; scene.add(bolt);
-  let boltT = 0;
-  function strike(x, z) {
-    const pts = [];
-    let px = x + rand(-1, 1), pz = z + rand(-1, 1);
-    for (let i = 0; i <= 12; i++) {
-      const t = i / 12;
-      pts.push(new THREE.Vector3(THREE.MathUtils.lerp(px, x, t) + (i < 12 ? rand(-0.35, 0.35) : 0), 12 * (1 - t) + 0.4, THREE.MathUtils.lerp(pz, z, t) + (i < 12 ? rand(-0.35, 0.35) : 0)));
-    }
-    bolt.geometry.setFromPoints(pts);
-    bolt.visible = true; boltT = 0.45;
-    flash.color.set('#e8f4ff'); flash.position.set(x, 3, z); flash.intensity = 60;
-  }
-
-  // Expanding shockwave rings on the ground.
-  const waves = Array.from({ length: 8 }, () => {
-    const m = new THREE.Mesh(new THREE.RingGeometry(0.85, 1, 48), new THREE.MeshBasicMaterial({ transparent: true, opacity: 0, depthWrite: false, side: THREE.DoubleSide }));
-    m.rotation.x = -Math.PI / 2; m.position.y = 0.03; m.visible = false; m.userData = { t: 0, dur: 1, size: 1 };
-    scene.add(m);
-    return m;
-  });
-  let waveNext = 0;
-  function wave(x, z, color, size = 3, dur = 0.5) {
-    const m = waves[waveNext]; waveNext = (waveNext + 1) % waves.length;
-    m.position.x = x; m.position.z = z; m.material.color.set(color);
-    Object.assign(m.userData, { t: 0, dur, size }); m.visible = true;
-  }
-  function updateWaves(dt) {
-    for (const m of waves) {
-      if (!m.visible) continue;
-      const u = m.userData; u.t += dt;
-      const k = u.t / u.dur;
-      if (k >= 1) { m.visible = false; continue; }
-      m.scale.setScalar(0.2 + u.size * (1 - (1 - k) * (1 - k)));
-      m.material.opacity = 0.9 * (1 - k);
-    }
-  }
+  // tromPOW's pooled effects (dust, sparks, rings, POW! bursts, the Kidlat bolt) work in his units,
+  // so the group is scaled like the barangay and every position goes in divided by WORLD_SCALE.
+  const effects = new Effects(Math.random);
+  effects.group.scale.setScalar(WORLD_SCALE);
+  scene.add(effects.group);
+  const u = v => v / WORLD_SCALE;
   function pop(x, z, color, power) {
     flash.color.set(color); flash.position.set(x, 3, z); flash.intensity = power;
   }
@@ -295,59 +227,68 @@ export function createScene(canvas, { low = false } = {}) {
   }
 
   function fx(e) {
+    const x = u(e.x), z = u(e.z), tx = u(e.tx), tz = u(e.tz);
     switch (e.type) {
-      case 'hit':
-        burst(e.x, 0.45, e.z, Math.round(10 + 40 * e.i), '#ffcf5a', 3 + 6 * e.i, 3);
+      case 'hit': {
+        const power = e.i * 4;
+        effects.spark(x, 0.3, z, 8 + Math.floor(power * 5), power);
+        effects.puff(x, 0.05, z, { n: 4 + Math.floor(power * 2), size: 0.35 });
+        effects.ring(x, z, '#fff3c8', 0.6 + power * 0.35, 0.4);
+        if (e.i > 0.45) effects.pow(x, 1.1, z, CLASH_WORDS[Math.floor(Math.random() * CLASH_WORDS.length)]);
         shake = Math.max(shake, e.i * 0.45);
-        if (e.i > 0.6) { wave(e.x, e.z, '#fff3c4', 1.5 + 2 * e.i, 0.35); pop(e.x, e.z, '#ffcf5a', 25 * e.i); }
+        if (e.i > 0.6) pop(e.x, e.z, '#ffcf5a', 25 * e.i);
         break;
+      }
       case 'launch':
-        burst(e.x, 0.05, e.z, 18, '#d8b98c', 2.5, 1.2);
+        effects.puff(x, 0.05, z, { n: 10, speed: 1.3 });
+        effects.ring(x, z, '#f3e2c0', 0.9);
         if (people[e.slot]) people[e.slot].avatar.release();
         break;
       case 'steal':
-        // Sparks in the thief's colour, from the leader toward the thief.
+        // Ours: motes in the thief's colour fly off the leader.
         if (e.amt > 0.012) {
-          burst(e.fx, 0.5, e.fz, Math.round(e.amt * 500), PLAYER_COLORS[e.slot], 2.5, 2);
-          burst(e.x, 0.5, e.z, Math.round(e.amt * 400), '#ffffff', 1.5, 3);
-          wave(e.x, e.z, PLAYER_COLORS[e.slot], 1.6, 0.4);
+          effects.puff(u(e.fx), 0.3, u(e.fz), { n: Math.round(e.amt * 200), color: PLAYER_COLORS[e.slot], speed: 1.6, up: 1.2, size: 0.15, grow: 0.6, gravity: 2 });
+          effects.ring(x, z, PLAYER_COLORS[e.slot], 0.9, 0.4);
         }
         break;
       case 'boost':
-        burst(e.x - e.dx * 0.4, 0.08, e.z - e.dz * 0.4, 22, '#e3c49a', 2.5, 1);
-        wave(e.x, e.z, '#fff8e7', 1.4, 0.25);
+        effects.puff(x - u(e.dx * 0.4), 0.05, z - u(e.dz * 0.4), { n: 12, speed: 2.2, size: 0.45 });
+        effects.ring(x, z, '#fff8e7', 0.8, 0.25);
         break;
       case 'fall': case 'out':
-        burst(e.x, 0.1, e.z, 60, '#d8b98c', 4, 2.5);
-        burst(e.x, 0.3, e.z, 25, '#ffffff', 5, 3);
-        wave(e.x, e.z, '#ffffff', 4, 0.6);
+        effects.puff(x, 0.05, z, { n: 14, speed: 1.8, size: 0.5 });
+        effects.ring(x, z, e.type === 'out' ? '#d6453d' : '#9a8a70', 1.4, 0.6);
+        if (e.type === 'out') effects.pow(x, 1.0, z, 'BLAG!');
         shake = Math.max(shake, 0.7);
         break;
       case 'bark':
-        burst(e.x, 0.3, e.z, 15, '#d8b98c', 3, 2);
+        effects.puff(x, 0.05, z, { n: 8, size: 0.4 });
         break;
-      case 'ability':
+      case 'ability': {
+        const color = PLAYER_COLORS[e.slot];
         if (e.top === 'kidlat') {
-          strike(e.tx, e.tz); burst(e.tx, 0.4, e.tz, 90, '#e8f4ff', 7, 5); burst(e.tx, 0.4, e.tz, 40, '#ffd23f', 5, 3);
-          wave(e.tx, e.tz, '#ffd23f', 4, 0.5); shake = 0.9;
-        }
-        if (e.top === 'tikbalang') {
-          burst(e.x, 0.2, e.z, 80, '#8d5524', 6, 2); burst(e.x, 0.4, e.z, 30, '#e63946', 4, 2);
-          wave(e.x, e.z, '#e63946', 3, 0.4); pop(e.x, e.z, '#ff6b3d', 40); shake = Math.max(shake, 0.5);
-        }
-        if (e.top === 'agimat') {
-          burst(e.x, 0.6, e.z, 70, '#7fffd4', 3, 3); wave(e.x, e.z, '#7fffd4', 3, 0.7);
+          effects.lightning(tx, tz);
+          pop(e.tx, e.tz, '#e8f4ff', 60); shake = 0.9;
+        } else if (e.top === 'tikbalang') {
+          effects.puff(x, 0.05, z, { n: 12, speed: 2.2, size: 0.45 });
+          effects.ring(x, z, color, 1.1, 0.4);
+          pop(e.x, e.z, '#ff6b3d', 40); shake = Math.max(shake, 0.5);
+        } else if (e.top === 'agimat') {
+          effects.ring(x, z, '#5ff2d6', 1.0, 0.6);
           pop(e.x, e.z, '#7fffd4', 40); shake = Math.max(shake, 0.3);
+        } else if (e.top === 'diwata') {
+          effects.sparkle(x, z);
+          pop(e.x, e.z, '#ffb3e0', 50);
+        } else if (e.top === 'bakunawa') {
+          eclipse = 5;
+          effects.ring(tx, tz, '#3a1f6b', 1.6, 0.8);
+          effects.puff(tx, 0.05, tz, { n: 10, color: '#3a2a5a', size: 0.5 });
+          shake = Math.max(shake, 0.5);
         }
-        if (e.top === 'diwata') {
-          burst(e.x, 0.3, e.z, 120, '#ff9ecb', 2, 7); burst(e.x, 0.3, e.z, 40, '#fff8e7', 1.5, 8);
-          wave(e.x, e.z, '#ff9ecb', 3, 0.8); pop(e.x, e.z, '#ffb3e0', 50);
-        }
-        if (e.top === 'bakunawa') {
-          eclipse = 5; burst(e.tx, 0.5, e.tz, 90, '#9b5de5', 4, 4);
-          wave(e.tx, e.tz, '#9b5de5', 5, 0.9); wave(e.x, e.z, '#5bc0be', 3, 0.6); shake = Math.max(shake, 0.5);
-        }
+        const strike = e.top === 'kidlat' || e.top === 'bakunawa';
+        effects.pow(strike ? tx : x, 1.2, strike ? tz : z, POWER_WORDS[e.top] ?? 'POW!', 1.2);
         break;
+      }
     }
   }
 
@@ -407,8 +348,8 @@ export function createScene(canvas, { low = false } = {}) {
     t.shield.visible = st.shield && st.alive;
     t.shield.material.opacity = 0.18 + Math.sin(time * 8) * 0.06;
     t.ring.material.color.set(st.invert ? '#9b5de5' : PLAYER_COLORS[slot]);
-    if (st.dash && st.alive && Math.random() < 0.6) burst(st.x, 0.1, st.z, 2, '#8d5524', 1, 0.8);
-    if (st.alive && st.wobble > 0.55 && Math.random() < st.wobble * 0.3) burst(st.x, 0.05, st.z, 1, '#d8b98c', 1, 0.6);
+    if (st.dash && st.alive && Math.random() < 0.6) effects.puff(u(st.x), 0.05, u(st.z), { n: 2, size: 0.4, speed: 0.6 });
+    if (st.alive && st.wobble > 0.55 && Math.random() < st.wobble * 0.3) effects.puff(u(st.x), 0.04, u(st.z), { n: 1, size: 0.22, speed: 0.3, up: 0.3, life: 0.7 });
   }
 
   function updateCamera(dt) {
@@ -508,28 +449,24 @@ export function createScene(canvas, { low = false } = {}) {
     world.update(time);
     critters.update(dt, time);
     updatePeek(dt);
-    updateParticles(dt);
-    updateWaves(dt);
     if (party) {
       party.t += dt;
       const w = tops[party.slot] && tops[party.slot].state;
       // Confetti, and fireworks over the plaza for the match winner.
-      if (w && Math.random() < (party.final ? 0.5 : 0.25)) {
-        burst(w.x + rand(-1.5, 1.5), 2.5, w.z + rand(-1.5, 1.5), 8, ['#e63946', '#ffd23f', '#3a86ff', '#2a9d8f', '#ff70a6', '#fff'][Math.floor(rand(0, 6))], 2, 2);
-      }
+      if (w && Math.random() < (party.final ? 0.5 : 0.25)) effects.confetti(u(w.x + rand(-1.5, 1.5)), 1.4, u(w.z + rand(-1.5, 1.5)), 6);
       if (party.final && Math.random() < 0.06) {
         const fx = rand(-6, 6), fz = rand(-6, 6);
-        burst(fx, rand(5, 8), fz, 50, ['#ffd23f', '#ff70a6', '#7fffd4', '#e8f4ff'][Math.floor(rand(0, 4))], 5, 3);
+        effects.sparks.emit(u(fx), u(rand(5, 8)), u(fz), { n: 50, color: ['#ffd23f', '#ff70a6', '#7fffd4', '#e8f4ff'][Math.floor(rand(0, 4))], speed: 3, up: 1.5, life: 0.9, size: 0.14, grow: 0.3, gravity: 2 }, Math.random);
         pop(fx, fz, '#ffd23f', 20);
       }
     }
     shake = Math.max(0, shake - dt * 1.5);
-    if (boltT > 0) { boltT -= dt; boltMat.opacity = Math.random() > 0.3 ? 1 : 0.2; if (boltT <= 0) bolt.visible = false; }
     flash.intensity = Math.max(0, flash.intensity - dt * 150);
     eclipse = Math.max(0, eclipse - dt);
     const dark = Math.min(1, eclipse * 1.5) * 0.75;
     atmosphere.setClock(CLOCK, dark);
     updateCamera(dt);
+    effects.update(dt, camera, canvas.clientHeight);
     atmosphere.follow(camera.position);
     renderer.render(scene, camera);
   }

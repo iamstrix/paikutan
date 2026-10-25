@@ -11,6 +11,8 @@ const $ = s => document.querySelector(s);
 const params = new URLSearchParams(location.search);
 const solo = params.has('solo');
 const myId = solo ? 'me' : playerId();
+// Canvas signs and POW! bursts letter in Lilita One; give it a moment to load so they don't bake in a fallback.
+await Promise.race([document.fonts.load('64px "Lilita One"').catch(() => {}), new Promise(r => setTimeout(r, 1500))]);
 const scene = createScene($('#view'), { low: true });
 const SCENE_PHASES = ['countdown', 'throw', 'fight', 'roundEnd'];
 let ctrl = null, net = null, engine = null, state = null, lastPhase = '', lastMsg = 0, snap = null;

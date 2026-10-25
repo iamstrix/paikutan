@@ -8,6 +8,8 @@ import { audio, playFx } from './audio.js';
 import { CHARACTERS, TOPS, PLAYER_COLORS, byId } from './data.js';
 
 const $ = s => document.querySelector(s);
+// Canvas signs and POW! bursts letter in Lilita One; give it a moment to load so they don't bake in a fallback.
+await Promise.race([document.fonts.load('64px "Lilita One"').catch(() => {}), new Promise(r => setTimeout(r, 1500))]);
 const scene = createScene($('#view'));
 let engine = null, net = null, ctrl = null, mode = 'title';
 const CAMS = ['auto', 'top', 'close', 'orbit'];
