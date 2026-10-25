@@ -13,3 +13,11 @@ image*.png
 /images/
 /DOST Level Up 3.0.pdf
 /Level Up 3.0 Full Mechanics.pdf
+
+# Local audits, design drafts, and art documentation / preview pages
+/reports/
+/assets/art/**/README.md
+/assets/art/**/prompts.json
+/assets/art/**/manifest.json
+/assets/art/**/preview.html
+/assets/art/**/models.html
