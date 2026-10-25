@@ -250,8 +250,10 @@ body.lobby-open #card1 { right: 372px; }
 /* ---------- phone page ---------- */
 body.phone-page #view { display: none; }
 body.phone-page.show-scene #view { display: block; }
-body.phone-page:not(.show-scene) .you-tag { display: none; }
-body.phone-page.show-scene .ctrl .panel:not(.throw) { background: var(--panel-soft); }
+/* Every phone screen sits over the arena: a wash darker at the top and bottom instead of a solid panel. */
+body.phone-page.show-scene .ctrl .panel:not(.throw) {
+  background: linear-gradient(rgba(20, 14, 38, 0.72), rgba(20, 14, 38, 0.38) 30%, rgba(20, 14, 38, 0.38) 65%, rgba(20, 14, 38, 0.78));
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.85); }
 /* Winding is a first-person view; the gesture guide floats over the hands and trumpo. */
 .ctrl[data-view=spin] .panel.spin {
   position: relative;
@@ -291,11 +293,14 @@ body[data-phase=charge]:is([data-mode=practice], .host-playing) #banner { displa
   .ctrl[data-view=spin] .spin > p { margin: 0; font-size: 0.75rem; }
 }
 #join-screen { position: fixed; inset: 0; z-index: 30; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px;
-  padding: 16px; text-align: center; background: radial-gradient(circle at 50% 20%, #3a2463, var(--bg)); }
+  padding: 16px; text-align: center; text-shadow: 0 1px 3px rgba(0, 0, 0, 0.9), 0 0 12px rgba(0, 0, 0, 0.5);
+  /* See-through over the orbiting barangay, darker behind the logo and the form. */
+  background: linear-gradient(rgba(20, 14, 38, 0.55), rgba(20, 14, 38, 0.15) 30%, rgba(20, 14, 38, 0.35) 55%, rgba(20, 14, 38, 0.7)); }
 #join-screen .logo { font-size: clamp(2.2rem, 12vw, 4.5rem); }
-#join-screen label { display: block; text-align: left; font-size: 0.85rem; color: var(--muted); }
-#join-screen input { font: inherit; font-size: 1.2rem; width: min(320px, 80vw); padding: 0.6em 0.8em; border-radius: 12px; border: 2px solid rgba(255, 255, 255, 0.2);
-  background: rgba(0, 0, 0, 0.3); color: var(--ink); margin-top: 4px; }
+#join-screen label { display: block; text-align: left; font-size: 0.85rem; color: #e4dcef; }
+#join-screen input { font: inherit; font-size: 1.2rem; width: min(320px, 80vw); padding: 0.6em 0.8em; border-radius: 12px; border: 2px solid rgba(255, 255, 255, 0.3);
+  background: rgba(20, 14, 38, 0.6); color: var(--ink); margin-top: 4px; backdrop-filter: blur(4px); }
+#join-screen .muted { color: #e4dcef; }
 #room { text-transform: uppercase; letter-spacing: 0.3em; font-family: Bungee, Impact, sans-serif; }
 #lost { position: fixed; top: 0; left: 0; right: 0; z-index: 40; background: var(--red); text-align: center; padding: 6px; font-weight: 800; }
 
@@ -470,7 +475,6 @@ body.host-playing #end-bar { bottom: 72px; }
 .chat-layer { position: fixed; inset: 0; pointer-events: none; z-index: 32; }
 .chat-bubble { position: absolute; transform: translate(-50%, -100%); border: 3px solid var(--pc); border-radius: 16px; padding: 9px 16px; background: #fff8e7; color: #241936; font-weight: 800; white-space: nowrap; box-shadow: 0 5px 12px #0005; animation: bubble-in 0.18s ease-out; }
 .chat-bubble::after { content: ''; position: absolute; left: calc(50% - 7px); bottom: -10px; border-left: 7px solid transparent; border-right: 7px solid transparent; border-top: 8px solid var(--pc); }
-.phone-page:not(.show-scene) .chat-bubble { left: 50% !important; top: 18% !important; }
 @keyframes bubble-in { from { opacity: 0; margin-top: 8px; } }
 /* Brawl podium: a name tag over each of the top three, and the Kampeon banner moved up off their heads. */
 .podium-tag { position: absolute; transform: translate(-50%, -100%); display: flex; align-items: center; gap: 7px; padding: 4px 12px 4px 4px;

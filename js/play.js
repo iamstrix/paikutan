@@ -15,9 +15,11 @@ const myId = solo ? 'me' : playerId();
 // Canvas signs and POW! bursts letter in Lilita One; give it a moment to load so they don't bake in a fallback.
 await Promise.race([document.fonts.load('64px "Lilita One"').catch(() => {}), new Promise(r => setTimeout(r, 1500))]);
 const scene = createScene($('#view'), { low: true, cue: (name, arg) => audio[name]?.(arg) });
+// The arena is always drawn behind the phone's screens, from the join menu on; these phases are the match itself.
 const SCENE_PHASES = ['charge', 'countdown', 'throw', 'fight', 'roundEnd'];
-// The pick screen is see-through, so the arena shows behind it (music stays at menu volume).
-const VISIBLE_PHASES = [...SCENE_PHASES, 'pick', 'vs'];
+// Before joining: a slow orbit of the empty barangay behind the join form.
+function idleView() { scene.setView('spectator'); scene.setCam('orbit'); }
+idleView();
 // A 1v1 ends with the bowling cutscene on every phone too; the result panel comes up after it.
 const bowling = p => p.phase === 'matchEnd' && p.mode !== 'brawl' && p.result && p.result.champion >= 0;
 let ctrl = null, net = null, engine = null, state = null, lastPhase = '', lastMsg = 0, snap = null;
@@ -85,8 +87,7 @@ function leave(message = '', notify = true) {
   if (net) { net.close(notify ? 'leave' : undefined, { id: myId }); net = null; }
   if (wakeLock) { wakeLock.release().catch(() => {}); wakeLock = null; }
   engine = null; state = snap = null; lastPhase = ''; lastSnapSeq = 0; effects.reset();
-  audio.stop(); scene.reset(); scene.setPlayers([]); scene.setLocalSteer(-1, null);
-  document.body.classList.remove('show-scene');
+  audio.stop(); scene.reset(); scene.setPlayers([]); scene.setLocalSteer(-1, null); idleView();
   $('#lost').hidden = true; $('#leave').hidden = true;
   $('#join-screen').hidden = false; $('#join').disabled = false;
   $('#join-msg').textContent = message;
@@ -121,7 +122,6 @@ function onMessage(ev, p) {
       lastPhase = p.phase;
     }
     scene.setView(p.players.findIndex(x => x && x.id === myId));
-    document.body.classList.toggle('show-scene', VISIBLE_PHASES.includes(p.phase) || bowling(p));
     scene.resize();
     audio.setMatchState(p, { slot: p.players.findIndex(x => x?.id === myId) });
     ctrl.setState(p);
@@ -167,7 +167,7 @@ function frame(now) {
   if (ctrl && ctrl.slot >= 0) scene.setLocalSteer(ctrl.slot, ctrl.localSteer());
   const charging = state && state.phase === 'charge' && ctrl && state.players[ctrl.slot]?.inRound;
   scene.setCharge(charging ? ctrl.slot : -1, charging ? ctrl.localSpin() : null);
-  if (document.body.classList.contains('show-scene')) scene.render(dt);
+  scene.render(dt);
   if (snap && state) {
     const on = ['throw', 'fight'].includes(state.phase) && (solo || now - lastMsg < 7000);
     const level = Math.min(1, 2 / Math.max(2, snap.tops.length));
